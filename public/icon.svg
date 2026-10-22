@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <linearGradient id="shield" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#grad)" />
+  <g transform="translate(64, 64) scale(0.75)">
+    <!-- Graduation Cap / Shield Icon -->
+    <path d="M256 64 L48 168 L256 272 L464 168 Z" fill="#ffffff" />
+    <path d="M120 220 L120 330 C120 400 256 460 256 460 C256 460 392 400 392 330 L392 220 L256 288 Z" fill="#ffffff" opacity="0.9" />
+    <!-- Class Emblem Badge -->
+    <circle cx="256" cy="320" r="48" fill="#1d4ed8" />
+    <path d="M240 320 L252 332 L276 308" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  </g>
+</svg>

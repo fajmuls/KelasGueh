@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="KelasManajer" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <script>
+      // Suppress benign WebSocket / Vite dev server HMR disconnection notices
+      (function () {
+        var isBenign = function (msg) {
+          if (!msg) return false;
+          var str = typeof msg === 'string' ? msg : (msg.message || String(msg));
+          return str.indexOf('WebSocket') !== -1 || str.indexOf('[vite]') !== -1;
+        };
+        window.addEventListener('unhandledrejection', function (e) {
+          if (isBenign(e && e.reason)) {
+            e.preventDefault();
+            e.stopImmediatePropagation && e.stopImmediatePropagation();
+          }
+        });
+        window.addEventListener('error', function (e) {
+          if (isBenign(e && e.message) || isBenign(e && e.error)) {
+            e.preventDefault();
+            e.stopImmediatePropagation && e.stopImmediatePropagation();
+          }
+        });
+        var origConsoleError = console.error;
+        console.error = function () {
+          var args = Array.prototype.slice.call(arguments);
+          var first = args[0] ? String(args[0]) : '';
+          if (isBenign(first)) return;
+          origConsoleError.apply(console, args);
+        };
+      })();
+    </script>
+    <title>Kelas Gue</title>
+    <meta name="description" content="Kelas Gue - Sistem transparansi kas kelas doodle art & paper cut-out terintegrasi Supabase." />
+    <meta property="og:title" content="Kelas Gue" />
+    <meta property="og:description" content="Kelas Gue - Sistem transparansi kas kelas doodle art & paper cut-out terintegrasi Supabase." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

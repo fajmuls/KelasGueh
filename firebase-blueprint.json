@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "Mahasiswa atau pengguna sistem kelas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "nim": { "type": "string", "maxLength": 32 },
+        "email": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "role_id": { "type": "string", "maxLength": 64 },
+        "position": { "type": "string", "maxLength": 64 },
+        "avatar": { "type": "string", "maxLength": 512 },
+        "is_active": { "type": "boolean" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "role_id"]
+    },
+    "roleAssignment": {
+      "title": "RoleAssignment",
+      "description": "Penetapan role pengguna oleh superadmin",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 128 },
+        "role_id": { "type": "string", "maxLength": 64 },
+        "assigned_by": { "type": "string", "maxLength": 128 },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["user_id", "email", "role_id"]
+    },
+    "transaction": {
+      "title": "Transaction",
+      "description": "Catatan transaksi kas kelas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "category_id": { "type": "string", "maxLength": 64 },
+        "amount": { "type": "number" },
+        "description": { "type": "string", "maxLength": 500 },
+        "date": { "type": "string" },
+        "created_by": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "type", "amount", "description", "date", "created_by"]
+    },
+    "announcement": {
+      "title": "Announcement",
+      "description": "Pengumuman resmi kelas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "content": { "type": "string", "maxLength": 4000 },
+        "author_id": { "type": "string", "maxLength": 128 },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "title", "content", "author_id"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "Koleksi profil anggota dan pengguna aplikasi"
+    },
+    "/roleAssignments/{assignmentId}": {
+      "schema": "roleAssignment",
+      "description": "Koleksi penetapan role oleh super admin"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "transaction",
+      "description": "Koleksi mutasi keuangan kas kelas"
+    },
+    "/announcements/{announcementId}": {
+      "schema": "announcement",
+      "description": "Koleksi pengumuman kelas"
+    }
+  }
+}

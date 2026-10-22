@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Paper notebook background pattern */
+  .bg-paper-grid {
+    background-color: #FAF7F2;
+    background-image: radial-gradient(#D6CEBE 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .bg-paper-lines {
+    background-color: #FFFDF9;
+    background-image: repeating-linear-gradient(
+      transparent,
+      transparent 27px,
+      #E7E2D7 28px
+    );
+  }
+
+  /* Paper cut-out card with thick offset ink shadow */
+  .card-doodle {
+    background-color: #FFFFFF;
+    border: 2px solid #1E293B;
+    box-shadow: 4px 4px 0px #1E293B;
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .card-doodle-yellow {
+    background-color: #FEF9C3;
+    border: 2px solid #1E293B;
+    box-shadow: 4px 4px 0px #1E293B;
+  }
+
+  .card-doodle-blue {
+    background-color: #E0F2FE;
+    border: 2px solid #1E293B;
+    box-shadow: 4px 4px 0px #1E293B;
+  }
+
+  .card-doodle-mint {
+    background-color: #D1FAE5;
+    border: 2px solid #1E293B;
+    box-shadow: 4px 4px 0px #1E293B;
+  }
+
+  .card-doodle-rose {
+    background-color: #FFE4E6;
+    border: 2px solid #1E293B;
+    box-shadow: 4px 4px 0px #1E293B;
+  }
+
+  /* Squishy tactile doodle button with click audio feedback */
+  .btn-doodle {
+    border: 2px solid #1E293B;
+    box-shadow: 3px 3px 0px #1E293B;
+    transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .btn-doodle:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0px #1E293B;
+  }
+
+  .btn-doodle:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0px #1E293B;
+  }
+
+  /* Scotch tape decorative element */
+  .scotch-tape {
+    position: absolute;
+    background: rgba(254, 240, 138, 0.65);
+    border: 1px dashed rgba(180, 83, 9, 0.3);
+    backdrop-filter: blur(1px);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    z-index: 10;
+  }
+
+  /* Torn paper bottom edge */
+  .torn-edge {
+    position: relative;
+  }
+  .torn-edge::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: radial-gradient(circle at 10px 0, transparent 8px, #FFFFFF 9px);
+    background-size: 20px 8px;
+  }
+}
+
+/* Wobbly doodle border radius */
+.doodle-radius {
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+}
+
+.doodle-radius-sm {
+  border-radius: 12px 4px 14px 5px/5px 14px 4px 12px;
+}

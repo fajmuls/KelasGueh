@@ -1,0 +1,227 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'mrachmanfm@gmail.com' ||
+        request.auth.token.email == 'admin@classmanager.app'
+      );
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && (request.auth.uid == userId || request.auth.token.email == userId);
+    }
+
+    // Connection test document
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
+    // ===============================================================
+    // Users Collection (Shared between Apps - Safe isolation)
+    // ===============================================================
+    match /users/{userId} {
+      // Allow reading profiles for authenticated users / friends / leaderboard
+      allow read: if true;
+      // Allow writing profile updates with merge
+      allow write: if true;
+
+      // Subcollection: sessions (App 2)
+      match /sessions/{sessionId} {
+        allow read, write: if true;
+      }
+
+      // Subcollection: history (App 2)
+      match /history/{historyId} {
+        allow read, write: if true;
+      }
+
+      // Subcollection: friend_requests (App 2)
+      match /friend_requests/{senderId} {
+        allow read, write: if true;
+      }
+
+      // Subcollection: friends (App 2)
+      match /friends/{friendId} {
+        allow read, write: if true;
+      }
+    }
+
+    // ===============================================================
+    // Learning & Quiz App Collections (App 2) with Schema Validation
+    // ===============================================================
+    match /benchmark_scores/{scoreId} {
+      allow read, write: if true;
+    }
+
+    match /global_leaderboard/{scoreId} {
+      allow read, write: if true;
+    }
+
+    match /test_packages/{packageId} {
+      allow read, write: if true;
+    }
+
+    match /bank_soal/{questionId} {
+      allow read, write: if true;
+    }
+
+    match /article_questions/{questionId} {
+      allow read, write: if true;
+    }
+
+    match /battles/{battleId} {
+      allow read, write: if true;
+    }
+
+    // ===============================================================
+    // Classify Pro Collections (Class Management App - 01 SAKP 14)
+    // ===============================================================
+    // Dedicated isolated user profile collection for Classify Pro (Prevents collisions with App 1)
+    match /classify_users/{userId} {
+      allow read, write: if true;
+    }
+
+    // Classes collection (01 SAKP 14 and created classes)
+    match /classes/{classId} {
+      allow read, write: if true;
+
+      // Subcollection: members in class
+      match /members/{memberId} {
+        allow read, write: if true;
+      }
+
+      // Subcollection: announcements
+      match /announcements/{announcementId} {
+        allow read, write: if true;
+      }
+
+      // Subcollection: meetings
+      match /meetings/{meetingId} {
+        allow read, write: if true;
+      }
+
+      // Subcollection: tasks
+      match /tasks/{taskId} {
+        allow read, write: if true;
+      }
+
+      // Subcollection: finance
+      match /transactions/{transactionId} {
+        allow read, write: if true;
+      }
+    }
+
+    match /classInfo/{classId} {
+      allow read, write: if true;
+    }
+
+    // Role Claim Requests (Google Auth NIM & Pro Code Claim Flow)
+    match /roleClaimRequests/{claimId} {
+      allow read, write: if true;
+    }
+
+    // Role assignments
+    match /roleAssignments/{assignmentId} {
+      allow read, write: if true;
+    }
+
+    // Members Directory Collection (39 Students Template)
+    match /members/{memberId} {
+      allow read, write: if true;
+    }
+
+    // Semesters & Academic Settings
+    match /semesters/{semesterId} {
+      allow read, write: if true;
+    }
+
+    // Courses & Syllabuses
+    match /courses/{courseId} {
+      allow read, write: if true;
+    }
+
+    match /syllabuses/{syllabusId} {
+      allow read, write: if true;
+    }
+
+    // Finance: Transactions, Bills, Payments
+    match /transactions/{transactionId} {
+      allow read, write: if true;
+    }
+
+    match /bills/{billId} {
+      allow read, write: if true;
+    }
+
+    match /payments/{paymentId} {
+      allow read, write: if true;
+    }
+
+    // Kas Matrix & Checklist (Absensi 1 - 39)
+    match /kasColumns/{columnId} {
+      allow read, write: if true;
+    }
+
+    match /kasEntries/{entryId} {
+      allow read, write: if true;
+    }
+
+    // Announcements & News
+    match /announcements/{announcementId} {
+      allow read, write: if true;
+    }
+
+    // Meetings & Minutes
+    match /meetings/{meetingId} {
+      allow read, write: if true;
+    }
+
+    // Tasks & Assignments
+    match /tasks/{taskId} {
+      allow read, write: if true;
+    }
+
+    // Documents & Archive
+    match /documents/{docId} {
+      allow read, write: if true;
+    }
+
+    // Polls & Voting
+    match /polls/{pollId} {
+      allow read, write: if true;
+    }
+
+    // Attendances
+    match /attendances/{attendanceId} {
+      allow read, write: if true;
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read, write: if true;
+    }
+
+    // Audit Logs
+    match /auditLogs/{logId} {
+      allow read, write: if true;
+    }
+
+    // System & Webhook Config
+    match /systemSettings/{settingId} {
+      allow read, write: if true;
+    }
+  }
+}
+
