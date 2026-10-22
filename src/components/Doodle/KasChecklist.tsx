@@ -314,8 +314,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* WhatsApp Tunggakan Broadcast button */}
-            {membersWithArrears.length > 0 && (
+            {/* WhatsApp Tunggakan Broadcast button (Khusus Bendahara & Super Admin) */}
+            {canEditKas && membersWithArrears.length > 0 && (
               <button
                 type="button"
                 onClick={() => {
@@ -391,7 +391,11 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                   </th>
                 ))}
                 <th className="py-3 px-3 text-right font-mono">Total Bayar</th>
-                <th className="py-3 px-3 text-center">Aksi / WA</th>
+                {canEditKas ? (
+                  <th className="py-3 px-3 text-center">Aksi / WA</th>
+                ) : (
+                  <th className="py-3 px-3 text-center">Status</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -440,7 +444,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                       <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <span>{member.name}</span>
-                          {member.phone && (
+                          {canEditKas && member.phone && (
                             <span className="text-[10px] bg-slate-100 border border-slate-300 px-1 py-0.2 rounded font-mono text-slate-500">
                               {member.phone}
                             </span>
@@ -489,25 +493,37 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                         {formatRupiah(totalPaid)}
                       </td>
 
-                      {/* WhatsApp Reminder Button */}
+                      {/* WhatsApp Reminder Button or Status Text */}
                       <td className="py-3 px-3 text-center whitespace-nowrap">
-                        {hasArrears ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              sfx.playClick();
-                              setReminderMember(member);
-                            }}
-                            title={`Kirim Pengingat WA (${unpaidWeeks.length} Minggu Belum Bayar)`}
-                            className="btn-doodle px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-md text-xs font-bold inline-flex items-center gap-1"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5 text-emerald-700" />
-                            <span>WA</span>
-                          </button>
+                        {canEditKas ? (
+                          hasArrears ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                sfx.playClick();
+                                setReminderMember(member);
+                              }}
+                              title={`Kirim Pengingat WA (${unpaidWeeks.length} Minggu Belum Bayar)`}
+                              className="btn-doodle px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-md text-xs font-bold inline-flex items-center gap-1"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>WA</span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
+                              ✓ Lunas
+                            </span>
+                          )
                         ) : (
-                          <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
-                            ✓ Lunas
-                          </span>
+                          hasArrears ? (
+                            <span className="text-[10px] text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                              Belum Lunas ({unpaidWeeks.length} mgg)
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
+                              ✓ Lunas
+                            </span>
+                          )
                         )}
                       </td>
                     </tr>

@@ -21,12 +21,19 @@ import { CURRENT_APP_VERSION } from './version.ts';
 import { sfx } from './utils/soundEffects.ts';
 
 const AppContent: React.FC = () => {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, canEditKas } = useAuth();
   const [showIntro, setShowIntro] = useState(true);
   const [currentTab, setCurrentTab] = useState<'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan'>('ringkasan');
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+
+  // Auto redirect from settings tab if user is read-only Anggota
+  useEffect(() => {
+    if (!canEditKas && currentTab === 'pengaturan') {
+      setCurrentTab('ringkasan');
+    }
+  }, [canEditKas, currentTab]);
 
   // State
   const [transactions, setTransactions] = useState<KasTransaction[]>(() => LocalKasRepository.getTransactions());
@@ -185,7 +192,7 @@ const AppContent: React.FC = () => {
           />
         )}
 
-        {currentTab === 'pengaturan' && (
+        {currentTab === 'pengaturan' && canEditKas && (
           <KasSettings
             settings={settings}
             onSaveSettings={handleSaveSettings}

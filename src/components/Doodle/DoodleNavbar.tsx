@@ -27,7 +27,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   classNameTitle,
   onReplayIntro
 }) => {
-  const { user, role, isSuperAdmin, isBendahara, logout, switchRole } = useAuth();
+  const { user, role, isSuperAdmin, isBendahara, canEditKas, logout, switchRole, loginWithGooglePrompt } = useAuth();
   const [soundOn, setSoundOn] = useState(() => sfx.isEnabled());
   const [bgmPlaying, setBgmPlaying] = useState(() => sfx.getIsBgmPlaying());
   const [showRoleMenu, setShowRoleMenu] = useState(false);
@@ -48,7 +48,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
     { id: 'ringkasan', label: 'Ringkasan Kas' },
     { id: 'bukukas', label: 'Buku Kas & Nota' },
     { id: 'checklist', label: 'Checklist Iuran' },
-    { id: 'pengaturan', label: 'Pengaturan & Versi' },
+    ...(canEditKas ? [{ id: 'pengaturan', label: 'Pengaturan & Versi' }] : []),
   ] as const;
 
   return (
@@ -62,7 +62,6 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
               src="/logo/Kelas_Gueh_Logo_Static.svg"
               alt="Logo Kelas Gue"
               onError={(e) => {
-                // Fallback SVG if static image missing
                 (e.target as HTMLElement).style.display = 'none';
               }}
               className="w-full h-full object-contain"
@@ -88,7 +87,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                 key={item.id}
                 onClick={() => {
                   sfx.playToggle();
-                  onSelectTab(item.id);
+                  onSelectTab(item.id as any);
                 }}
                 className={`px-3.5 py-2 text-xs sm:text-sm font-bold border-2 border-slate-900 rounded-md transition-all whitespace-nowrap shrink-0 ${
                   isActive
@@ -149,7 +148,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             >
               {isSuperAdmin ? (
                 <>
-                  <DoodleCrown className="w-4 h-4" />
+                  <DoodleCrown className="w-4 h-4 text-amber-600" />
                   <span className="hidden sm:inline">Super Admin</span>
                 </>
               ) : isBendahara ? (
@@ -168,48 +167,65 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
 
             {/* Quick Role Switcher Dropdown */}
             {showRoleMenu && (
-              <div className="absolute right-0 mt-2 w-52 card-doodle p-3 rounded-lg z-50 bg-white shadow-xl">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 border-b border-slate-200 pb-1">
-                  Ganti Role Akses (Testing)
-                </p>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => {
-                      switchRole('superadmin');
-                      setShowRoleMenu(false);
-                    }}
-                    className={`w-full text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
-                      role === 'superadmin' ? 'bg-amber-100 text-amber-900 border border-slate-900' : 'hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>Super Admin (Penuh)</span>
-                    {role === 'superadmin' && <span>✓</span>}
-                  </button>
-                  <button
-                    onClick={() => {
-                      switchRole('bendahara');
-                      setShowRoleMenu(false);
-                    }}
-                    className={`w-full text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
-                      role === 'bendahara' ? 'bg-emerald-100 text-emerald-900 border border-slate-900' : 'hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>Bendahara (Buku Kas)</span>
-                    {role === 'bendahara' && <span>✓</span>}
-                  </button>
-                  <button
-                    onClick={() => {
-                      switchRole('anggota');
-                      setShowRoleMenu(false);
-                    }}
-                    className={`w-full text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
-                      role === 'anggota' ? 'bg-sky-100 text-sky-900 border border-slate-900' : 'hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>Anggota (Hanya Lihat)</span>
-                    {role === 'anggota' && <span>✓</span>}
-                  </button>
+              <div className="absolute right-0 mt-2 w-56 card-doodle p-3 rounded-lg z-50 bg-white shadow-xl">
+                <div className="mb-2 border-b border-slate-200 pb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Aktivitas Akun:
+                  </p>
+                  <p className="text-xs font-bold text-slate-900 truncate">
+                    {user?.name || 'Tamu Anggota'}
+                  </p>
+                  <p className="text-[10px] font-mono text-slate-500 truncate">
+                    {user?.email || 'Hanya Lihat (Read-Only)'}
+                  </p>
                 </div>
+
+                {canEditKas ? (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Mode Wewenang:
+                    </p>
+                    <button
+                      onClick={() => {
+                        switchRole('superadmin');
+                        setShowRoleMenu(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
+                        role === 'superadmin' ? 'bg-amber-100 text-amber-900 border border-slate-900' : 'hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>Super Admin</span>
+                      {role === 'superadmin' && <span>✓</span>}
+                    </button>
+                    <button
+                      onClick={() => {
+                        switchRole('bendahara');
+                        setShowRoleMenu(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
+                        role === 'bendahara' ? 'bg-emerald-100 text-emerald-900 border border-slate-900' : 'hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>Bendahara</span>
+                      {role === 'bendahara' && <span>✓</span>}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-[11px] text-slate-600 leading-snug">
+                      Anda sedang berada dalam <strong>Mode Anggota (Hanya Lihat)</strong>.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setShowRoleMenu(false);
+                        loginWithGooglePrompt();
+                      }}
+                      className="w-full btn-doodle px-3 py-2 bg-amber-300 hover:bg-amber-400 text-slate-900 font-black text-xs rounded-md text-center flex items-center justify-center gap-1.5"
+                    >
+                      <span>Masuk Akun Google ↗</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

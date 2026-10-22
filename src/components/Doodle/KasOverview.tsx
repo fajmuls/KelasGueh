@@ -115,7 +115,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
               </button>
             )}
 
-            {onOpenWhatsAppModal && (
+            {canEditKas && onOpenWhatsAppModal && (
               <button
                 onClick={() => {
                   sfx.playCardOpen();

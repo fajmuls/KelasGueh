@@ -258,7 +258,7 @@ export const KasBook: React.FC<KasBookProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {onOpenWhatsAppModal && (
+            {canEditKas && onOpenWhatsAppModal && (
               <button
                 type="button"
                 onClick={() => {
@@ -286,23 +286,20 @@ export const KasBook: React.FC<KasBookProps> = ({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                if (!isSuperAdmin) {
-                  sfx.playWarning();
-                  alert(`Pengaturan nominal iuran kas per minggu saat ini adalah Rp ${settings.weeklyDuesAmount.toLocaleString('id-ID')}.\n\nKhusus wewenang Super Admin (mrachmanfm@gmail.com) untuk mengubah nominal.`);
-                  return;
-                }
-                sfx.playCardOpen();
-                setIsDuesModalOpen(true);
-              }}
-              className="btn-doodle px-3 py-2 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
-              title="Atur Nominal Iuran Kas (Khusus Super Admin)"
-            >
-              <SettingsIcon className="w-4 h-4 text-slate-700" />
-              <span>Atur Iuran</span>
-            </button>
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.playCardOpen();
+                  setIsDuesModalOpen(true);
+                }}
+                className="btn-doodle px-3 py-2 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
+                title="Atur Nominal Iuran Kas (Khusus Super Admin)"
+              >
+                <SettingsIcon className="w-4 h-4 text-slate-700" />
+                <span>Atur Iuran</span>
+              </button>
+            )}
 
             {canEditKas ? (
               <div className="flex items-center gap-2">

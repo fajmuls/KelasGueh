@@ -11,37 +11,37 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '2.5.0',
-  codename: 'Full Supabase Cloud, Responsive Mobile & Autoplay BGM Edition',
+  version: '2.6.0',
+  codename: 'Google OAuth Mandatory, Strict Anggota Read-Only & Supabase Refactoring',
   releaseDate: '2026-10-23',
   changes: [
-    'Integrasi Penuh Supabase Cloud: Koneksi database Postgres & Realtime Broadcast aktif secara default (ireqpxgmlrsmcgidfthg.supabase.co) dengan dukungan generator RLS SQL di tab Pengaturan.',
-    'Overhaul Responsif Navigasi Topbar Mobile: Topbar kini memiliki menu lipat (collapsible drawer) dan wrapping tombol fleksibel sehingga tidak pernah keluar atau terpotong ke kanan pada layar HP.',
-    'Pemutaran Otomatis Musik BGM Latar: Musik BGM santai otomatis memutar pada gestur/ketukan pertama pengguna di layar sesuai kebijakan Web Audio API.',
-    'Pembaruan Branding Logo Vektor SVG: Penggunaan logo vektor "Kelas Gue" terbaru di seluruh header, layar pembuka, dan laporan binder.',
-    'Pindai Nota Kamera HP (OCR Pembaca Nominal): Kamera HP mendeteksi total rupiah struk dan auto-fill nominal transaksi.',
-    'Import Daftar Siswa Excel/CSV (1-Klik) & Pengingat WA Tunggakan: Kemudahan mengimpor puluhan nama siswa masal dan mengirim pesan WA pengingat iuran kas.'
+    'Integrasi Wajib Google Login Supabase: Super Admin (mrachmanfm@gmail.com) dan Bendahara wajib melakukan login via Google OAuth Supabase.',
+    'Isolasi Akses Anggota Kelas (Read-Only): Anggota masuk langsung sebagai tamu tanpa tab Pengaturan, tanpa tombol pesan/pengingat WhatsApp, dan tanpa hak edit.',
+    'Pemutakhiran Redirect OAuth Supabase: Eliminasi timeout buatan pada proses login Google OAuth untuk transisi redirect browser yang lancar.',
+    'Restriksi Modul & Navigasi Mobile: Penyesuaian menu lipat topbar responsif dan proteksi penuh seluruh modal WhatsApp & pengaturan khusus Bendahara/Admin.',
+    'Versi Aplikasi & Saran Pengembangan Terstruktur: Pembaruan versi v2.6.0 serta daftar rekomendasi update otomatis di tab Pengaturan.'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
-      title: 'Grafik Visualisasi Arus Kas & Tren Bulanan',
-      description: 'Grafik batang dan garis interaktif untuk melihat perbandingan pemasukan vs pengeluaran kas kelas setiap bulan.'
+      title: 'Notifikasi Web Push / PWA Pengingat Iuran',
+      description: 'Pengiriman notifikasi otomatis langsung ke perangkat HP siswa saat mendekati jadwal pembayaran iuran kas kelas.'
     },
     {
       category: 'optimasi',
-      title: 'Backup & Restore Data JSON Offline (1-Klik)',
-      description: 'Fitur ekspor seluruh data transaksi dan anggota ke file JSON untuk pengarsipan atau pemulihan cadangan data offline.'
-    },
-    {
-      category: 'fitur',
-      title: 'Manajemen Kategori Pengeluaran Kustom',
-      description: 'Fleksibilitas bagi bendahara untuk menambahkan atau mengedit label kategori pengeluaran kas kelas sendiri.'
+      title: 'Sinkronisasi Otomatis Google Sheets Laporan Kas',
+      description: 'Ekspor dan rekonsiliasi data mutasi kas secara real-time ke lembar Google Sheets kelas saat transaksi diselesaikan.'
     },
     {
       category: 'keamanan',
-      title: 'Audit Log Perubahan Data Transaksi Kas',
-      description: 'Pencatatan riwayat setiap kali ada penambahan, pencentangan iuran, atau penghapusan transaksi beserta waktu dan nama pengubah.'
+      title: 'Multi-Akun Bendahara & Audit Log Aktivitas',
+      description: 'Pencatatan riwayat setiap aktivitas perbaikan data kas beserta identitas email Google bendahara yang bertindak.'
+    },
+    {
+      category: 'fitur',
+      title: 'Visualisasi Grafis Arus Kas Bulanan',
+      description: 'Diagram batang interaktif untuk membandingkan total tren pemasukan vs pengeluaran kas kelas per semester.'
     }
   ]
 };
+

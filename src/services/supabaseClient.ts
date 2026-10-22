@@ -173,7 +173,7 @@ export const subscribeToRealtimeKas = (
   };
 };
 
-// Supabase Google Auth helper with detailed diagnosis
+// Supabase Google Auth helper
 export const signInWithGoogleSupabase = async (): Promise<{ success: boolean; error?: string; isUnsupportedProvider?: boolean }> => {
   const client = getSupabaseClient();
   if (!client) {
@@ -184,7 +184,7 @@ export const signInWithGoogleSupabase = async (): Promise<{ success: boolean; er
   }
 
   try {
-    const { error } = await client.auth.signInWithOAuth({
+    const { data, error } = await client.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin

@@ -33,27 +33,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   });
 
-  // Check Supabase session on mount if connected
+  // Handle Supabase user session mapping
+  const handleSupabaseUser = (sbUser: any) => {
+    const email = sbUser.email || '';
+    const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+    const profile: UserProfile = {
+      id: sbUser.id,
+      name: sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || email.split('@')[0],
+      email: email,
+      role: isOwner ? 'superadmin' : 'bendahara',
+      avatar: sbUser.user_metadata?.avatar_url,
+      isGoogleAuth: true
+    };
+    setUser(profile);
+    localStorage.setItem('kelasgue_active_user_v2', JSON.stringify(profile));
+  };
+
+  // Check & listen to Supabase session changes
   useEffect(() => {
     const client = getSupabaseClient();
-    if (client) {
-      client.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          const email = session.user.email || '';
-          const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-          const profile: UserProfile = {
-            id: session.user.id,
-            name: session.user.user_metadata?.full_name || email.split('@')[0],
-            email: email,
-            role: isOwner ? 'superadmin' : 'bendahara',
-            avatar: session.user.user_metadata?.avatar_url,
-            isGoogleAuth: true
-          };
-          setUser(profile);
-          localStorage.setItem('kelasgue_active_user_v2', JSON.stringify(profile));
-        }
-      });
-    }
+    if (!client) return;
+
+    client.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        handleSupabaseUser(session.user);
+      }
+    });
+
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        handleSupabaseUser(session.user);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loginAs = (selectedRole: UserRole, customName?: string, customEmail?: string) => {
@@ -81,16 +96,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGooglePrompt = async () => {
     sfx.playClick();
-    // Try Supabase OAuth first
     const client = getSupabaseClient();
     if (client) {
       const res = await signInWithGoogleSupabase();
       if (res.success) return;
+      if (res.error) {
+        console.warn('Supabase OAuth notice:', res.error);
+      }
     }
 
-    // Direct Google Email verification flow (for mrachmanfm@gmail.com or bendahara)
+    // Direct Google Email verification flow
     const emailInput = window.prompt(
-      'Masukkan Email Google Anda (Gunakan mrachmanfm@gmail.com untuk Super Admin otomatis):',
+      'Masukkan Email Google Anda (Gunakan mrachmanfm@gmail.com untuk wewenang Super Admin):',
       SUPER_ADMIN_EMAIL
     );
 
