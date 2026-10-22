@@ -53,6 +53,28 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
+  // Autoplay BGM automatically on first user gesture (Click / Touch / Keypress)
+  useEffect(() => {
+    const handleFirstGesture = () => {
+      if (!sfx.getIsBgmPlaying()) {
+        sfx.startBgm();
+      }
+      window.removeEventListener('click', handleFirstGesture);
+      window.removeEventListener('touchstart', handleFirstGesture);
+      window.removeEventListener('keydown', handleFirstGesture);
+    };
+
+    window.addEventListener('click', handleFirstGesture);
+    window.addEventListener('touchstart', handleFirstGesture);
+    window.addEventListener('keydown', handleFirstGesture);
+
+    return () => {
+      window.removeEventListener('click', handleFirstGesture);
+      window.removeEventListener('touchstart', handleFirstGesture);
+      window.removeEventListener('keydown', handleFirstGesture);
+    };
+  }, []);
+
   // Handlers
   const handleAddTransaction = (newTxData: Omit<KasTransaction, 'id' | 'createdAt'>) => {
     const saved = LocalKasRepository.addTransaction(newTxData);

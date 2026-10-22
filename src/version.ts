@@ -11,16 +11,16 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '2.4.0',
-  codename: 'Binder Print Fix, Kamera OCR & Excel Import Edition',
+  version: '2.5.0',
+  codename: 'Full Supabase Cloud, Responsive Mobile & Autoplay BGM Edition',
   releaseDate: '2026-10-23',
   changes: [
-    'Perbaikan Bug Pratinjau Lembaran Binder: Modal lembaran binder laporan kas kini tersembunyi dengan benar saat awal muat aplikasi, tombol "X" berfungsi normal, dan mendukung penutupan via tombol Escape atau klik backdrop.',
-    'Pemisahan Fungsi Cetak & Simpan PDF: Tombol "Cetak" untuk printer fisik dan "Simpan PDF" dengan penamaan file otomatis (Laporan_Kas_[Kelas]_[Tanggal].pdf) serta styling kertas A4 bersih tanpa elemen UI.',
-    'Import Daftar Siswa dari File Excel / CSV (1-Klik): Memudahkan bendahara memasukkan puluhan nama siswa & NIM sekaligus dari file .xlsx/.xls/.csv atau paste teks, lengkap dengan template CSV.',
-    'Pindai Nota dengan Kamera HP (OCR Pembaca Nominal Otomatis): Kamera HP bendahara langsung memindai total rupiah pada struk belanja via Tesseract OCR engine dan mengisi form nominal transaksi secara otomatis.',
-    'Pengingat Otomatis Tunggakan Kas via WhatsApp: Tombol WA personal dan massal dengan format pesan sopan yang memuat detail nama siswa, minggu belum bayar, dan total rupiah tunggakan.',
-    'Script Generator Row Level Security (RLS) Supabase di Tab Pengaturan: Tombol 1-klik untuk menyalin query SQL pengamanan database Postgres Supabase agar hak tulis hanya dimiliki Bendahara & Super Admin (mrachmanfm@gmail.com).'
+    'Integrasi Penuh Supabase Cloud: Koneksi database Postgres & Realtime Broadcast aktif secara default (ireqpxgmlrsmcgidfthg.supabase.co) dengan dukungan generator RLS SQL di tab Pengaturan.',
+    'Overhaul Responsif Navigasi Topbar Mobile: Topbar kini memiliki menu lipat (collapsible drawer) dan wrapping tombol fleksibel sehingga tidak pernah keluar atau terpotong ke kanan pada layar HP.',
+    'Pemutaran Otomatis Musik BGM Latar: Musik BGM santai otomatis memutar pada gestur/ketukan pertama pengguna di layar sesuai kebijakan Web Audio API.',
+    'Pembaruan Branding Logo Vektor SVG: Penggunaan logo vektor "Kelas Gue" terbaru di seluruh header, layar pembuka, dan laporan binder.',
+    'Pindai Nota Kamera HP (OCR Pembaca Nominal): Kamera HP mendeteksi total rupiah struk dan auto-fill nominal transaksi.',
+    'Import Daftar Siswa Excel/CSV (1-Klik) & Pengingat WA Tunggakan: Kemudahan mengimpor puluhan nama siswa masal dan mengirim pesan WA pengingat iuran kas.'
   ],
   suggestedUpdates: [
     {
