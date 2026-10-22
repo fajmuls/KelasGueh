@@ -52,8 +52,8 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   ] as const;
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FAF7F2] border-b-2 border-slate-900 shadow-xs w-full max-w-full overflow-x-hidden">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4">
+    <header className="sticky top-0 z-40 bg-[#FAF7F2] border-b-2 border-slate-900 shadow-xs w-full">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 relative">
         
         {/* Zone 1: Brand Wordmark with Updated SVG Logo */}
         <div className="flex items-center gap-2.5 shrink-0 min-w-0">
@@ -137,7 +137,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             </button>
           )}
 
-          {/* Role Status Pill & Dropdown */}
+          {/* Role Status Pill & Floating Dropdown */}
           <div className="relative">
             <button
               onClick={() => {
@@ -165,68 +165,56 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
               <span className="text-[10px] text-slate-400">▼</span>
             </button>
 
-            {/* Quick Role Switcher Dropdown */}
+            {/* Floating Dropdown Overlay */}
             {showRoleMenu && (
-              <div className="absolute right-0 mt-2 w-56 card-doodle p-3 rounded-lg z-50 bg-white shadow-xl">
-                <div className="mb-2 border-b border-slate-200 pb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    Aktivitas Akun:
-                  </p>
-                  <p className="text-xs font-bold text-slate-900 truncate">
-                    {user?.name || 'Tamu Anggota'}
-                  </p>
-                  <p className="text-[10px] font-mono text-slate-500 truncate">
-                    {user?.email || 'Hanya Lihat (Read-Only)'}
-                  </p>
-                </div>
+              <>
+                {/* Backdrop dismiss overlay */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowRoleMenu(false)}
+                />
+                
+                <div className="absolute right-0 top-full mt-2 w-64 card-doodle p-3.5 rounded-xl z-[100] bg-white shadow-2xl border-2 border-slate-900">
+                  <div className="mb-2 border-b border-slate-200 pb-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Aktivitas Akun
+                    </p>
+                    <p className="text-xs font-black text-slate-900 truncate">
+                      {user?.name || 'Tamu Anggota'}
+                    </p>
+                    <p className="text-[10px] font-mono text-slate-600 truncate">
+                      {user?.email || 'Mode Read-Only'}
+                    </p>
+                  </div>
 
-                {canEditKas ? (
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                      Mode Wewenang:
-                    </p>
-                    <button
-                      onClick={() => {
-                        switchRole('superadmin');
-                        setShowRoleMenu(false);
-                      }}
-                      className={`w-full text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
-                        role === 'superadmin' ? 'bg-amber-100 text-amber-900 border border-slate-900' : 'hover:bg-slate-100'
-                      }`}
-                    >
-                      <span>Super Admin</span>
-                      {role === 'superadmin' && <span>✓</span>}
-                    </button>
-                    <button
-                      onClick={() => {
-                        switchRole('bendahara');
-                        setShowRoleMenu(false);
-                      }}
-                      className={`w-full text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
-                        role === 'bendahara' ? 'bg-emerald-100 text-emerald-900 border border-slate-900' : 'hover:bg-slate-100'
-                      }`}
-                    >
-                      <span>Bendahara</span>
-                      {role === 'bendahara' && <span>✓</span>}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2 pt-1">
-                    <p className="text-[11px] text-slate-600 leading-snug">
-                      Anda sedang berada dalam <strong>Mode Anggota (Hanya Lihat)</strong>.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setShowRoleMenu(false);
-                        loginWithGooglePrompt();
-                      }}
-                      className="w-full btn-doodle px-3 py-2 bg-amber-300 hover:bg-amber-400 text-slate-900 font-black text-xs rounded-md text-center flex items-center justify-center gap-1.5"
-                    >
-                      <span>Masuk Akun Google ↗</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+                  {canEditKas ? (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        Hak Akses Aktif:
+                      </p>
+                      <div className="p-2 bg-amber-50 border border-amber-300 rounded text-xs font-bold text-amber-900 flex items-center justify-between">
+                        <span>{isSuperAdmin ? '👑 Super Admin Pemilik' : '🛡️ Bendahara Kelas'}</span>
+                        <span className="text-[10px] bg-emerald-300 text-slate-900 px-1.5 py-0.2 rounded font-mono">Aktif</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 pt-1">
+                      <p className="text-[11px] text-slate-600 leading-snug">
+                        Anda berada dalam <strong>Mode Anggota (Hanya Lihat)</strong>.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setShowRoleMenu(false);
+                          loginWithGooglePrompt();
+                        }}
+                        className="w-full btn-doodle px-3 py-2 bg-amber-300 hover:bg-amber-400 text-slate-900 font-black text-xs rounded-md text-center flex items-center justify-center gap-1.5"
+                      >
+                        <span>Masuk Akun Google ↗</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
 

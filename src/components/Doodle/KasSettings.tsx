@@ -5,7 +5,8 @@ import { sfx } from '../../utils/soundEffects.ts';
 import { CURRENT_APP_VERSION } from '../../version.ts';
 import { ScotchTape, DoodleCrown } from './DoodleDecorations.tsx';
 import { getSupabaseClient, signInWithGoogleSupabase } from '../../services/supabaseClient.ts';
-import { Database, Shield, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Save } from 'lucide-react';
+import { getRegisteredUsers, updateUserRole, RegisteredUser } from '../../utils/userManagement.ts';
+import { Database, Shield, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Save, UserCheck, UserPlus, ShieldCheck, User } from 'lucide-react';
 
 interface KasSettingsProps {
   settings: ClassSettings;
@@ -24,6 +25,30 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
     return getSupabaseClient() ? 'connected' : 'not_configured';
   });
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // User Role Management state for Super Admin
+  const [userList, setUserList] = useState<RegisteredUser[]>(() => getRegisteredUsers());
+  const [manualEmail, setManualEmail] = useState('');
+
+  const handleRoleToggle = (email: string, currentRole: string) => {
+    sfx.playClick();
+    const newRole = currentRole === 'bendahara' ? 'anggota' : 'bendahara';
+    const updated = updateUserRole(email, newRole);
+    setUserList(updated);
+    setSaveMessage(`Hak akses ${email} berhasil diubah menjadi ${newRole.toUpperCase()}.`);
+    setTimeout(() => setSaveMessage(null), 3000);
+  };
+
+  const handleAddManualBendahara = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualEmail.trim() || !manualEmail.includes('@')) return;
+    sfx.playCoinChime();
+    const updated = updateUserRole(manualEmail.trim(), 'bendahara');
+    setUserList(updated);
+    setManualEmail('');
+    setSaveMessage(`Email ${manualEmail.trim()} berhasil ditambahkan sebagai Bendahara.`);
+    setTimeout(() => setSaveMessage(null), 3000);
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,20 +192,104 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Super Admin Privilege */}
+          {/* Section 3: Manajemen Role Akun Google (Khusus Super Admin) */}
           <div className="pt-4 border-t-2 border-dashed border-slate-200">
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-1.5">
-              <DoodleCrown className="w-4 h-4" />
-              <span>03. Hak Akses Super Admin Terkunci</span>
-            </h3>
-            <div className="p-3 bg-indigo-50 border-2 border-slate-900 rounded-md flex items-center justify-between text-xs sm:text-sm">
-              <div>
-                <p className="font-bold text-slate-900">Email Super Admin Pemilik:</p>
-                <p className="font-mono text-indigo-700 font-bold">mrachmanfm@gmail.com</p>
-              </div>
-              <span className="bg-emerald-200 border border-slate-900 px-2 py-0.5 rounded-xs font-bold text-slate-900 text-xs">
-                Permanen Aktif
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <DoodleCrown className="w-4 h-4 text-amber-600" />
+                <span>03. Manajemen Role Akun Google (Bendahara & Anggota)</span>
+              </h3>
+              <span className="text-[10px] bg-amber-200 text-amber-900 font-bold border border-slate-900 px-2 py-0.5 rounded">
+                Khusus Super Admin
               </span>
+            </div>
+
+            <p className="text-xs text-slate-600 mb-3">
+              Setiap akun Google baru yang terdeteksi login otomatis ditempatkan pada role <strong>Anggota (Read-Only)</strong>. Super Admin berhak memberikan atau mencabut akses <strong>Bendahara</strong> di bawah ini:
+            </p>
+
+            {/* Quick Add Manual Bendahara Email Form */}
+            <form onSubmit={handleAddManualBendahara} className="mb-4 flex gap-2">
+              <input
+                type="email"
+                placeholder="Tambah email Google calon bendahara (misal: bendahara2@gmail.com)..."
+                value={manualEmail}
+                onChange={(e) => setManualEmail(e.target.value)}
+                className="flex-1 px-3 py-1.5 text-xs font-mono border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
+              />
+              <button
+                type="submit"
+                className="btn-doodle px-3.5 py-1.5 bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black text-xs rounded-md flex items-center gap-1 shrink-0"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Jadikan Bendahara</span>
+              </button>
+            </form>
+
+            {/* User List Table */}
+            <div className="border-2 border-slate-900 rounded-lg overflow-hidden bg-white">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
+                  <tr>
+                    <th className="p-2.5">Email / Nama Akun Google</th>
+                    <th className="p-2.5">Role Akses</th>
+                    <th className="p-2.5 text-center">Tindakan Super Admin</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {userList.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="p-4 text-center text-slate-500 italic">
+                        Belum ada riwayat akun Google yang terdaftar.
+                      </td>
+                    </tr>
+                  ) : (
+                    userList.map((u) => {
+                      const isOwner = u.role === 'superadmin';
+                      return (
+                        <tr key={u.id} className="hover:bg-amber-50/30">
+                          <td className="p-2.5">
+                            <div className="font-bold text-slate-900">{u.name}</div>
+                            <div className="font-mono text-slate-500 text-[11px]">{u.email}</div>
+                          </td>
+                          <td className="p-2.5">
+                            {isOwner ? (
+                              <span className="text-[10px] bg-amber-200 border border-slate-900 text-amber-950 font-black px-2 py-0.5 rounded-xs">
+                                👑 Super Admin Pemilik
+                              </span>
+                            ) : u.role === 'bendahara' ? (
+                              <span className="text-[10px] bg-emerald-200 border border-slate-900 text-emerald-950 font-bold px-2 py-0.5 rounded-xs">
+                                🛡️ Bendahara Kelas
+                              </span>
+                            ) : (
+                              <span className="text-[10px] bg-sky-100 border border-slate-300 text-sky-900 font-bold px-2 py-0.5 rounded-xs">
+                                👀 Anggota (Hanya Lihat)
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-2.5 text-center">
+                            {isOwner ? (
+                              <span className="text-[11px] text-slate-400 italic">Permanen</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleRoleToggle(u.email, u.role)}
+                                className={`btn-doodle px-3 py-1 text-xs font-bold rounded-md ${
+                                  u.role === 'bendahara'
+                                    ? 'bg-rose-100 hover:bg-rose-200 text-rose-800'
+                                    : 'bg-emerald-300 hover:bg-emerald-400 text-slate-900'
+                                }`}
+                              >
+                                {u.role === 'bendahara' ? 'Cabut Akses (Jadikan Anggota)' : 'Berikan Akses Bendahara'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 

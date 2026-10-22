@@ -10,19 +10,15 @@ export const WelcomeScreen: React.FC = () => {
   const { loginAs, loginWithGooglePrompt } = useAuth();
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [googleEmail, setGoogleEmail] = useState('mrachmanfm@gmail.com');
+  const [googleEmail, setGoogleEmail] = useState('');
 
   const handleGoogleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     sfx.playMoneyIncome();
-    const email = googleEmail.trim() || 'mrachmanfm@gmail.com';
-    const isOwner = email.toLowerCase() === 'mrachmanfm@gmail.com';
+    const email = googleEmail.trim();
+    if (!email) return;
 
-    loginAs(
-      isOwner ? 'superadmin' : 'bendahara',
-      isOwner ? 'M. Rachman (Super Admin)' : 'Bendahara Google',
-      email
-    );
+    loginAs('anggota', email.split('@')[0], email);
     setShowGoogleModal(false);
   };
 
@@ -92,7 +88,7 @@ export const WelcomeScreen: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs text-slate-700">
-                    Login Google resmi untuk hak akses penuh kelola kas. (Super Admin: <strong>mrachmanfm@gmail.com</strong>)
+                    Login Google resmi untuk verifikasi identitas dan pengelolaan kas.
                   </p>
                 </div>
               </div>
@@ -188,13 +184,13 @@ export const WelcomeScreen: React.FC = () => {
                 <input
                   type="email"
                   required
-                  placeholder="mrachmanfm@gmail.com"
+                  placeholder="nama@gmail.com"
                   value={googleEmail}
                   onChange={(e) => setGoogleEmail(e.target.value)}
                   className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
                 />
                 <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed">
-                  💡 Gunakan <strong className="text-indigo-700">mrachmanfm@gmail.com</strong> untuk otomatis mengaktifkan wewenang <strong>Super Admin Pemilik</strong>.
+                  💡 Masukkan alamat email Google resmi Anda untuk melakukan verifikasi login.
                 </p>
               </div>
 

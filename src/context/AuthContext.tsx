@@ -3,6 +3,8 @@ import { UserProfile, UserRole } from '../types/kas.ts';
 import { sfx } from '../utils/soundEffects.ts';
 import { signInWithGoogleSupabase, getSupabaseClient } from '../services/supabaseClient.ts';
 
+import { registerOrUpdateUser } from '../utils/userManagement.ts';
+
 const SUPER_ADMIN_EMAIL = 'mrachmanfm@gmail.com';
 
 interface AuthContextType {
@@ -33,16 +35,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   });
 
-  // Handle Supabase user session mapping
+  // Handle Supabase user session mapping with Super Admin whitelist checking
   const handleSupabaseUser = (sbUser: any) => {
     const email = sbUser.email || '';
-    const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+    const name = sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || email.split('@')[0];
+    const avatar = sbUser.user_metadata?.avatar_url;
+
+    // Register user & resolve role via userManagement
+    const assignedRole = registerOrUpdateUser({ name, email, avatar });
+
     const profile: UserProfile = {
       id: sbUser.id,
-      name: sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || email.split('@')[0],
-      email: email,
-      role: isOwner ? 'superadmin' : 'bendahara',
-      avatar: sbUser.user_metadata?.avatar_url,
+      name,
+      email,
+      role: assignedRole,
+      avatar,
       isGoogleAuth: true
     };
     setUser(profile);
@@ -74,20 +81,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginAs = (selectedRole: UserRole, customName?: string, customEmail?: string) => {
     sfx.playPaperRustle();
     const email = customEmail || (selectedRole === 'superadmin' ? SUPER_ADMIN_EMAIL : `${selectedRole}@kelasgue.sch.id`);
-    const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-
-    const role: UserRole = isOwner ? 'superadmin' : selectedRole;
     const name = customName || (
-      role === 'superadmin' ? 'M. Rachman (Super Admin)' :
-      role === 'bendahara' ? 'Bendahara Kelas (Buku Kas)' : 'Anggota Siswa Kelas'
+      email.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Super Admin Kelas' :
+      selectedRole === 'bendahara' ? 'Bendahara Kelas' : 'Anggota Siswa Kelas'
     );
+
+    const assignedRole = registerOrUpdateUser({ name, email });
 
     const profile: UserProfile = {
       id: `usr-${Date.now()}`,
       name,
       email,
-      role,
-      isGoogleAuth: isOwner
+      role: assignedRole,
+      isGoogleAuth: true
     };
 
     setUser(profile);
@@ -98,25 +104,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sfx.playClick();
     const client = getSupabaseClient();
     if (client) {
-      const res = await signInWithGoogleSupabase();
-      if (res.success) return;
-      if (res.error) {
-        console.warn('Supabase OAuth notice:', res.error);
+      try {
+        const res = await signInWithGoogleSupabase();
+        if (res.success) return;
+        if (res.error) {
+          console.warn('Supabase OAuth notice:', res.error);
+        }
+      } catch (err) {
+        console.warn('Supabase OAuth catch error:', err);
       }
     }
 
-    // Direct Google Email verification flow
+    // Direct Google Email verification flow (bypasses iframe 403 block)
     const emailInput = window.prompt(
-      'Masukkan Email Google Anda (Gunakan mrachmanfm@gmail.com untuk wewenang Super Admin):',
-      SUPER_ADMIN_EMAIL
+      'Masukkan Alamat Email Google Anda untuk verifikasi login:'
     );
 
     if (!emailInput || !emailInput.trim()) return;
 
     const email = emailInput.trim();
-    const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-    
-    loginAs(isOwner ? 'superadmin' : 'bendahara', isOwner ? 'M. Rachman (Super Admin)' : 'Bendahara Google', email);
+    loginAs('anggota', email.split('@')[0], email);
     sfx.playCoinChime();
   };
 
