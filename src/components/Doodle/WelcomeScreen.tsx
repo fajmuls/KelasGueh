@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { ScotchTape, PushPin, DoodleCoin, DoodleReceipt, DoodleCrown } from './DoodleDecorations.tsx';
+import { GoogleAuthGuideModal } from './GoogleAuthGuideModal.tsx';
 import { CURRENT_APP_VERSION } from '../../version.ts';
+import { HelpCircle } from 'lucide-react';
 
 export const WelcomeScreen: React.FC = () => {
   const { loginAs, loginWithGooglePrompt } = useAuth();
+  const [showGuideModal, setShowGuideModal] = useState(false);
 
   return (
     <div className="min-h-screen bg-paper-grid flex items-center justify-center p-4 sm:p-6 text-slate-900 font-sans">
@@ -48,9 +51,9 @@ export const WelcomeScreen: React.FC = () => {
 
             {/* Google Login (Auto Super Admin for mrachmanfm@gmail.com) */}
             <button
-              onClick={() => {
+              onClick={async () => {
                 sfx.playClick();
-                loginWithGooglePrompt();
+                await loginWithGooglePrompt();
               }}
               className="w-full btn-doodle bg-white hover:bg-slate-50 p-4 rounded-md flex items-center justify-between text-left group"
             >
@@ -135,13 +138,34 @@ export const WelcomeScreen: React.FC = () => {
             </button>
           </div>
 
+          {/* Guide link for error 400 */}
+          <div className="mt-4 p-2.5 bg-amber-50/80 border border-slate-300 rounded text-center">
+            <button
+              type="button"
+              onClick={() => {
+                sfx.playClick();
+                setShowGuideModal(true);
+              }}
+              className="text-xs font-bold text-amber-900 hover:text-indigo-800 inline-flex items-center gap-1.5"
+            >
+              <HelpCircle className="w-4 h-4 text-amber-700" />
+              <span>Mengalami Error 400 Google Provider? Klik Panduan Cara Mengaktifkannya</span>
+            </button>
+          </div>
+
           {/* Footer note */}
-          <div className="mt-8 pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
             <span>Doodle Art Paper Edition</span>
             <span>Versi {CURRENT_APP_VERSION.version}</span>
           </div>
         </div>
       </div>
+
+      {/* Google Auth Guide Modal */}
+      <GoogleAuthGuideModal
+        isOpen={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
+      />
     </div>
   );
 };

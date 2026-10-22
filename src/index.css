@@ -102,3 +102,71 @@
 .doodle-radius-sm {
   border-radius: 12px 4px 14px 5px/5px 14px 4px 12px;
 }
+
+/* Print styling for Binder Paper Cash Report */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm 12mm 10mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+  }
+
+  /* Hide app shell, navbars, modals background, and screen UI elements */
+  nav, footer, .btn-doodle, button, input, select, textarea, .print\\:hidden {
+    display: none !important;
+  }
+
+  /* Make sure modal container doesn't block or overlay */
+  .fixed.inset-0 {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .card-doodle, .max-w-4xl {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Binder document styles on paper */
+  .printable-binder-document {
+    width: 100% !important;
+    border: none !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .printable-binder-document table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .printable-binder-document th,
+  .printable-binder-document td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 8px !important;
+  }
+
+  .printable-binder-document th {
+    background-color: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page break rules */
+  tr {
+    page-break-inside: avoid;
+  }
+}

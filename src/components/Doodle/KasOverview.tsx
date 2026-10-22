@@ -3,7 +3,7 @@ import { KasTransaction, ClassSettings, KasMember } from '../../types/kas.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { ScotchTape, DoodleCoin, PushPin, DoodleReceipt } from './DoodleDecorations.tsx';
-import { ArrowDownRight, ArrowUpRight, PlusCircle, FileText, CheckCircle2 } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, PlusCircle, FileText, CheckCircle2, Printer, MessageSquare } from 'lucide-react';
 
 interface KasOverviewProps {
   transactions: KasTransaction[];
@@ -11,6 +11,8 @@ interface KasOverviewProps {
   members: KasMember[];
   onNavigateTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan') => void;
   onOpenNewTxModal: () => void;
+  onOpenPrintModal?: () => void;
+  onOpenWhatsAppModal?: () => void;
 }
 
 export const KasOverview: React.FC<KasOverviewProps> = ({
@@ -19,6 +21,8 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
   members,
   onNavigateTab,
   onOpenNewTxModal,
+  onOpenPrintModal,
+  onOpenWhatsAppModal,
 }) => {
   const { canEditKas, isBendahara, isSuperAdmin } = useAuth();
 
@@ -97,6 +101,32 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
               <FileText className="w-4 h-4 text-slate-700" />
               <span>Buka Buku Kas</span>
             </button>
+
+            {onOpenPrintModal && (
+              <button
+                onClick={() => {
+                  sfx.playPaperRustle();
+                  onOpenPrintModal();
+                }}
+                className="btn-doodle px-3.5 py-2.5 bg-amber-200 hover:bg-amber-300 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
+              >
+                <Printer className="w-4 h-4 text-slate-800" />
+                <span>Cetak / PDF Binder</span>
+              </button>
+            )}
+
+            {onOpenWhatsAppModal && (
+              <button
+                onClick={() => {
+                  sfx.playCardOpen();
+                  onOpenWhatsAppModal();
+                }}
+                className="btn-doodle px-3.5 py-2.5 bg-emerald-100 hover:bg-emerald-200 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
+              >
+                <MessageSquare className="w-4 h-4 text-emerald-800" />
+                <span>Bagikan WA</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

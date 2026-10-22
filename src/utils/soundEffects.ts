@@ -1,8 +1,6 @@
 /**
- * Dual Sound Engine:
- * 1. Plays real user MP3 audio assets (/audio/*.mp3)
- * 2. Background Music (BGM) player: Kelas_Gueh_Chill_Cheerful_BGM_60s.mp3 with toggle
- * 3. Fallback to Web Audio API synthesis if file is unavailable or network is offline
+ * Sound Engine with 35 UI Sound Effects Pack + Animated Intro SFX + BGM
+ * Grounded in README_PETUNJUK.txt
  */
 
 class SoundEngine {
@@ -20,11 +18,17 @@ class SoundEngine {
 
     if (typeof window !== 'undefined') {
       try {
-        this.bgmAudio = new Audio('/audio/Kelas_Gueh_Chill_Cheerful_BGM_60s.mp3');
+        // Preferred new BGM file with fallback
+        this.bgmAudio = new Audio('/audio/Kelas_Gueh_Chill_Cheerful_BGM_60s-1.mp3');
         this.bgmAudio.loop = true;
-        this.bgmAudio.volume = 0.28; // Pleasant background volume
+        this.bgmAudio.volume = 0.28;
+        this.bgmAudio.onerror = () => {
+          this.bgmAudio = new Audio('/audio/Kelas_Gueh_Chill_Cheerful_BGM_60s.mp3');
+          this.bgmAudio.loop = true;
+          this.bgmAudio.volume = 0.28;
+        };
+
         if (shouldPlayBgm) {
-          // Play upon first user interaction
           const playOnGesture = () => {
             if (this.soundEnabled && !this.isBgmPlaying) {
               this.startBgm();
@@ -107,140 +111,174 @@ class SoundEngine {
   }
 
   /**
-   * Helper to play MP3 with automatic synthesizer fallback
+   * Helper to play audio file with volume and Web Audio API synthesizer fallback
    */
-  private playAudioFile(path: string, fallback: () => void): void {
+  private playAudio(path: string, volume = 0.45, fallbackSynth?: () => void): void {
     if (!this.soundEnabled) return;
     try {
       const audio = new Audio(path);
-      audio.volume = 0.5;
+      audio.volume = volume;
       audio.play().catch(() => {
-        fallback();
+        if (fallbackSynth) fallbackSynth();
       });
     } catch {
-      fallback();
+      if (fallbackSynth) fallbackSynth();
     }
   }
 
   /**
-   * 01_button_tap.mp3 / Web Audio API triangle tap
+   * 01_ui_tap.mp3 - Klik tombol umum (singkat, bersih, ringan)
    */
   public playClick(): void {
-    this.playAudioFile('/audio/01_button_tap.mp3', () => {
-      const ctx = this.initCtx();
-      if (!ctx) return;
-      try {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(420, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.04);
-        gain.gain.setValueAtTime(0.18, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.04);
-      } catch {}
+    this.playAudio('/audio/01_ui_tap.mp3', 0.4, () => {
+      this.playAudio('/audio/01_button_tap.mp3', 0.4);
     });
   }
 
   /**
-   * 04_page_switch_whoosh.mp3 / Web Audio API noise rustle
+   * 02_option_select.mp3 - Memilih opsi, tab, atau mode
    */
+  public playOptionSelect(): void {
+    this.playAudio('/audio/02_option_select.mp3', 0.4, () => {
+      this.playToggle();
+    });
+  }
+
+  /**
+   * 03_card_open.mp3 - Membuka modal atau detail
+   */
+  public playCardOpen(): void {
+    this.playAudio('/audio/03_card_open.mp3', 0.45);
+  }
+
+  /**
+   * 04_card_close.mp3 - Menutup modal atau panel
+   */
+  public playCardClose(): void {
+    this.playAudio('/audio/04_card_close.mp3', 0.4);
+  }
+
+  /**
+   * 17_money_ching.mp3 - Uang masuk / pemasukan baru kas dicatat
+   */
+  public playMoneyIncome(): void {
+    this.playAudio('/audio/17_money_ching.mp3', 0.5, () => {
+      this.playAudio('/audio/02_success_chime.mp3', 0.5);
+    });
+  }
+
+  /**
+   * 18_expense_added.mp3 - Pengeluaran kas dicatat
+   */
+  public playExpenseAdded(): void {
+    this.playAudio('/audio/18_expense_added.mp3', 0.45);
+  }
+
+  /**
+   * 19_budget_goal.mp3 - Target kas semester tercapai
+   */
+  public playBudgetGoal(): void {
+    this.playAudio('/audio/19_budget_goal.mp3', 0.5);
+  }
+
+  /**
+   * 20_payment_confirmed.mp3 - Centang checklist konfirmasi bayar iuran
+   */
+  public playPaymentConfirmed(): void {
+    this.playAudio('/audio/20_payment_confirmed.mp3', 0.45, () => {
+      this.playAudio('/audio/02_success_chime.mp3', 0.4);
+    });
+  }
+
+  /**
+   * 21_file_upload.mp3 - Upload foto nota kuitansi
+   */
+  public playFileUpload(): void {
+    this.playAudio('/audio/21_file_upload.mp3', 0.45);
+  }
+
+  /**
+   * 22_file_download.mp3 - Cetak dokumen PDF / download rekap
+   */
+  public playFileDownload(): void {
+    this.playAudio('/audio/22_file_download.mp3', 0.45);
+  }
+
+  /**
+   * 23_search_found.mp3 - Pencarian mutasi atau anggota
+   */
+  public playSearchFound(): void {
+    this.playAudio('/audio/23_search_found.mp3', 0.35);
+  }
+
+  /**
+   * 24_filter_applied.mp3 - Terapkan filter
+   */
+  public playFilterApplied(): void {
+    this.playAudio('/audio/24_filter_applied.mp3', 0.4);
+  }
+
+  /**
+   * 28_warning.mp3 - Peringatan
+   */
+  public playWarning(): void {
+    this.playAudio('/audio/28_warning.mp3', 0.45);
+  }
+
+  /**
+   * 29_delete_confirm.mp3 - Menghapus transaksi kas
+   */
+  public playDeleteConfirm(): void {
+    this.playAudio('/audio/29_delete_confirm.mp3', 0.45);
+  }
+
+  /**
+   * 32_sync_complete.mp3 - Sinkronisasi realtime Supabase selesai
+   */
+  public playSyncComplete(): void {
+    this.playAudio('/audio/32_sync_complete.mp3', 0.45);
+  }
+
+  /**
+   * Kelas_Gueh_Animated_Intro_SFX.mp3 - Audio opening intro
+   */
+  public playIntro(): Promise<void> {
+    return new Promise((resolve) => {
+      try {
+        const audio = new Audio('/audio/Kelas_Gueh_Animated_Intro_SFX.mp3');
+        audio.volume = 0.55;
+        audio.play().then(() => {
+          audio.onended = () => resolve();
+        }).catch(() => resolve());
+      } catch {
+        resolve();
+      }
+    });
+  }
+
+  // Backward compatibility methods
   public playPaperRustle(): void {
-    this.playAudioFile('/audio/04_page_switch_whoosh.mp3', () => {
-      const ctx = this.initCtx();
-      if (!ctx) return;
-      try {
-        const bufferSize = ctx.sampleRate * 0.08;
-        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-        const output = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          output[i] = Math.random() * 2 - 1;
-        }
-        const whiteNoise = ctx.createBufferSource();
-        whiteNoise.buffer = buffer;
-        const filter = ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(1600, ctx.currentTime);
-        filter.Q.setValueAtTime(1.8, ctx.currentTime);
-        const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-        whiteNoise.connect(filter);
-        filter.connect(gain);
-        gain.connect(ctx.destination);
-        whiteNoise.start();
-        whiteNoise.stop(ctx.currentTime + 0.08);
-      } catch {}
-    });
+    this.playOptionSelect();
   }
 
-  /**
-   * 02_success_chime.mp3 / Web Audio API dual tone coin pop
-   */
   public playCoinChime(): void {
-    this.playAudioFile('/audio/02_success_chime.mp3', () => {
-      const ctx = this.initCtx();
-      if (!ctx) return;
-      try {
-        const now = ctx.currentTime;
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(987, now);
-        gain1.gain.setValueAtTime(0.2, now);
-        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-        osc1.connect(gain1);
-        gain1.connect(ctx.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.18);
-
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(1318, now + 0.07);
-        gain2.gain.setValueAtTime(0.22, now + 0.07);
-        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.start(now + 0.07);
-        osc2.stop(now + 0.35);
-      } catch {}
-    });
+    this.playMoneyIncome();
   }
 
-  /**
-   * 05_reminder_ping.mp3 / gentle sine toggle
-   */
   public playToggle(): void {
-    this.playAudioFile('/audio/05_reminder_ping.mp3', () => {
-      const ctx = this.initCtx();
-      if (!ctx) return;
-      try {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(650, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(850, ctx.currentTime + 0.035);
-        gain.gain.setValueAtTime(0.12, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.035);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.035);
-      } catch {}
-    });
+    this.playOptionSelect();
   }
 
-  /**
-   * 03_new_notification.mp3 / notification chime
-   */
+  public playSuccess(): void {
+    this.playMoneyIncome();
+  }
+
+  public playLevelUp(): void {
+    this.playMoneyIncome();
+  }
+
   public playNotification(): void {
-    this.playAudioFile('/audio/03_new_notification.mp3', () => {
-      this.playCoinChime();
-    });
+    this.playSyncComplete();
   }
 }
 

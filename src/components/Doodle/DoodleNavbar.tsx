@@ -2,18 +2,20 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { DoodleCoin, DoodleCrown, PaperClip } from './DoodleDecorations.tsx';
-import { Volume2, VolumeX, LogOut, ShieldCheck, User, Music } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, ShieldCheck, User, Music, Sparkles } from 'lucide-react';
 
 interface DoodleNavbarProps {
   currentTab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan';
   onSelectTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan') => void;
   classNameTitle: string;
+  onReplayIntro?: () => void;
 }
 
 export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   currentTab,
   onSelectTab,
-  classNameTitle
+  classNameTitle,
+  onReplayIntro
 }) => {
   const { user, role, isSuperAdmin, isBendahara, logout, switchRole } = useAuth();
   const [soundOn, setSoundOn] = useState(() => sfx.isEnabled());
@@ -41,10 +43,14 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-[#FAF7F2] border-b-2 border-slate-900 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-        {/* Zone 1: Brand Wordmark with Doodle Coin */}
+        {/* Zone 1: Brand Wordmark with User SVG Logo */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 rounded-lg bg-amber-300 border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] flex items-center justify-center">
-            <DoodleCoin className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-lg bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] overflow-hidden p-1 flex items-center justify-center shrink-0">
+            <img
+              src="/logo/Kelas_Gueh_Logo_Static.svg"
+              alt="Logo Kelas Gue"
+              className="w-full h-full object-contain"
+            />
           </div>
           <div>
             <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5">
@@ -101,6 +107,20 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
           >
             <Music className="w-4 h-4" />
           </button>
+
+          {/* Replay Animated Intro Button */}
+          {onReplayIntro && (
+            <button
+              onClick={() => {
+                sfx.playClick();
+                onReplayIntro();
+              }}
+              title="Putar Ulang Animasi Intro Logo"
+              className="w-9 h-9 btn-doodle bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-md flex items-center justify-center transition-all"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Role Status Pill & Dropdown */}
           <div className="relative">

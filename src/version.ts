@@ -11,37 +11,37 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '2.1.0',
-  codename: 'Supabase Cloud & Audio Pack Edition',
-  releaseDate: '2026-10-22',
+  version: '2.4.0',
+  codename: 'Binder Print Fix, Kamera OCR & Excel Import Edition',
+  releaseDate: '2026-10-23',
   changes: [
-    'Integrasi langsung kredensial Cloud Supabase Proyek: https://ireqpxgmlrsmcgidfthg.supabase.co.',
-    'Penerapan Publishable Key Supabase resmi sb_publishable_L9mfK1ZtYWMV23uY3egcTg_H325a-UV.',
-    'Integrasi paket audio kustom pengguna: 01_button_tap.mp3, 02_success_chime.mp3, 04_page_switch_whoosh.mp3, dan 05_reminder_ping.mp3.',
-    'Fitur pemutar musik latar santai (Chill Cheerful BGM Player 60s) dengan tombol putar/jeda interaktif di navigasi atas.',
-    'Auto-fallback audio ke Web Audio API synthesizer jika file audio offline atau diblokir browser.',
-    'Penyempurnaan form Settings dengan tombol uji konektivitas Supabase secara langsung.'
+    'Perbaikan Bug Pratinjau Lembaran Binder: Modal lembaran binder laporan kas kini tersembunyi dengan benar saat awal muat aplikasi, tombol "X" berfungsi normal, dan mendukung penutupan via tombol Escape atau klik backdrop.',
+    'Pemisahan Fungsi Cetak & Simpan PDF: Tombol "Cetak" untuk printer fisik dan "Simpan PDF" dengan penamaan file otomatis (Laporan_Kas_[Kelas]_[Tanggal].pdf) serta styling kertas A4 bersih tanpa elemen UI.',
+    'Import Daftar Siswa dari File Excel / CSV (1-Klik): Memudahkan bendahara memasukkan puluhan nama siswa & NIM sekaligus dari file .xlsx/.xls/.csv atau paste teks, lengkap dengan template CSV.',
+    'Pindai Nota dengan Kamera HP (OCR Pembaca Nominal Otomatis): Kamera HP bendahara langsung memindai total rupiah pada struk belanja via Tesseract OCR engine dan mengisi form nominal transaksi secara otomatis.',
+    'Pengingat Otomatis Tunggakan Kas via WhatsApp: Tombol WA personal dan massal dengan format pesan sopan yang memuat detail nama siswa, minggu belum bayar, dan total rupiah tunggakan.',
+    'Script Generator Row Level Security (RLS) Supabase di Tab Pengaturan: Tombol 1-klik untuk menyalin query SQL pengamanan database Postgres Supabase agar hak tulis hanya dimiliki Bendahara & Super Admin (mrachmanfm@gmail.com).'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
-      title: 'Supabase Realtime Postgres Broadcast',
-      description: 'Aktifkan Supabase Realtime channel (postgres_changes) agar saat bendahara mencatat kas di ponsel, layar laptop anggota kelas langsung terupdate seketika tanpa perlu reload.'
-    },
-    {
-      category: 'keamanan',
-      title: 'Supabase Row Level Security (RLS) & Auth Policy',
-      description: 'Terapkan RLS policy di PostgreSQL database Supabase untuk memastikan tabel kas_transactions hanya bisa di-INSERT/UPDATE oleh role bendahara/superadmin.'
+      title: 'Grafik Visualisasi Arus Kas & Tren Bulanan',
+      description: 'Grafik batang dan garis interaktif untuk melihat perbandingan pemasukan vs pengeluaran kas kelas setiap bulan.'
     },
     {
       category: 'optimasi',
-      title: 'Supabase Storage Bucket untuk Foto Nota Kwitansi',
-      description: 'Gunakan Supabase Storage bucket (misal: "nota-kas") untuk menyimpan file gambar nota asli dengan kompresi webp otomatis agar tidak membebani database.'
+      title: 'Backup & Restore Data JSON Offline (1-Klik)',
+      description: 'Fitur ekspor seluruh data transaksi dan anggota ke file JSON untuk pengarsipan atau pemulihan cadangan data offline.'
     },
     {
       category: 'fitur',
-      title: 'Ekspor Rekap Kas PDF Bergaya Nota Kertas Binder',
-      description: 'Download rekap kas per bulan dalam format dokumen cetak resmi berlogo kelas gue untuk arsip fisik.'
+      title: 'Manajemen Kategori Pengeluaran Kustom',
+      description: 'Fleksibilitas bagi bendahara untuk menambahkan atau mengedit label kategori pengeluaran kas kelas sendiri.'
+    },
+    {
+      category: 'keamanan',
+      title: 'Audit Log Perubahan Data Transaksi Kas',
+      description: 'Pencatatan riwayat setiap kali ada penambahan, pencentangan iuran, atau penghapusan transaksi beserta waktu dan nama pengubah.'
     }
   ]
 };

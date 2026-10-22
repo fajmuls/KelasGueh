@@ -1,17 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { KasTransaction } from '../../types/kas.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { ScotchTape, DoodleReceipt, DoodleCoin } from './DoodleDecorations.tsx';
-import { Search, Plus, Trash2, Eye, Filter, ArrowUpRight, ArrowDownRight, X, Upload } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Trash2,
+  Eye,
+  Filter,
+  ArrowUpRight,
+  ArrowDownRight,
+  X,
+  Upload,
+  Loader2,
+  Printer,
+  Camera,
+  ScanLine,
+  Sparkles,
+  CheckCheck,
+  Check
+} from 'lucide-react';
+import { uploadReceiptToSupabase } from '../../services/supabaseClient.ts';
+import { scanReceiptOcr, OcrDetectionResult } from '../../utils/receiptOcr.ts';
+
+import { ClassSettings } from '../../types/kas.ts';
+import { Settings as SettingsIcon, MessageSquare } from 'lucide-react';
 
 interface KasBookProps {
   transactions: KasTransaction[];
+  settings: ClassSettings;
   onAddTransaction: (tx: Omit<KasTransaction, 'id' | 'createdAt'>) => void;
   onDeleteTransaction: (id: string) => void;
+  onUpdateSettings?: (settings: ClassSettings) => void;
   isModalOpen: boolean;
   onCloseModal: () => void;
   onOpenModal: () => void;
+  onOpenPrintModal?: () => void;
+  onOpenWhatsAppModal?: () => void;
 }
 
 const CATEGORIES = [
@@ -26,17 +52,27 @@ const CATEGORIES = [
 
 export const KasBook: React.FC<KasBookProps> = ({
   transactions,
+  settings,
   onAddTransaction,
   onDeleteTransaction,
+  onUpdateSettings,
   isModalOpen,
   onCloseModal,
   onOpenModal,
+  onOpenPrintModal,
+  onOpenWhatsAppModal,
 }) => {
-  const { canEditKas, user } = useAuth();
+  const { canEditKas, isSuperAdmin, user } = useAuth();
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [previewReceiptUrl, setPreviewReceiptUrl] = useState<string | null>(null);
+  const [isDuesModalOpen, setIsDuesModalOpen] = useState(false);
+  const [duesForm, setDuesForm] = useState({
+    weeklyDuesAmount: settings.weeklyDuesAmount,
+    kasTargetAmount: settings.kasTargetAmount,
+    academicYear: settings.academicYear
+  });
 
   // New transaction form state
   const [txType, setTxType] = useState<'income' | 'expense'>('expense');
@@ -46,17 +82,115 @@ export const KasBook: React.FC<KasBookProps> = ({
   const [txDate, setTxDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [txNotes, setTxNotes] = useState('');
   const [txReceipt, setTxReceipt] = useState<string>('');
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
 
-  // Handle image upload for receipt
-  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // OCR Scanner state
+  const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
+  const [isScanningOcr, setIsScanningOcr] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [ocrStatus, setOcrStatus] = useState('');
+  const [ocrResult, setOcrResult] = useState<OcrDetectionResult | null>(null);
+  const [ocrPreviewImg, setOcrPreviewImg] = useState<string | null>(null);
+  const ocrCameraInputRef = useRef<HTMLInputElement | null>(null);
+  const ocrFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleProcessOcrImage = async (file: File) => {
+    sfx.playPaperRustle();
+    setIsScanningOcr(true);
+    setOcrProgress(5);
+    setOcrStatus('Membuka foto nota...');
+    setOcrResult(null);
+
+    // Create preview
+    const previewUrl = URL.createObjectURL(file);
+    setOcrPreviewImg(previewUrl);
+
+    try {
+      // In background, also initiate Supabase Storage upload
+      uploadReceiptToSupabase(file).then(res => {
+        if (res.url) {
+          setTxReceipt(res.url);
+        }
+      }).catch(() => {});
+
+      const res = await scanReceiptOcr(file, (pct, status) => {
+        setOcrProgress(pct);
+        setOcrStatus(status);
+      });
+
+      setOcrResult(res);
+      if (res.success && res.detectedAmount) {
+        sfx.playLevelUp();
+      } else {
+        sfx.playWarning();
+      }
+    } catch (err: any) {
+      setOcrResult({
+        success: false,
+        rawText: '',
+        candidateAmounts: [],
+        error: err?.message || 'Gagal memproses OCR'
+      });
+    } finally {
+      setIsScanningOcr(false);
+    }
+  };
+
+  const handleApplyOcrAmount = (amount: number, snippet?: string) => {
+    sfx.playMoneyIncome();
+    setTxType('expense');
+    setTxAmount(amount);
+    if (!txTitle && ocrResult?.storeName) {
+      setTxTitle(`Belanja di ${ocrResult.storeName}`);
+    } else if (!txTitle) {
+      setTxTitle('Pengeluaran Nota Belanja Kelas');
+    }
+    if (snippet && !txNotes) {
+      setTxNotes(`OCR Terdeteksi: "${snippet}"`);
+    }
+
+    // Attach receipt image preview if txReceipt not yet set
+    if (ocrPreviewImg && !txReceipt) {
+      setTxReceipt(ocrPreviewImg);
+    }
+
+    setIsOcrModalOpen(false);
+    onOpenModal(); // Open transaction modal so user can review and save
+  };
+
+  // Handle image upload with Supabase Storage integration
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    setIsUploadingReceipt(true);
+    setUploadNotice('Mengompres dan mengunggah ke Supabase Storage (bucket: nota-kas)...');
+
+    try {
+      const res = await uploadReceiptToSupabase(file);
+      if (res.url) {
+        setTxReceipt(res.url);
+        setUploadNotice('✓ Berhasil diunggah ke Supabase Storage Cloud!');
+        sfx.playCoinChime();
+      } else {
+        // Fallback to local compressed preview
+        const reader = new FileReader();
+        reader.onload = () => {
+          setTxReceipt(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+        setUploadNotice(res.error || 'Menggunakan pratinjau lokal.');
+        sfx.playPaperRustle();
+      }
+    } catch {
       const reader = new FileReader();
       reader.onload = () => {
         setTxReceipt(reader.result as string);
-        sfx.playPaperRustle();
       };
       reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingReceipt(false);
     }
   };
 
@@ -123,18 +257,79 @@ export const KasBook: React.FC<KasBookProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            {canEditKas ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenWhatsAppModal && (
               <button
+                type="button"
                 onClick={() => {
-                  sfx.playClick();
-                  onOpenModal();
+                  sfx.playCardOpen();
+                  onOpenWhatsAppModal();
                 }}
-                className="btn-doodle px-4 py-2 bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black rounded-md flex items-center gap-1.5 text-sm"
+                className="btn-doodle px-3.5 py-2 bg-emerald-100 hover:bg-emerald-200 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
               >
-                <Plus className="w-4 h-4" />
-                <span>+ Catat Transaksi Baru</span>
+                <MessageSquare className="w-4 h-4 text-emerald-800" />
+                <span>Bagikan WA</span>
               </button>
+            )}
+
+            {onOpenPrintModal && (
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.playPaperRustle();
+                  onOpenPrintModal();
+                }}
+                className="btn-doodle px-3.5 py-2 bg-amber-200 hover:bg-amber-300 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Cetak / PDF Binder</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!isSuperAdmin) {
+                  sfx.playWarning();
+                  alert(`Pengaturan nominal iuran kas per minggu saat ini adalah Rp ${settings.weeklyDuesAmount.toLocaleString('id-ID')}.\n\nKhusus wewenang Super Admin (mrachmanfm@gmail.com) untuk mengubah nominal.`);
+                  return;
+                }
+                sfx.playCardOpen();
+                setIsDuesModalOpen(true);
+              }}
+              className="btn-doodle px-3 py-2 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
+              title="Atur Nominal Iuran Kas (Khusus Super Admin)"
+            >
+              <SettingsIcon className="w-4 h-4 text-slate-700" />
+              <span>Atur Iuran</span>
+            </button>
+
+            {canEditKas ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.playPaperRustle();
+                    setIsOcrModalOpen(true);
+                  }}
+                  className="btn-doodle px-3.5 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-950 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
+                  title="Pindai Struk / Nota dengan Kamera HP (OCR Pembaca Nominal Otomatis)"
+                >
+                  <Camera className="w-4 h-4 text-indigo-700" />
+                  <span>Pindai Nota (OCR)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    sfx.playCardOpen();
+                    onOpenModal();
+                  }}
+                  className="btn-doodle px-4 py-2 bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black rounded-md flex items-center gap-1.5 text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Catat Transaksi</span>
+                </button>
+              </div>
             ) : (
               <div className="text-xs bg-amber-100 border-2 border-slate-900 p-2 rounded-md font-bold text-amber-900">
                 🔒 Mode Lihat Saja (Hak catat hanya untuk Bendahara)
@@ -387,9 +582,23 @@ export const KasBook: React.FC<KasBookProps> = ({
               {/* Nominal & Kategori */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                    Nominal (Rupiah) *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold uppercase text-slate-600">
+                      Nominal (Rupiah) *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sfx.playPaperRustle();
+                        setIsOcrModalOpen(true);
+                      }}
+                      className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded cursor-pointer"
+                      title="Pindai foto struk dengan kamera HP untuk otomatis mengisi nominal"
+                    >
+                      <Camera className="w-3 h-3 text-indigo-600" />
+                      <span>Scan Nota (OCR)</span>
+                    </button>
+                  </div>
                   <input
                     type="number"
                     required
@@ -436,25 +645,41 @@ export const KasBook: React.FC<KasBookProps> = ({
                   Upload Foto Nota / Bukti Kwitansi (Opsional)
                 </label>
                 <div className="border-2 border-dashed border-slate-400 rounded-md p-3 text-center bg-slate-50">
-                  {txReceipt ? (
+                  {isUploadingReceipt ? (
+                    <div className="py-4 space-y-2">
+                      <Loader2 className="w-6 h-6 mx-auto animate-spin text-amber-600" />
+                      <p className="text-xs font-bold text-slate-700">Mengompres & Mengunggah ke Supabase Storage...</p>
+                    </div>
+                  ) : txReceipt ? (
                     <div className="space-y-2">
                       <img
                         src={txReceipt}
                         alt="Preview Nota"
                         className="max-h-36 mx-auto rounded border-2 border-slate-800 object-contain"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setTxReceipt('')}
-                        className="text-xs text-rose-600 font-bold hover:underline"
-                      >
-                        Hapus Foto
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        {txReceipt.startsWith('http') && (
+                          <span className="text-[10px] bg-emerald-100 border border-emerald-400 text-emerald-800 px-2 py-0.5 rounded font-bold">
+                            Cloud Supabase Storage (nota-kas)
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTxReceipt('');
+                            setUploadNotice(null);
+                          }}
+                          className="text-xs text-rose-600 font-bold hover:underline"
+                        >
+                          Hapus Foto
+                        </button>
+                      </div>
                     </div>
                   ) : (
-                    <label className="cursor-pointer block">
+                    <label className="cursor-pointer block py-2">
                       <Upload className="w-6 h-6 mx-auto text-slate-400 mb-1" />
-                      <span className="text-xs font-bold text-indigo-700">Pilih file foto nota</span>
+                      <span className="text-xs font-bold text-indigo-700 hover:underline">Pilih file foto nota</span>
+                      <p className="text-[10px] text-slate-500 mt-0.5">Otomatis dikompres & disimpan ke Supabase Storage (bucket: nota-kas)</p>
                       <input
                         type="file"
                         accept="image/*"
@@ -462,6 +687,11 @@ export const KasBook: React.FC<KasBookProps> = ({
                         className="hidden"
                       />
                     </label>
+                  )}
+                  {uploadNotice && (
+                    <p className="text-[11px] font-medium text-slate-600 mt-2 border-t border-slate-200 pt-1.5">
+                      {uploadNotice}
+                    </p>
                   )}
                 </div>
               </div>
@@ -530,6 +760,311 @@ export const KasBook: React.FC<KasBookProps> = ({
           </div>
         </div>
       )}
+
+      {/* Super Admin Dues Setting Modal */}
+      {isDuesModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="card-doodle bg-white max-w-md w-full rounded-lg p-6 relative">
+            <ScotchTape className="absolute -top-3 left-10 rotate-1" />
+
+            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <SettingsIcon className="w-5 h-5 text-indigo-700" />
+                <span>Pengaturan Iuran Kas (Super Admin)</span>
+              </h3>
+              <button
+                onClick={() => {
+                  sfx.playCardClose();
+                  setIsDuesModalOpen(false);
+                }}
+                className="w-8 h-8 btn-doodle bg-slate-100 rounded flex items-center justify-center text-slate-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (onUpdateSettings) {
+                  onUpdateSettings({
+                    ...settings,
+                    weeklyDuesAmount: Number(duesForm.weeklyDuesAmount),
+                    kasTargetAmount: Number(duesForm.kasTargetAmount),
+                    academicYear: duesForm.academicYear
+                  });
+                  sfx.playMoneyIncome();
+                }
+                setIsDuesModalOpen(false);
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  Nominal Iuran per Minggu (Rupiah) *
+                </label>
+                <input
+                  type="number"
+                  min="500"
+                  step="500"
+                  required
+                  value={duesForm.weeklyDuesAmount}
+                  onChange={(e) => setDuesForm({ ...duesForm, weeklyDuesAmount: Number(e.target.value) })}
+                  className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Nominal ini menjadi acuan perkalian checklist lunas anggota kelas.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  Target Kas Semester (Rupiah) *
+                </label>
+                <input
+                  type="number"
+                  min="50000"
+                  step="10000"
+                  required
+                  value={duesForm.kasTargetAmount}
+                  onChange={(e) => setDuesForm({ ...duesForm, kasTargetAmount: Number(e.target.value) })}
+                  className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  Tahun Ajaran / Semester
+                </label>
+                <input
+                  type="text"
+                  value={duesForm.academicYear}
+                  onChange={(e) => setDuesForm({ ...duesForm, academicYear: e.target.value })}
+                  placeholder="Semester Ganjil 2026/2027"
+                  className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.playCardClose();
+                    setIsDuesModalOpen(false);
+                  }}
+                  className="px-4 py-2 border-2 border-slate-900 rounded-md text-xs font-bold bg-white"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="btn-doodle px-5 py-2 bg-emerald-300 hover:bg-emerald-400 border-2 border-slate-900 rounded-md text-xs font-black text-slate-900"
+                >
+                  Simpan Iuran
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Pindai Nota Kamera HP (OCR Pembaca Nominal Otomatis) */}
+      {isOcrModalOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              sfx.playCardClose();
+              setIsOcrModalOpen(false);
+            }
+          }}
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+        >
+          <div className="card-doodle bg-white max-w-xl w-full rounded-xl p-5 sm:p-6 relative max-h-[92vh] overflow-y-auto">
+            <ScotchTape className="absolute -top-3 left-1/2 -translate-x-1/2 rotate-1" />
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-slate-900 flex items-center justify-center">
+                  <ScanLine className="w-4 h-4 text-indigo-700" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">
+                    Pindai Nota dengan Kamera HP (OCR Otomatis)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Sistem mendeteksi total rupiah pada struk dan langsung mengisi kolom nominal.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.playCardClose();
+                  setIsOcrModalOpen(false);
+                }}
+                className="w-8 h-8 btn-doodle bg-slate-100 rounded flex items-center justify-center text-slate-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Action buttons to capture or pick image */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => ocrCameraInputRef.current?.click()}
+                  className="btn-doodle p-3.5 bg-amber-300 hover:bg-amber-400 text-slate-900 font-black rounded-lg flex flex-col items-center justify-center gap-1.5 text-xs sm:text-sm text-center"
+                >
+                  <Camera className="w-5 h-5" />
+                  <span>Ambil Foto Kamera HP</span>
+                  <span className="text-[10px] font-normal text-slate-700">Kamera Belakang Ponsel</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => ocrFileInputRef.current?.click()}
+                  className="btn-doodle p-3.5 bg-sky-200 hover:bg-sky-300 text-slate-900 font-black rounded-lg flex flex-col items-center justify-center gap-1.5 text-xs sm:text-sm text-center"
+                >
+                  <Upload className="w-5 h-5" />
+                  <span>Pilih dari Galeri / File</span>
+                  <span className="text-[10px] font-normal text-slate-700">File Foto Struk Belanja</span>
+                </button>
+              </div>
+
+              {/* Hidden file inputs */}
+              <input
+                ref={ocrCameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleProcessOcrImage(f);
+                }}
+                className="hidden"
+              />
+              <input
+                ref={ocrFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleProcessOcrImage(f);
+                }}
+                className="hidden"
+              />
+
+              {/* Scanning status and progress bar */}
+              {isScanningOcr && (
+                <div className="p-4 bg-indigo-50 border-2 border-slate-900 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-indigo-900">
+                    <span className="flex items-center gap-1.5">
+                      <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                      {ocrStatus}
+                    </span>
+                    <span className="font-mono">{ocrProgress}%</span>
+                  </div>
+                  <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden border border-slate-800">
+                    <div
+                      className="bg-indigo-600 h-full transition-all duration-300"
+                      style={{ width: `${ocrProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Image Preview with scanner effect */}
+              {ocrPreviewImg && (
+                <div className="relative border-2 border-slate-900 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center max-h-64">
+                  <img
+                    src={ocrPreviewImg}
+                    alt="Nota Kamera"
+                    className="max-h-64 w-auto object-contain"
+                  />
+                  {isScanningOcr && (
+                    <div className="absolute inset-0 pointer-events-none flex flex-col justify-center">
+                      <div className="w-full h-1 bg-emerald-400 shadow-[0_0_15px_#34d399] animate-pulse" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Detected Results Card */}
+              {ocrResult && (
+                <div className="space-y-3 pt-2">
+                  {ocrResult.detectedAmount ? (
+                    <div className="p-4 bg-emerald-50 border-2 border-emerald-600 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider">
+                            Total Rupiah Berhasil Dideteksi:
+                          </span>
+                          <p className="text-2xl sm:text-3xl font-black font-mono text-emerald-900 tabular-nums">
+                            {formatRupiah(ocrResult.detectedAmount)}
+                          </p>
+                          {ocrResult.storeName && (
+                            <p className="text-xs text-slate-600 mt-0.5">
+                              Toko: <strong>{ocrResult.storeName}</strong>
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyOcrAmount(ocrResult.detectedAmount!)}
+                          className="btn-doodle px-4 py-2.5 bg-emerald-400 hover:bg-emerald-500 text-slate-900 font-black rounded-lg text-xs sm:text-sm flex items-center gap-1.5 shadow-md"
+                        >
+                          <Check className="w-4 h-4 stroke-[3]" />
+                          <span>Gunakan Nominal Ini</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-amber-50 border-2 border-amber-500 rounded-lg text-xs text-amber-900 font-bold">
+                      ⚠️ Tidak ditemukan angka total yang jelas pada foto. Silakan pilih foto dengan pencahayaan lebih terang atau pilih salah satu nominal kandidat di bawah ini:
+                    </div>
+                  )}
+
+                  {/* Candidate amounts list if multiple items detected */}
+                  {ocrResult.candidateAmounts.length > 1 && (
+                    <div>
+                      <p className="text-xs font-bold text-slate-700 uppercase mb-1.5">
+                        Kandidat Nominal Lain pada Struk:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {ocrResult.candidateAmounts.slice(0, 6).map((c, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleApplyOcrAmount(c.amount, c.rawSnippet)}
+                            className="btn-doodle px-3 py-1.5 bg-white hover:bg-amber-100 text-slate-900 text-xs font-mono font-bold rounded-md flex items-center gap-1"
+                          >
+                            <span>{formatRupiah(c.amount)}</span>
+                            <span className="text-[10px] text-slate-500 font-sans">({c.label.slice(0, 15)})</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Close Button */}
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsOcrModalOpen(false)}
+                  className="px-4 py-2 border-2 border-slate-900 rounded-md text-xs font-bold bg-white hover:bg-slate-100"
+                >
+                  Tutup Scanner
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

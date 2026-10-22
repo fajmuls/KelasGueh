@@ -6,19 +6,52 @@ import { KasOverview } from './components/Doodle/KasOverview.tsx';
 import { KasBook } from './components/Doodle/KasBook.tsx';
 import { KasChecklist } from './components/Doodle/KasChecklist.tsx';
 import { KasSettings } from './components/Doodle/KasSettings.tsx';
-import { LocalKasRepository, INITIAL_TRANSACTIONS, INITIAL_MEMBERS, DEFAULT_SETTINGS } from './services/supabaseClient.ts';
+import { PrintableBinderModal } from './components/Doodle/PrintableBinderModal.tsx';
+import { WhatsAppShareModal } from './components/Doodle/WhatsAppShareModal.tsx';
+import { AnimatedIntroScreen } from './components/Doodle/AnimatedIntroScreen.tsx';
+import {
+  LocalKasRepository,
+  INITIAL_TRANSACTIONS,
+  INITIAL_MEMBERS,
+  DEFAULT_SETTINGS,
+  subscribeToRealtimeKas
+} from './services/supabaseClient.ts';
 import { KasTransaction, KasMember, ClassSettings } from './types/kas.ts';
 import { CURRENT_APP_VERSION } from './version.ts';
+import { sfx } from './utils/soundEffects.ts';
 
 const AppContent: React.FC = () => {
   const { isLoggedIn } = useAuth();
+  const [showIntro, setShowIntro] = useState(true);
   const [currentTab, setCurrentTab] = useState<'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan'>('ringkasan');
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
 
   // State
   const [transactions, setTransactions] = useState<KasTransaction[]>(() => LocalKasRepository.getTransactions());
   const [members, setMembers] = useState<KasMember[]>(() => LocalKasRepository.getMembers());
   const [settings, setSettings] = useState<ClassSettings>(() => LocalKasRepository.getSettings());
+
+  // Supabase Realtime Broadcast subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToRealtimeKas(
+      (payload) => {
+        // When transaction is inserted/updated/deleted in Supabase by another device
+        sfx.playNotification();
+        setTransactions(LocalKasRepository.getTransactions());
+      },
+      (payload) => {
+        // When member weekly dues status is updated in Supabase by another device
+        sfx.playNotification();
+        setMembers(LocalKasRepository.getMembers());
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // Handlers
   const handleAddTransaction = (newTxData: Omit<KasTransaction, 'id' | 'createdAt'>) => {
@@ -47,9 +80,14 @@ const AppContent: React.FC = () => {
     }));
   };
 
-  const handleAddMember = (name: string, studentId: string) => {
-    const newM = LocalKasRepository.addMember(name, studentId);
+  const handleAddMember = (name: string, studentId: string, phone?: string) => {
+    const newM = LocalKasRepository.addMember(name, studentId, phone);
     setMembers(prev => [...prev, newM]);
+  };
+
+  const handleAddMembers = (newMembersList: { name: string; studentId: string; phone?: string }[]) => {
+    const created = LocalKasRepository.addMembers(newMembersList);
+    setMembers(prev => [...prev, ...created]);
   };
 
   const handleSaveSettings = (newSettings: ClassSettings) => {
@@ -73,11 +111,17 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-paper-grid flex flex-col text-slate-900 font-sans selection:bg-amber-200 selection:text-slate-900">
-      {/* Doodle Navbar */}
+      {/* Animated Intro Screen (Plays on open or when replayed from navbar) */}
+      {showIntro && (
+        <AnimatedIntroScreen onFinish={() => setShowIntro(false)} />
+      )}
+
+      {/* Doodle Navbar with User SVG Logo & SFX/BGM controls */}
       <DoodleNavbar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
         classNameTitle={settings.className}
+        onReplayIntro={() => setShowIntro(true)}
       />
 
       {/* Main Content Viewport */}
@@ -89,17 +133,23 @@ const AppContent: React.FC = () => {
             members={members}
             onNavigateTab={setCurrentTab}
             onOpenNewTxModal={() => setIsAddTxModalOpen(true)}
+            onOpenPrintModal={() => setIsPrintModalOpen(true)}
+            onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
           />
         )}
 
         {currentTab === 'bukukas' && (
           <KasBook
             transactions={transactions}
+            settings={settings}
             onAddTransaction={handleAddTransaction}
             onDeleteTransaction={handleDeleteTransaction}
+            onUpdateSettings={handleSaveSettings}
             isModalOpen={isAddTxModalOpen}
             onCloseModal={() => setIsAddTxModalOpen(false)}
             onOpenModal={() => setIsAddTxModalOpen(true)}
+            onOpenPrintModal={() => setIsPrintModalOpen(true)}
+            onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
           />
         )}
 
@@ -109,6 +159,7 @@ const AppContent: React.FC = () => {
             settings={settings}
             onToggleWeek={handleToggleWeek}
             onAddMember={handleAddMember}
+            onAddMembers={handleAddMembers}
           />
         )}
 
@@ -121,8 +172,24 @@ const AppContent: React.FC = () => {
         )}
       </main>
 
+      {/* Printable Binder Modal */}
+      <PrintableBinderModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        transactions={transactions}
+        settings={settings}
+      />
+
+      {/* 1-Click WhatsApp Recap Share Modal */}
+      <WhatsAppShareModal
+        isOpen={isWhatsAppModalOpen}
+        onClose={() => setIsWhatsAppModalOpen(false)}
+        transactions={transactions}
+        settings={settings}
+      />
+
       {/* Clean Footer */}
-      <footer className="border-t-2 border-slate-900 bg-white py-4 px-6 text-center text-xs text-slate-500 font-medium">
+      <footer className="border-t-2 border-slate-900 bg-white py-4 px-6 text-center text-xs text-slate-500 font-medium print:hidden">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>
             <strong>{settings.className}</strong> — Transparansi Keuangan Kas Kelas

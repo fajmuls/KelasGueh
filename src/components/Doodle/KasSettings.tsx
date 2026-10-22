@@ -87,67 +87,9 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
         )}
 
         <form onSubmit={handleSave} className="space-y-6">
-          {/* Section 1: Informasi Kelas */}
-          <div>
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 mb-3 flex items-center gap-1.5">
-              <span>01. Identitas Kelas & Target Keuangan</span>
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Nama Kelas
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={form.className}
-                  onChange={(e) => setForm({ ...form, className: e.target.value })}
-                  placeholder="Contoh: Kelas Gue"
-                  className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Semester / Tahun Ajaran
-                </label>
-                <input
-                  type="text"
-                  value={form.academicYear}
-                  onChange={(e) => setForm({ ...form, academicYear: e.target.value })}
-                  placeholder="Semester Ganjil 2026/2027"
-                  className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Iuran Kas per Minggu (Rupiah)
-                </label>
-                <input
-                  type="number"
-                  min="500"
-                  step="500"
-                  value={form.weeklyDuesAmount}
-                  onChange={(e) => setForm({ ...form, weeklyDuesAmount: Number(e.target.value) })}
-                  className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Target Kas Semester (Rupiah)
-                </label>
-                <input
-                  type="number"
-                  min="50000"
-                  step="10000"
-                  value={form.kasTargetAmount}
-                  onChange={(e) => setForm({ ...form, kasTargetAmount: Number(e.target.value) })}
-                  className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
-                />
-              </div>
-            </div>
+          {/* Section 1: Integrasi Cloud Supabase */}
+          <div className="p-3 bg-amber-50/70 border-2 border-slate-900 rounded-md text-xs text-slate-700">
+            <strong>Catatan Pengaturan Iuran:</strong> Nominal iuran mingguan dan target kas sekarang diatur secara langsung di modul <strong>Buku Kas</strong> (khusus wewenang <strong>Super Admin</strong>) agar bendahara dan anggota fokus pada pencatatan kas dan checklist.
           </div>
 
           {/* Section 2: Konfigurasi Supabase Database & Auth */}
@@ -239,6 +181,93 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
               <span className="bg-emerald-200 border border-slate-900 px-2 py-0.5 rounded-xs font-bold text-slate-900 text-xs">
                 Permanen Aktif
               </span>
+            </div>
+          </div>
+
+          {/* Section 4: Script Generator Row Level Security (RLS) Supabase */}
+          <div className="pt-4 border-t-2 border-dashed border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-emerald-700" />
+                <span>04. Script Generator Row Level Security (RLS) Supabase</span>
+              </h3>
+              <span className="text-[10px] bg-emerald-100 text-emerald-900 font-bold border border-slate-900 px-2 py-0.5 rounded">
+                Keamanan Database
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-600 mb-3">
+              Salin dan jalankan query SQL ini di <strong>Supabase SQL Editor</strong> untuk mengunci izin modifikasi tabel kas agar <strong>hanya Bendahara & Super Admin (mrachmanfm@gmail.com)</strong> yang berhak melakukan INSERT/UPDATE/DELETE. Anggota kelas lainnya tetap bisa membaca secara transparan (Read-Only).
+            </p>
+
+            <div className="bg-slate-900 rounded-md p-3 font-mono text-[11px] text-emerald-400 overflow-x-auto border-2 border-slate-900 relative">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-slate-400 text-[10px]">
+                <span>PostgreSQL RLS Security Policies</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfx.playClick();
+                      navigator.clipboard.writeText(`-- 1. Aktifkan Row Level Security (RLS) di tabel kas Supabase
+ALTER TABLE IF EXISTS public.kas_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.kas_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.class_settings ENABLE ROW LEVEL SECURITY;
+
+-- 2. Kebijakan BACA PUBLIK (Seluruh anggota kelas dapat melihat transparansi kas)
+DROP POLICY IF EXISTS "Public Read Kas Transactions" ON public.kas_transactions;
+CREATE POLICY "Public Read Kas Transactions" ON public.kas_transactions FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Read Kas Members" ON public.kas_members;
+CREATE POLICY "Public Read Kas Members" ON public.kas_members FOR SELECT USING (true);
+
+-- 3. Kebijakan TULIS / MODIFIKASI (Khusus Super Admin & Bendahara)
+DROP POLICY IF EXISTS "Restricted Write Kas Transactions" ON public.kas_transactions;
+CREATE POLICY "Restricted Write Kas Transactions"
+ON public.kas_transactions FOR ALL
+TO authenticated
+USING (
+  auth.jwt() ->> 'email' = 'mrachmanfm@gmail.com'
+  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('superadmin', 'bendahara')
+)
+WITH CHECK (
+  auth.jwt() ->> 'email' = 'mrachmanfm@gmail.com'
+  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('superadmin', 'bendahara')
+);`);
+                      alert('✓ Script SQL RLS Supabase berhasil disalin ke clipboard!');
+                    }}
+                    className="px-2 py-1 bg-amber-300 hover:bg-amber-400 text-slate-900 font-sans font-black rounded text-[10px] transition-colors"
+                  >
+                    Salin Script SQL (1-Klik)
+                  </button>
+                  <a
+                    href="https://supabase.com/dashboard"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-sans font-bold rounded text-[10px] inline-flex items-center gap-1"
+                  >
+                    Buka Supabase SQL Editor ↗
+                  </a>
+                </div>
+              </div>
+
+              <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed">
+{`-- 1. Aktifkan Row Level Security (RLS) di tabel kas Supabase
+ALTER TABLE IF EXISTS public.kas_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.kas_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.class_settings ENABLE ROW LEVEL SECURITY;
+
+-- 2. Kebijakan BACA PUBLIK (Seluruh anggota kelas dapat melihat transparansi kas)
+CREATE POLICY "Public Read Kas Transactions" ON public.kas_transactions FOR SELECT USING (true);
+CREATE POLICY "Public Read Kas Members" ON public.kas_members FOR SELECT USING (true);
+
+-- 3. Kebijakan TULIS / MODIFIKASI (Khusus Super Admin & Bendahara)
+CREATE POLICY "Restricted Write Kas Transactions"
+ON public.kas_transactions FOR ALL TO authenticated
+USING (
+  auth.jwt() ->> 'email' = 'mrachmanfm@gmail.com'
+  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('superadmin', 'bendahara')
+);`}
+              </pre>
             </div>
           </div>
 

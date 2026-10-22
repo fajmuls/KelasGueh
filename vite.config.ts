@@ -14,11 +14,11 @@ export default defineConfig(() => {
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
           id: '/',
-          name: 'Kelas Manajer 01SAKP014',
-          short_name: 'KelasManajer',
-          description: 'Sistem administrasi kelas perkuliahan terintegrasi dengan jadwal, tugas, silabus, kas, dan webhook bot.',
-          theme_color: '#2563eb',
-          background_color: '#F8FAFC',
+          name: 'Kelas Gue - Transparansi Kas Kelas',
+          short_name: 'KelasGue',
+          description: 'Aplikasi Transparansi Kas Kelas dengan Doodle Art & Audio Interaktif.',
+          theme_color: '#F97316',
+          background_color: '#FAF7F2',
           display: 'standalone',
           start_url: '/',
           scope: '/',
@@ -45,6 +45,7 @@ export default defineConfig(() => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         },
         devOptions: {
           enabled: true,
