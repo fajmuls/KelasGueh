@@ -22,7 +22,7 @@ import { CURRENT_APP_VERSION } from './version.ts';
 import { sfx } from './utils/soundEffects.ts';
 
 const AppContent: React.FC = () => {
-  const { isLoggedIn, canEditKas } = useAuth();
+  const { user, role, isLoggedIn, canEditKas } = useAuth();
   const [showIntro, setShowIntro] = useState(true);
   const [currentTab, setCurrentTab] = useState<'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog'>('ringkasan');
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
@@ -89,12 +89,29 @@ const AppContent: React.FC = () => {
   // Handlers
   const handleAddTransaction = (newTxData: Omit<KasTransaction, 'id' | 'createdAt'>) => {
     const saved = LocalKasRepository.addTransaction(newTxData);
+    LocalKasRepository.addAuditLog({
+      action: `CATAT ${newTxData.type === 'income' ? 'PEMASUKAN' : 'PENGELUARAN'}`,
+      details: `${newTxData.title}: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(newTxData.amount)}`,
+      performedBy: user?.name || 'Unknown',
+      userRole: role,
+    });
     setTransactions(prev => [saved, ...prev]);
+    setAuditLogs(LocalKasRepository.getAuditLogs());
   };
 
   const handleDeleteTransaction = (id: string) => {
+    const tx = transactions.find(t => t.id === id);
     LocalKasRepository.deleteTransaction(id);
+    if (tx) {
+      LocalKasRepository.addAuditLog({
+        action: 'HAPUS TRANSAKSI',
+        details: `Menghapus ${tx.title} (${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(tx.amount)})`,
+        performedBy: user?.name || 'Unknown',
+        userRole: role,
+      });
+    }
     setTransactions(prev => prev.filter(t => t.id !== id));
+    setAuditLogs(LocalKasRepository.getAuditLogs());
   };
 
   const handleToggleWeek = (memberId: string, weekKey: string) => {
@@ -104,9 +121,9 @@ const AppContent: React.FC = () => {
       const isNowPaid = !targetMember.weeklyStatus[weekKey];
       LocalKasRepository.addAuditLog({
         action: 'IURAN MINGGUAN',
-        details: `${isNowPaid ? 'Mencatat LUNAS' : 'Membatalkan Status Lunas'} Iuran Minggu ${weekKey} untuk ${targetMember.name} (${targetMember.studentId})`,
-        performedBy: 'Bendahara / Super Admin',
-        userRole: 'bendahara',
+        details: `${isNowPaid ? 'Mencatat LUNAS' : 'Membatalkan Status Lunas'} Iuran ${weekKey} untuk ${targetMember.name}`,
+        performedBy: user?.name || 'Unknown',
+        userRole: role,
       });
       setAuditLogs(LocalKasRepository.getAuditLogs());
     }
@@ -129,8 +146,8 @@ const AppContent: React.FC = () => {
     LocalKasRepository.addAuditLog({
       action: 'TAMBAH ANGGOTA',
       details: `Menambahkan siswa baru: ${name} (NIM: ${studentId})`,
-      performedBy: 'Bendahara Kelas',
-      userRole: 'bendahara',
+      performedBy: user?.name || 'Unknown',
+      userRole: role,
     });
     setAuditLogs(LocalKasRepository.getAuditLogs());
     setMembers(prev => [...prev, newM]);
@@ -140,13 +157,14 @@ const AppContent: React.FC = () => {
     const created = LocalKasRepository.addMembers(newMembersList);
     LocalKasRepository.addAuditLog({
       action: 'IMPORT ANGGOTA',
-      details: `Impor massal ${created.length} siswa baru dari file Excel/CSV`,
-      performedBy: 'Bendahara Kelas',
-      userRole: 'bendahara',
+      details: `Impor massal ${created.length} siswa baru`,
+      performedBy: user?.name || 'Unknown',
+      userRole: role,
     });
     setAuditLogs(LocalKasRepository.getAuditLogs());
     setMembers(prev => [...prev, ...created]);
   };
+
 
   const handleSaveSettings = (newSettings: ClassSettings) => {
     LocalKasRepository.saveSettings(newSettings);
@@ -168,7 +186,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-paper-grid flex flex-col text-slate-900 font-sans selection:bg-amber-200 selection:text-slate-900">
+    <div className="min-h-screen bg-paper-grid flex flex-col text-slate-900 font-sans selection:bg-amber-200 selection:text-slate-900 max-w-full overflow-x-hidden">
       {/* Animated Intro Screen (Plays on open or when replayed from navbar) */}
       {showIntro && (
         <AnimatedIntroScreen onFinish={() => setShowIntro(false)} />

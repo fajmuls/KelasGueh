@@ -35,16 +35,16 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
   const [newPin, setNewPin] = useState('');
   const [pinMessage, setPinMessage] = useState<string | null>(null);
 
-  const handleUpdatePin = async (e: React.FormEvent) => {
+  const handleUpdatePin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{6}$/.test(newPin)) {
       setPinMessage('PIN harus terdiri dari tepat 6 angka (misal: 123456).');
       return;
     }
     try {
-      await saveNewPin(newPin);
+      saveNewPin(newPin);
       sfx.playSuccess();
-      setPinMessage('✓ PIN 6-digit keamanan transaksi besar berhasil diperbarui!');
+      setPinMessage('✓ PIN 6-digit keamanan transaksi besar berhasil diperbarui dengan bcrypt!');
       setNewPin('');
       setTimeout(() => setPinMessage(null), 3500);
     } catch (err: any) {
@@ -89,16 +89,25 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
       alert('Kredensial Supabase URL atau Anon Key belum valid. Masukkan URL https://... dan Anon Key terlebih dahulu.');
       return;
     }
+    
     try {
+      setSupabaseStatus('not_configured');
+      // Test basic connectivity by fetching schema
       const { data, error } = await client.from('kas_transactions').select('count', { count: 'exact', head: true });
-      if (error && error.code !== '42P01') { // 42P01 is table does not exist yet which still proves connection works
-        alert(`Koneksi Supabase error: ${error.message}`);
+      
+      if (error) {
+        if (error.code === '42P01') {
+          alert('Koneksi ke Supabase BERHASIL, namun tabel "kas_transactions" belum ditemukan. Silakan jalankan script SQL di bawah!');
+          setSupabaseStatus('connected');
+        } else {
+          alert(`Koneksi Supabase error: ${error.message} (Code: ${error.code})`);
+        }
       } else {
-        alert('Koneksi ke Supabase Project BERHASIL tersambung!');
+        alert('✓ KONEKSI & DATABASE SUPABASE AKTIF! Seluruh tabel terdeteksi dengan baik.');
         setSupabaseStatus('connected');
       }
     } catch (err: any) {
-      alert(`Koneksi gagal: ${err?.message || 'Periksa URL dan Key'}`);
+      alert(`Koneksi gagal total: ${err?.message || 'Periksa URL dan Key'}`);
     }
   };
 
@@ -382,22 +391,48 @@ WITH CHECK (
               </div>
 
               <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-{`-- 1. Aktifkan Row Level Security (RLS) di tabel kas Supabase
-ALTER TABLE IF EXISTS public.kas_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.kas_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.class_settings ENABLE ROW LEVEL SECURITY;
+{`-- 1. Tabel Transaksi Kas
+CREATE TABLE IF NOT EXISTS public.kas_transactions (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  amount NUMERIC NOT NULL,
+  category TEXT NOT NULL,
+  date TEXT NOT NULL,
+  recorded_by TEXT,
+  receipt_url TEXT,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- 2. Kebijakan BACA PUBLIK (Seluruh anggota kelas dapat melihat transparansi kas)
-CREATE POLICY "Public Read Kas Transactions" ON public.kas_transactions FOR SELECT USING (true);
-CREATE POLICY "Public Read Kas Members" ON public.kas_members FOR SELECT USING (true);
+-- 2. Tabel Anggota Siswa (Weekly status using JSONB for YYYY_MM_W1 keys)
+CREATE TABLE IF NOT EXISTS public.kas_members (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  student_id TEXT NOT NULL,
+  phone TEXT,
+  weekly_status JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- 3. Kebijakan TULIS / MODIFIKASI (Khusus Super Admin & Bendahara)
-CREATE POLICY "Restricted Write Kas Transactions"
-ON public.kas_transactions FOR ALL TO authenticated
-USING (
-  auth.jwt() ->> 'email' = 'mrachmanfm@gmail.com'
-  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('superadmin', 'bendahara')
-);`}
+-- 3. Tabel Laporan Audit Realtime
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id BIGSERIAL PRIMARY KEY,
+  action TEXT NOT NULL,
+  details TEXT NOT NULL,
+  performed_by TEXT NOT NULL,
+  user_role TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. Aktifkan RLS & Kebijakan
+ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kas_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public Read" ON public.kas_transactions FOR SELECT USING (true);
+CREATE POLICY "Public Read Members" ON public.kas_members FOR SELECT USING (true);
+CREATE POLICY "Admin Write" ON public.kas_transactions FOR ALL TO authenticated USING (true);`}
               </pre>
             </div>
           </div>

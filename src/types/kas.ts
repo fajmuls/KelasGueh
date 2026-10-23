@@ -30,7 +30,7 @@ export interface KasMember {
   studentId: string; // NIM / No. Absen
   phone?: string;
   weeklyStatus: {
-    [weekKey: string]: boolean; // e.g. "Minggu 1", "Minggu 2", ...
+    [weekKey: string]: boolean; // e.g. "2026_10_W1", "2026_11_W2", ...
   };
 }
 

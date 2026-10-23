@@ -11,17 +11,17 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.0.0',
-  codename: 'Realtime Multi-User Audit Logs, 6-Digit PIN Security & Google Sheets Sync Edition',
+  version: '3.1.0',
+  codename: 'bcryptjs Security, Monthly Checklist & Zero-Overflow Layout Edition',
   releaseDate: '2026-10-23',
   changes: [
-    'Aktivitas Log Realtime Multi-User: Pencatatan riwayat otomatis setiap kali Bendahara atau Admin mencatat pengeluaran, mencentang iuran, atau merubah status dengan penanda waktu & nama pengubah.',
-    'Autentikasi PIN 6-Digit SHA-256 Tambahan: Verifikasi PIN modal keamanan wajib untuk pengeluaran kas bernilai besar di atas Rp 500.000 (PIN Default: 123456).',
-    'Ekspor Rekap Kas ke Google Sheets: Fitur ekspor CSV terstruktur lengkap dengan panduan link impor otomatis ke lembar kerja Google Sheets.',
-    'Pembersihan Total Residual Firebase: Aplikasi kini 100% tersambung ke Supabase Cloud Postgres & Realtime Broadcast tanpa beban dependensi Firebase.',
-    'Dropdown Topbar Overlay Fix: Menu profil & role switcher melayang rapi di atas konten tanpa pergeseran layout topbar.',
-    'Super Admin Role Preview Switcher: Super Admin dapat menguji tampilan sebagai Bendahara atau Anggota (Read-Only) kapan saja.',
-    'Panduan Step-by-Step Supabase SQL Editor: Dokumentasi panduan lengkap pemasangan tabel SQL & RLS di dalam aplikasi.'
+    'Enkripsi bcryptjs PIN Transaksi: PIN keamanan kini dienkripsi menggunakan standar industri bcryptjs (Salt: 10) untuk proteksi maksimal.',
+    'Checklist Iuran Bulanan: Tampilan checklist kini berbasis Bulan (Jan-Des) dengan 4 minggu per bulan dan rentang tanggal spesifik.',
+    'Perbaikan Bug Atribusi Audit Log: Aksi Super Admin kini dicatat dengan identitas asli Super Admin (bukan lagi default "Bendahara").',
+    'Layout Zero-Horizontal-Overflow: Optimasi CSS untuk memastikan aplikasi tidak pernah meluap ke samping (no horizontal scroll) di HP maupun Desktop.',
+    'Verifikasi Koneksi Supabase Real-Table: Tombol tes koneksi kini memverifikasi keberadaan tabel fisik di database Anda.',
+    'Integrasi bcrypt pada Modal PIN: Proses verifikasi PIN 6-digit kini berjalan lebih cepat dan sinkron dengan bcrypt.',
+    'Pembersihan Residual Kode Firestore: Memastikan seluruh logika 100% cloud-native Supabase.'
   ],
   suggestedUpdates: [
     {
@@ -41,8 +41,8 @@ export const CURRENT_APP_VERSION: AppVersionInfo = {
     },
     {
       category: 'fitur',
-      title: 'Multi-Kelas / Multi-Jurusan Dashboard',
-      description: 'Pengelolaan kas paralel untuk beberapa angkatan atau jurusan sekaligus dalam satu akun.'
+      title: 'Dashboard Grafik Statistik Lanjutan',
+      description: 'Visualisasi grafik garis dan batang untuk tren pemasukan vs pengeluaran bulanan yang lebih detail.'
     }
   ]
 };

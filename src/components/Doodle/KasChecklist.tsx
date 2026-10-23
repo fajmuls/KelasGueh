@@ -28,7 +28,12 @@ interface KasChecklistProps {
   onAddMembers?: (newMembersList: { name: string; studentId: string; phone?: string }[]) => void;
 }
 
-const WEEKS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'];
+const MONTHS = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
+
+const WEEKS_LABELS = ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'];
 
 export const KasChecklist: React.FC<KasChecklistProps> = ({
   members,
@@ -39,7 +44,22 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 }) => {
   const { canEditKas } = useAuth();
   const [search, setSearch] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
   
+  // Helpers for month-week logic
+  const getWeekKey = (weekIndex: number) => {
+    return `${selectedYear}_${(selectedMonth + 1).toString().padStart(2, '0')}_W${weekIndex + 1}`;
+  };
+
+  const getWeekRangeLabel = (weekIndex: number) => {
+    // Simplified heuristic: 1-7, 8-14, 15-21, 22-28
+    const starts = [1, 8, 15, 22];
+    const ends = [7, 14, 21, 28];
+    const monthName = MONTHS[selectedMonth].substring(0, 3);
+    return `${starts[weekIndex]}-${ends[weekIndex]} ${monthName}`;
+  };
+
   // Single member modal
   const [showAddMember, setShowAddMember] = useState(false);
   const [newName, setNewName] = useState('');
@@ -265,12 +285,14 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 
   // Generate WhatsApp reminder text
   const getWhatsAppReminderMessage = (member: KasMember) => {
-    const unpaidWeeks = WEEKS.filter(w => !member.weeklyStatus[w]);
+    const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
+    const unpaidWeeks = monthWeekKeys.filter(key => !member.weeklyStatus[key]);
     const totalUnpaid = unpaidWeeks.length * settings.weeklyDuesAmount;
+    const monthName = MONTHS[selectedMonth];
 
     return `Halo *${member.name}* 👋\n\n` +
-      `Mengingatkan mengenai kewajiban iuran kas kelas *${settings.className}*.\n` +
-      `Tercatat masih ada tunggakan untuk *${unpaidWeeks.length} minggu* (${unpaidWeeks.join(', ')}) dengan total *${formatRupiah(totalUnpaid)}*.\n\n` +
+      `Mengingatkan mengenai kewajiban iuran kas kelas *${settings.className}* bulan *${monthName} ${selectedYear}*.\n` +
+      `Tercatat masih ada tunggakan untuk *${unpaidWeeks.length} minggu* dengan total *${formatRupiah(totalUnpaid)}*.\n\n` +
       `Iuran kas mingguan kelas: ${formatRupiah(settings.weeklyDuesAmount)}/minggu.\n` +
       `Mohon agar dapat segera melunasi kepada Bendahara kelas demi kelancaran kegiatan kelas kita bersama ya.\n\n` +
       `Terima kasih banyak atas kerjasamanya! 🙏✨`;
@@ -287,10 +309,11 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
     window.open(url, '_blank');
   };
 
-  // Calculate overall arrears
+  // Calculate overall arrears for the selected month
   const membersWithArrears = members.filter(m => {
-    const paidWeeks = WEEKS.filter(w => m.weeklyStatus[w]).length;
-    return paidWeeks < WEEKS.length;
+    const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
+    const paidWeeks = monthWeekKeys.filter(key => m.weeklyStatus[key]).length;
+    return paidWeeks < 4;
   });
 
   return (
@@ -363,31 +386,62 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
           </div>
         </div>
 
-        {/* Search Input */}
-        <div className="max-w-md relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cari nama anggota atau NIM..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-white border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
-          />
+        {/* Month Selector & Search Input */}
+        <div className="flex flex-col md:flex-row md:items-center gap-4 mt-2">
+          <div className="flex items-center gap-2 bg-slate-100 p-1 border-2 border-slate-900 rounded-md">
+            <button
+              onClick={() => {
+                sfx.playToggle();
+                const prev = selectedMonth === 0 ? 11 : selectedMonth - 1;
+                if (selectedMonth === 0) setSelectedYear(y => y - 1);
+                setSelectedMonth(prev);
+              }}
+              className="p-1 hover:bg-white rounded"
+            >
+              ←
+            </button>
+            <div className="px-4 py-1 text-sm font-black text-slate-900 whitespace-nowrap min-w-[140px] text-center">
+              {MONTHS[selectedMonth]} {selectedYear}
+            </div>
+            <button
+              onClick={() => {
+                sfx.playToggle();
+                const next = selectedMonth === 11 ? 0 : selectedMonth + 1;
+                if (selectedMonth === 11) setSelectedYear(y => y + 1);
+                setSelectedMonth(next);
+              }}
+              className="p-1 hover:bg-white rounded"
+            >
+              →
+            </button>
+          </div>
+
+          <div className="flex-1 relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari nama anggota atau NIM..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-white border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
+            />
+          </div>
         </div>
       </div>
 
       {/* Checklist Table */}
-      <div className="card-doodle rounded-lg bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+      <div className="card-doodle rounded-lg bg-white overflow-hidden overflow-x-auto">
+        <div className="min-w-[800px]">
+          <table className="w-full text-left text-sm border-collapse">
             <thead className="bg-[#FAF7F2] border-b-2 border-slate-900 text-xs font-black uppercase text-slate-700">
               <tr>
                 <th className="py-3 px-3 w-10 text-center">No</th>
-                <th className="py-3 px-4">Nama Siswa / Mahasiswa</th>
+                <th className="py-3 px-4 min-w-[200px]">Nama Siswa / Mahasiswa</th>
                 <th className="py-3 px-3 font-mono">NIM</th>
-                {WEEKS.map(w => (
-                  <th key={w} className="py-3 px-2 text-center font-mono w-12">
-                    {w}
+                {WEEKS_LABELS.map((label, idx) => (
+                  <th key={idx} className="py-3 px-2 text-center font-mono w-24">
+                    <div className="text-[10px] opacity-70 mb-0.5">{getWeekRangeLabel(idx)}</div>
+                    <div>{label}</div>
                   </th>
                 ))}
                 <th className="py-3 px-3 text-right font-mono">Total Bayar</th>
@@ -431,10 +485,10 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                 </tr>
               ) : (
                 filteredMembers.map((member, index) => {
-                  const paidWeeks = WEEKS.filter(w => member.weeklyStatus[w]).length;
-                  const totalPaid = paidWeeks * settings.weeklyDuesAmount;
-                  const unpaidWeeks = WEEKS.filter(w => !member.weeklyStatus[w]);
-                  const hasArrears = unpaidWeeks.length > 0;
+                  const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
+                  const paidWeeksInMonth = monthWeekKeys.filter(key => member.weeklyStatus[key]).length;
+                  const totalPaid = paidWeeksInMonth * settings.weeklyDuesAmount;
+                  const hasArrears = paidWeeksInMonth < 4;
 
                   return (
                     <tr key={member.id} className="hover:bg-amber-50/30 transition-colors">
@@ -442,13 +496,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                         {index + 1}
                       </td>
                       <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 text-sm sm:text-base">
                           <span>{member.name}</span>
-                          {canEditKas && member.phone && (
-                            <span className="text-[10px] bg-slate-100 border border-slate-300 px-1 py-0.2 rounded font-mono text-slate-500">
-                              {member.phone}
-                            </span>
-                          )}
                         </div>
                       </td>
                       <td className="py-3 px-3 font-mono text-xs text-slate-500 whitespace-nowrap">
@@ -456,19 +505,19 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                       </td>
 
                       {/* Weekly checkboxes */}
-                      {WEEKS.map(w => {
-                        const isPaid = !!member.weeklyStatus[w];
+                      {monthWeekKeys.map((wKey, idx) => {
+                        const isPaid = !!member.weeklyStatus[wKey];
                         return (
-                          <td key={w} className="py-3 px-2 text-center">
+                          <td key={idx} className="py-3 px-2 text-center">
                             {canEditKas ? (
                               <button
                                 type="button"
                                 onClick={() => {
                                   sfx.playCoinChime();
-                                  onToggleWeek(member.id, w);
+                                  onToggleWeek(member.id, wKey);
                                 }}
-                                title={`${member.name} - ${w}: ${isPaid ? 'Sudah Lunas' : 'Belum Bayar'}`}
-                                className={`w-7 h-7 mx-auto rounded border-2 border-slate-900 flex items-center justify-center transition-all ${
+                                title={`${member.name} - ${WEEKS_LABELS[idx]}: ${isPaid ? 'Sudah Lunas' : 'Belum Bayar'}`}
+                                className={`w-8 h-8 mx-auto rounded border-2 border-slate-900 flex items-center justify-center transition-all ${
                                   isPaid
                                     ? 'bg-emerald-400 text-slate-900 shadow-[1px_1px_0px_#1E293B]'
                                     : 'bg-white hover:bg-slate-100 text-transparent'
@@ -478,7 +527,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                               </button>
                             ) : (
                               <div
-                                className={`w-7 h-7 mx-auto rounded border-2 border-slate-900 flex items-center justify-center ${
+                                className={`w-8 h-8 mx-auto rounded border-2 border-slate-900 flex items-center justify-center ${
                                   isPaid ? 'bg-emerald-400 text-slate-900' : 'bg-slate-100 text-slate-400'
                                 }`}
                               >
@@ -489,7 +538,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                         );
                       })}
 
-                      <td className="py-3 px-3 text-right font-mono font-bold whitespace-nowrap tabular-nums text-slate-900">
+                      <td className="py-3 px-3 text-right font-mono font-bold whitespace-nowrap tabular-nums text-slate-900 text-sm sm:text-base">
                         {formatRupiah(totalPaid)}
                       </td>
 
@@ -503,7 +552,6 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                                 sfx.playClick();
                                 setReminderMember(member);
                               }}
-                              title={`Kirim Pengingat WA (${unpaidWeeks.length} Minggu Belum Bayar)`}
                               className="btn-doodle px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-md text-xs font-bold inline-flex items-center gap-1"
                             >
                               <MessageCircle className="w-3.5 h-3.5 text-emerald-700" />
@@ -517,7 +565,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                         ) : (
                           hasArrears ? (
                             <span className="text-[10px] text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                              Belum Lunas ({unpaidWeeks.length} mgg)
+                              {4 - paidWeeksInMonth} mgg
                             </span>
                           ) : (
                             <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
@@ -842,7 +890,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 
             <div className="space-y-3">
               {membersWithArrears.map((m) => {
-                const unpaidWeeks = WEEKS.filter(w => !m.weeklyStatus[w]);
+                const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
+                const unpaidWeeks = monthWeekKeys.filter(key => !m.weeklyStatus[key]);
                 const totalUnpaid = unpaidWeeks.length * settings.weeklyDuesAmount;
 
                 return (
@@ -853,7 +902,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                     <div>
                       <p className="text-sm font-bold text-slate-900">{m.name}</p>
                       <p className="text-xs text-slate-500 font-mono">
-                        NIM: {m.studentId} · Belum bayar: <strong className="text-rose-600">{unpaidWeeks.length} mgg</strong> ({unpaidWeeks.join(', ')})
+                        NIM: {m.studentId} · Belum bayar: <strong className="text-rose-600">{unpaidWeeks.length} mgg</strong>
                       </p>
                       <p className="text-xs font-bold text-rose-700 font-mono mt-0.5">
                         Tunggakan: {formatRupiah(totalUnpaid)}

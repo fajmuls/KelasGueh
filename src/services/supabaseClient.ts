@@ -376,7 +376,7 @@ export class LocalKasRepository {
       id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       timestamp: new Date().toISOString()
     };
-    const updated = [newLog, ...current].slice(0, 500);
+    const updated = [newLog, ...current].slice(0, 1000);
     localStorage.setItem(this.STORAGE_KEY_AUDIT, JSON.stringify(updated));
 
     // Also attempt pushing to Supabase
@@ -390,7 +390,9 @@ export class LocalKasRepository {
           user_role: newLog.userRole,
           created_at: newLog.timestamp
         }])
-      ).catch(() => {});
+      ).catch((err) => {
+        console.warn('Gagal push audit log ke Supabase:', err);
+      });
     }
 
     return newLog;

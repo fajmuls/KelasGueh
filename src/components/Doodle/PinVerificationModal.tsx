@@ -59,7 +59,7 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
 
     setIsVerifying(true);
     try {
-      const isValid = await verifyPinInput(fullPin);
+      const isValid = verifyPinInput(fullPin);
       if (isValid) {
         sfx.playLevelUp();
         setPinDigits(['', '', '', '', '', '']);
