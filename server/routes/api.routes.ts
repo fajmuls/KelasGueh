@@ -22,6 +22,20 @@ console.log('API Router initialized');
 // Current active demo user state on server
 let currentGlobalUserId = 'usr_superadmin';
 
+// Auto-save middleware for mutations
+apiRouter.use((req, res, next) => {
+  const method = req.method.toUpperCase();
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+    // Call save after the response is sent
+    res.on('finish', () => {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        db.save();
+      }
+    });
+  }
+  next();
+});
+
 // --- AUTH & USER PROFILE ---
 apiRouter.get('/auth/me', (req: AuthenticatedRequest, res: Response) => {
   const userEmail = req.headers['x-user-email'] as string;
@@ -1083,6 +1097,64 @@ apiRouter.post('/finance/kas-checklist/toggle', (req: AuthenticatedRequest, res:
   }
 
   res.json({ success: true, entry });
+});
+
+apiRouter.post('/finance/kas-checklist/bulk-toggle', (req: AuthenticatedRequest, res: Response) => {
+  const { column_id, is_paid } = req.body;
+  const col = db.kasColumns.find(c => c.id === column_id);
+  if (!col) return res.status(404).json({ error: 'Kolom tidak ditemukan' });
+
+  const activeUsers = db.users.filter(u => u.is_active);
+  const updatedEntries: KasChecklistEntry[] = [];
+
+  for (const student of activeUsers) {
+    let entry = db.kasEntries.find(e => e.column_id === column_id && e.user_id === student.id);
+    if (!entry) {
+      entry = {
+        id: `ke_${column_id}_${student.id}`,
+        column_id,
+        user_id: student.id,
+        user_name: student.name,
+        user_nim: student.nim,
+        is_paid: false,
+        paid_amount: col.amount,
+      };
+      db.kasEntries.push(entry);
+    }
+
+    const wasPaid = entry.is_paid;
+    entry.is_paid = Boolean(is_paid);
+    entry.paid_at = entry.is_paid ? (entry.paid_at || new Date().toISOString()) : undefined;
+    entry.updated_by = req.user?.name || 'Bendahara (Bulk)';
+
+    if (!wasPaid && entry.is_paid) {
+      const txId = `tx_kas_${entry.column_id}_${entry.user_id}`;
+      if (!db.transactions.find(t => t.id === txId)) {
+        db.transactions.push({
+          id: txId,
+          class_id: db.classInfo.id,
+          code: `KAS-B-${Date.now().toString().slice(-4)}`,
+          type: 'income',
+          amount: col.amount,
+          category_id: 'cat_kas_rutin',
+          category_name: 'Kas Rutin Bulanan',
+          description: `Iuran Kas [Bulk]: ${student.name}`,
+          created_by: req.user?.id || 'usr_member_25',
+          creator_name: req.user?.name || 'Bendahara',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          deleted_at: null,
+        });
+      }
+    } else if (wasPaid && !entry.is_paid) {
+      const txId = `tx_kas_${entry.column_id}_${entry.user_id}`;
+      const tx = db.transactions.find(t => t.id === txId);
+      if (tx) tx.deleted_at = new Date().toISOString();
+    }
+    updatedEntries.push(entry);
+  }
+
+  res.json({ success: true, count: updatedEntries.length });
 });
 
 apiRouter.delete('/finance/kas-columns/:id', (req: AuthenticatedRequest, res: Response) => {

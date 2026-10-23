@@ -238,41 +238,35 @@ export const TreasurerDashboard: React.FC<TreasurerDashboardProps> = ({
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] tracking-widest font-bold">
-                <th className="pb-3 font-bold">Kode / Tanggal</th>
-                <th className="pb-3 font-bold">Keterangan</th>
-                <th className="pb-3 font-bold">Kategori</th>
-                <th className="pb-3 font-bold">Tipe</th>
-                <th className="pb-3 text-right font-bold">Nominal</th>
+        <div className="overflow-x-auto max-h-[300px] relative">
+          <table className="w-full text-left text-[11px] border-collapse">
+            <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100 sticky top-0 z-10 shadow-2xs">
+              <tr>
+                <th className="py-2 px-3">Kode / Tanggal</th>
+                <th className="py-2 px-3">Keterangan</th>
+                <th className="py-2 px-3">Kategori</th>
+                <th className="py-2 px-3 text-right">Nominal</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {summary?.recentTransactions.slice(0, 5).map((tx) => (
-                <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3 text-xs">
-                    <span className="font-mono font-medium text-slate-700">{tx.code}</span>
-                    <p className="text-[10px] text-slate-400">
+                <tr key={tx.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="py-2 px-3">
+                    <div className="font-mono font-bold text-slate-700">{tx.code}</div>
+                    <div className="text-[9px] text-slate-400">
                       {new Date(tx.created_at).toLocaleDateString('id-ID')}
-                    </p>
+                    </div>
                   </td>
-                  <td className="py-3 font-medium text-slate-900 text-xs">{tx.description}</td>
-                  <td className="py-3 text-slate-500 text-xs">{tx.category_name}</td>
-                  <td className="py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                        tx.type === 'income'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-rose-100 text-rose-700'
-                      }`}
-                    >
-                      {tx.type === 'income' ? 'MASUK' : 'KELUAR'}
+                  <td className="py-2 px-3">
+                    <div className="font-bold text-slate-900 leading-tight">{tx.description}</div>
+                  </td>
+                  <td className="py-2 px-3">
+                    <span className={`px-1 py-0.5 rounded text-[9px] font-black uppercase ${tx.type === 'income' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                      {tx.category_name}
                     </span>
                   </td>
-                  <td className={`py-3 text-right font-bold text-xs ${tx.type === 'income' ? 'text-emerald-700' : 'text-slate-900'}`}>
-                    {tx.type === 'income' ? '+' : '-'} Rp {tx.amount.toLocaleString('id-ID')}
+                  <td className={`py-2 px-3 text-right font-black font-mono tabular-nums ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {tx.type === 'income' ? '+' : '-'} {tx.amount.toLocaleString('id-ID')}
                   </td>
                 </tr>
               ))}

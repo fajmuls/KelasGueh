@@ -101,23 +101,23 @@ export const AuditLogsModule: React.FC = () => {
 
       {/* Audit Log Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-slate-600" /> Catatan Audit Mutlak (Immutable Records)
+        <div className="p-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
+            <Terminal className="w-3.5 h-3.5 text-slate-600" /> Catatan Audit Mutlak
           </h3>
-          <span className="text-xs text-slate-400">Total {filteredLogs.length} Entri</span>
+          <span className="text-[10px] text-slate-400 font-bold">Total {filteredLogs.length} Entri</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+        <div className="overflow-x-auto max-h-[500px] relative">
+          <table className="w-full text-left text-[11px] border-collapse">
+            <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-20 shadow-2xs">
               <tr>
-                <th className="p-3.5">Waktu (WIB)</th>
-                <th className="p-3.5">Pengguna & Aktor</th>
-                <th className="p-3.5">Tipe Aksi</th>
-                <th className="p-3.5">Entitas / Modul</th>
-                <th className="p-3.5">Detail Perubahan</th>
-                <th className="p-3.5">Alamat IP / Perangkat</th>
+                <th className="py-2 px-3">Waktu</th>
+                <th className="py-2 px-3">Aktor</th>
+                <th className="py-2 px-3">Aksi</th>
+                <th className="py-2 px-3">Modul</th>
+                <th className="py-2 px-3">Detail</th>
+                <th className="py-2 px-3">IP</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -127,30 +127,30 @@ export const AuditLogsModule: React.FC = () => {
 
                 return (
                   <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="p-3.5 text-slate-500 whitespace-nowrap font-mono text-[11px]">
+                    <td className="py-1.5 px-3 text-slate-500 whitespace-nowrap font-mono text-[10px]">
                       {new Date(log.created_at).toLocaleString('id-ID', {
                         dateStyle: 'short',
-                        timeStyle: 'medium',
+                        timeStyle: 'short',
                       })}
                     </td>
-                    <td className="p-3.5">
-                      <div className="font-semibold text-slate-900 flex items-center gap-1.5">
-                        <User className="w-3 h-3 text-slate-400" />
-                        {log.user_name}
+                    <td className="py-1.5 px-3">
+                      <div className="font-bold text-slate-900 flex items-center gap-1">
+                        <User className="w-2.5 h-2.5 text-slate-400" />
+                        <span className="truncate max-w-[120px]">{log.user_name}</span>
                       </div>
                     </td>
-                    <td className="p-3.5">
-                      <Badge variant={isDanger ? 'danger' : isSuccess ? 'success' : 'primary'}>
+                    <td className="py-1.5 px-3">
+                      <span className={`px-1.5 py-0.5 rounded-sm text-[9px] font-black border ${isDanger ? 'bg-rose-50 text-rose-700 border-rose-100' : isSuccess ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
                         {log.action}
-                      </Badge>
-                    </td>
-                    <td className="p-3.5 font-medium text-slate-700">{log.entity}</td>
-                    <td className="p-3.5 text-slate-600 font-mono text-[11px]">
-                      <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200/60 inline-block max-w-xs truncate">
-                        {JSON.stringify(log.details)}
                       </span>
                     </td>
-                    <td className="p-3.5 text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                    <td className="py-1.5 px-3 font-semibold text-slate-600">{log.entity}</td>
+                    <td className="py-1.5 px-3">
+                      <div className="text-[10px] text-slate-500 font-mono line-clamp-1 max-w-[200px]" title={JSON.stringify(log.details)}>
+                        {JSON.stringify(log.details)}
+                      </div>
+                    </td>
+                    <td className="py-1.5 px-3 text-slate-400 font-mono text-[10px]">
                       {log.ip_address}
                     </td>
                   </tr>

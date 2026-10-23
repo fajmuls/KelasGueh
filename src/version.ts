@@ -11,18 +11,15 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.4.1',
-  codename: 'Financial Clarity & Grid Precision Edition',
-  releaseDate: '2026-10-27',
+  version: '3.4.2',
+  codename: 'Data Integrity & Minimalist Flux Edition',
+  releaseDate: '2026-10-28',
   changes: [
-    'Refaktor Terminologi: Mengubah label "Pemasukan" menjadi "Debit" dan "Pengeluaran" menjadi "Kredit" untuk standardisasi akuntansi kas.',
-    'Optimasi Tabel Checklist: Implementasi "Sticky Name Column" dan "Sticky Header" untuk memudahkan pemantauan data anggota yang banyak.',
-    'Data Persistence Fix: Memperbaiki bug sinkronisasi Supabase saat melakukan update nama, NIM, atau nomor HP anggota.',
-    'High Information Density: Mengecilkan ukuran sel tabel checklist agar lebih banyak data terlihat dalam satu layar tanpa scroll berlebih.',
-    'Mobile UI Polish: Penyesuaian ukuran font dan logo di navbar untuk mencegah overflow kanan dan pemotongan menu dropdown pada ponsel.',
-    'Audio Engine Lock: Peningkatan sistem pengunci audio intro untuk memastikan suara pembuka hanya diputar satu kali dengan durasi 5 detik.',
-    'Fitur Edit Anggota: Kini Bendahara dapat langsung mengubah informasi anggota (Nama/NIM/WA) secara inline di tabel checklist.',
-    'PWA Branding: Memperbaiki ikon aplikasi saat instalasi PWA agar menggunakan logo resmi "Kelas Gue".'
+    'Persistence Fix: Implementasi sinkronisasi state server-side untuk memastikan data Checklist Iuran tidak hilang saat refresh halaman.',
+    'UI Minimalism: Redesain tabel Buku Kas dan Transaksi agar mengikuti gaya Checklist Iuran yang kompak dan padat informasi.',
+    'QoL Buttons: Penyederhanaan desain tombol di seluruh dashboard untuk mengurangi kepadatan visual dan meningkatkan fokus pengguna.',
+    'Sticky Architecture: Penerapan sticky headers dan sticky columns pada tabel besar untuk navigasi data yang lebih baik di perangkat mobile.',
+    'Data Mapping Fix: Perbaikan logika pemetaan anggota pada checklist iuran untuk memastikan nama siswa selalu sinkron dengan database utama.'
   ],
   suggestedUpdates: [
     {

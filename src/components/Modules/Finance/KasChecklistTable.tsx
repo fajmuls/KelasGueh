@@ -22,6 +22,7 @@ import {
   Receipt,
   Send,
   Share2,
+  CheckCheck,
 } from 'lucide-react';
 import { Badge } from '../../UI/Badge.tsx';
 import { Modal } from '../../UI/Modal.tsx';
@@ -147,6 +148,23 @@ export const KasChecklistTable: React.FC = () => {
       await loadData();
     } finally {
       setTogglingKey(null);
+    }
+  };
+
+  const handleBulkMarkPaid = async (column: KasCollectionColumn) => {
+    if (!confirm(`Tandai LUNAS semua mahasiswa untuk kolom "${column.title}"?`)) return;
+    
+    try {
+      setIsLoading(true);
+      await api.bulkToggleKasChecklist({
+        column_id: column.id,
+        is_paid: true
+      });
+      await loadData();
+    } catch (err) {
+      console.error('Failed bulk mark:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -446,9 +464,14 @@ export const KasChecklistTable: React.FC = () => {
                           })}
                         </span>
                         <div className="mt-1.5 flex items-center gap-1">
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                            {colPaidCount}/{sortedStudents.length}
-                          </span>
+                          <button
+                            onClick={() => handleBulkMarkPaid(col)}
+                            title="Tandai Semua Lunas"
+                            className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-200 cursor-pointer flex items-center gap-1"
+                          >
+                            <span>{colPaidCount}/{sortedStudents.length}</span>
+                            {hasPermission('manage_payments') && <CheckCheck className="w-2.5 h-2.5" />}
+                          </button>
                           {hasPermission('manage_payments') && (
                             <button
                               onClick={() => handleDeleteColumn(col.id)}

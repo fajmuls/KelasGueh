@@ -28,6 +28,10 @@ import {
   KasCollectionColumn,
   KasChecklistEntry,
 } from '../../src/types/index.ts';
+import fs from 'fs';
+import path from 'path';
+
+const DB_FILE = path.join(process.cwd(), 'server-db.json');
 
 // Standard granular permissions catalog
 export const SYSTEM_PERMISSIONS: Permission[] = [
@@ -149,24 +153,99 @@ export class Database {
       updated_at: '2026-09-06T08:00:00Z',
     };
 
-    this.seedRoles();
-    this.seedUsers();
-    this.seedCourses();
-    this.seedSyllabuses();
-    this.seedCategories();
-    this.seedFinance();
-    this.seedKasTable();
-    this.seedEvents();
-    this.seedAnnouncements();
-    this.seedMeetings();
-    this.seedTasks();
-    this.seedDocuments();
-    this.seedPolls();
-    this.seedAttendance();
-    this.seedNotifications();
-    this.seedInitialAudit();
-    this.seedWebhook();
-    this.seedPaymentGateway();
+    if (this.load()) {
+      console.log('Database loaded from persistence file');
+      // Safety check: if loaded data is missing essential seeds, re-seed them
+      if (!this.roles || this.roles.length === 0) this.seedRoles();
+      if (!this.users || this.users.length === 0) this.seedUsers();
+      if (!this.categories || this.categories.length === 0) this.seedCategories();
+      if (!this.semesters || this.semesters.length === 0) {
+        this.semesters = [
+          'Semester 1 (Ganjil)',
+          'Semester 2 (Genap)',
+          'Semester 3 (Ganjil)',
+          'Semester 4 (Genap)',
+          'Semester 5 (Ganjil)',
+          'Semester 6 (Genap)',
+          'Semester 7 (Ganjil)',
+          'Semester 8 (Genap)',
+        ];
+      }
+    } else {
+      console.log('Persistence file not found, seeding initial data');
+      this.seedRoles();
+      this.seedUsers();
+      this.seedCourses();
+      this.seedSyllabuses();
+      this.seedCategories();
+      this.seedFinance();
+      this.seedKasTable();
+      this.seedEvents();
+      this.seedAnnouncements();
+      this.seedMeetings();
+      this.seedTasks();
+      this.seedDocuments();
+      this.seedPolls();
+      this.seedAttendance();
+      this.seedNotifications();
+      this.seedInitialAudit();
+      this.seedWebhook();
+      this.seedPaymentGateway();
+      this.save();
+    }
+  }
+
+  public save() {
+    try {
+      const data = {
+        classInfo: this.classInfo,
+        roles: this.roles,
+        users: this.users,
+        courses: this.courses,
+        syllabuses: this.syllabuses,
+        assignments: this.assignments,
+        submissions: this.submissions,
+        categories: this.categories,
+        transactions: this.transactions,
+        bills: this.bills,
+        payments: this.payments,
+        events: this.events,
+        announcements: this.announcements,
+        readReceipts: this.readReceipts,
+        meetings: this.meetings,
+        tasks: this.tasks,
+        documents: this.documents,
+        polls: this.polls,
+        pollVotes: this.pollVotes,
+        attendances: this.attendances,
+        notifications: this.notifications,
+        auditLogs: this.auditLogs,
+        webhookConfig: this.webhookConfig,
+        webhookLogs: this.webhookLogs,
+        paymentGatewayConfig: this.paymentGatewayConfig,
+        roleClaimRequests: this.roleClaimRequests,
+        kasColumns: this.kasColumns,
+        kasEntries: this.kasEntries,
+        semesters: this.semesters,
+      };
+      fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+    } catch (err) {
+      console.error('Error saving database:', err);
+    }
+  }
+
+  private load(): boolean {
+    try {
+      if (fs.existsSync(DB_FILE)) {
+        const raw = fs.readFileSync(DB_FILE, 'utf-8');
+        const data = JSON.parse(raw);
+        Object.assign(this, data);
+        return true;
+      }
+    } catch (err) {
+      console.error('Error loading database:', err);
+    }
+    return false;
   }
 
   // --- SEEDERS ---

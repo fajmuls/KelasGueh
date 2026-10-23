@@ -99,69 +99,69 @@ export const TransparencyModule: React.FC = () => {
 
         <button
           onClick={() => setIsWaModalOpen(true)}
-          className="px-4 py-2.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] border border-[#25D366]/30 text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-2xs self-start sm:self-auto"
+          className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-bold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs self-start sm:self-auto"
         >
-          <Share2 className="w-4 h-4 text-[#25D366]" />
-          <span>Bagikan ke WhatsApp</span>
+          <Share2 className="w-3.5 h-3.5" />
+          <span>Bagikan WA</span>
         </button>
       </div>
 
       {/* Saldo Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl text-white shadow-sm">
-          <span className="text-xs font-medium text-emerald-100 uppercase tracking-wider">
-            Saldo Kas Riil Saat Ini
+        <div className="p-4 bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl text-white shadow-sm">
+          <span className="text-[10px] font-medium text-emerald-100 uppercase tracking-wider">
+            Saldo Kas Riil
           </span>
-          <p className="text-3xl font-bold mt-2">
+          <p className="text-2xl font-bold mt-1">
             Rp {(summary?.balance || 0).toLocaleString('id-ID')}
           </p>
-          <p className="text-[11px] text-emerald-200 mt-1 flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Saldo riil terekonsiliasi
+          <p className="text-[10px] text-emerald-200 mt-1 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" /> Terekonsiliasi
           </p>
         </div>
 
-        <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Total Seluruh Pemasukan
+        <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+            Total Pemasukan
           </span>
-          <p className="text-2xl font-bold text-emerald-600 mt-2">
+          <p className="text-xl font-bold text-emerald-600 mt-1">
             Rp {(summary?.totalIncome || 0).toLocaleString('id-ID')}
           </p>
-          <p className="text-[11px] text-slate-400 mt-1">Iuran mahasiswa & sponsor</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Akumulasi iuran</p>
         </div>
 
-        <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Total Seluruh Pengeluaran
+        <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+            Total Pengeluaran
           </span>
-          <p className="text-2xl font-bold text-rose-600 mt-2">
+          <p className="text-xl font-bold text-rose-600 mt-1">
             Rp {(summary?.totalExpense || 0).toLocaleString('id-ID')}
           </p>
-          <p className="text-[11px] text-slate-400 mt-1">Operasional, ATK, & konsumsi</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Operasional & ATK</p>
         </div>
       </div>
 
       {/* Rincian Kategori Pengeluaran */}
-      <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-          <PieChart className="w-4 h-4 text-blue-600" /> Rincian Alokasi Pengeluaran Kas
+      <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+        <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
+          <PieChart className="w-3.5 h-3.5 text-blue-600" /> Alokasi Pengeluaran
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {expenseAllocations.map((alloc) => (
-            <div key={alloc.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
-              <p className="text-xs text-slate-500">{alloc.name}</p>
-              <p className="text-base font-bold text-slate-800 mt-1">
+            <div key={alloc.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <p className="text-[10px] text-slate-500 uppercase font-bold">{alloc.name}</p>
+              <p className="text-sm font-bold text-slate-800 mt-0.5">
                 Rp {alloc.amount.toLocaleString('id-ID')}
               </p>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div className="w-full bg-slate-200 h-1 rounded-full mt-2 overflow-hidden">
                 <div
                   className={`${alloc.color} h-full transition-all duration-300`}
                   style={{ width: `${alloc.percent}%` }}
                 />
               </div>
               <span className="text-[10px] text-slate-400 mt-1 inline-block">
-                {alloc.percent}% dari total beban
+                {alloc.percent}% dari total
               </span>
             </div>
           ))}
@@ -170,56 +170,57 @@ export const TransparencyModule: React.FC = () => {
 
       {/* Log Mutasi Terbuka */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-emerald-600" /> Catatan Riwayat Transaksi Lengkap
+        <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
+            <Receipt className="w-3.5 h-3.5 text-emerald-600" /> Riwayat Transaksi Lengkap
           </h3>
-          <span className="text-xs text-slate-400">Total {transactions.length} Transaksi</span>
+          <span className="text-[10px] text-slate-400 font-bold uppercase">Total {transactions.length} Mutasi</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+        <div className="overflow-x-auto max-h-[500px] relative">
+          <table className="w-full text-left text-[11px] border-collapse">
+            <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-20 shadow-2xs">
               <tr>
-                <th className="p-3.5">Tanggal</th>
-                <th className="p-3.5">Kode</th>
-                <th className="p-3.5">Keterangan</th>
-                <th className="p-3.5">Kategori</th>
-                <th className="p-3.5">Bukti Struk</th>
-                <th className="p-3.5 text-right">Nominal</th>
+                <th className="py-2 px-3.5">Tanggal</th>
+                <th className="py-2 px-3.5">Keterangan</th>
+                <th className="py-2 px-3.5">Kategori</th>
+                <th className="py-2 px-3.5 text-center">Struk</th>
+                <th className="py-2 px-3.5 text-right">Nominal</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {transactions.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="p-3.5 text-slate-600 whitespace-nowrap">
-                    {new Date(t.created_at).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
+                  <td className="py-2 px-3.5 text-slate-500 whitespace-nowrap font-mono text-[10px]">
+                    {new Date(t.created_at).toLocaleDateString('id-ID', { dateStyle: 'short' })}
                   </td>
-                  <td className="p-3.5 font-mono font-medium text-slate-700">{t.code}</td>
-                  <td className="p-3.5 font-medium text-slate-900">{t.description}</td>
-                  <td className="p-3.5">
-                    <Badge variant={t.type === 'income' ? 'success' : 'purple'}>
+                  <td className="py-2 px-3.5">
+                    <div className="font-bold text-slate-900 leading-tight">{t.description}</div>
+                    <div className="text-[9px] text-slate-400 font-mono mt-0.5">{t.code}</div>
+                  </td>
+                  <td className="py-2 px-3.5">
+                    <span className={`inline-block px-1.5 py-0.5 rounded-sm text-[9px] font-bold uppercase ${t.type === 'income' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
                       {t.category_name}
-                    </Badge>
+                    </span>
                   </td>
-                  <td className="p-3.5">
+                  <td className="py-2 px-3.5 text-center">
                     {t.receipt_url ? (
                       <button
                         onClick={() => setSelectedReceipt(t.receipt_url)}
-                        className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-semibold underline cursor-pointer"
+                        className="text-blue-600 hover:text-blue-800 font-bold underline cursor-pointer"
                       >
-                        <Eye className="w-3 h-3" /> Buka Struk
+                        Buka
                       </button>
                     ) : (
-                      <span className="text-slate-400 text-[11px]">-</span>
+                      <span className="text-slate-300">-</span>
                     )}
                   </td>
                   <td
-                    className={`p-3.5 text-right font-bold ${
+                    className={`py-2 px-3.5 text-right font-bold font-mono text-[12px] tabular-nums ${
                       t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'
                     }`}
                   >
-                    {t.type === 'income' ? '+' : '-'} Rp {t.amount.toLocaleString('id-ID')}
+                    {t.type === 'income' ? '+' : '-'} {t.amount.toLocaleString('id-ID')}
                   </td>
                 </tr>
               ))}

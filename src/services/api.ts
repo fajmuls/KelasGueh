@@ -590,6 +590,16 @@ class ApiService {
     });
   }
 
+  async bulkToggleKasChecklist(payload: {
+    column_id: string;
+    is_paid: boolean;
+  }): Promise<{ success: boolean; count: number }> {
+    return this.request('/finance/kas-checklist/bulk-toggle', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async createKasColumn(payload: {
     title: string;
     date?: string;
