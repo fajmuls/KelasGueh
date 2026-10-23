@@ -142,10 +142,20 @@ export const uploadReceiptToSupabase = async (file: File): Promise<{ url?: strin
   }
 };
 
-// Supabase Realtime Listener for kas_transactions and kas_members
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  details: string;
+  performedBy: string;
+  userRole: string;
+}
+
+// Supabase Realtime Listener for kas_transactions, kas_members, and audit_logs
 export const subscribeToRealtimeKas = (
   onTransactionChange: (payload: any) => void,
-  onMemberChange: (payload: any) => void
+  onMemberChange: (payload: any) => void,
+  onAuditLogChange?: (payload: any) => void
 ) => {
   const client = getSupabaseClient();
   if (!client) return () => {};
@@ -164,6 +174,13 @@ export const subscribeToRealtimeKas = (
       { event: '*', schema: 'public', table: 'kas_members' },
       (payload) => {
         onMemberChange(payload);
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'audit_logs' },
+      (payload) => {
+        if (onAuditLogChange) onAuditLogChange(payload);
       }
     )
     .subscribe();
@@ -338,5 +355,44 @@ export class LocalKasRepository {
       localStorage.setItem('kelasgue_supabase_key', settings.supabaseAnonKey);
     }
     initSupabase();
+  }
+
+  private static STORAGE_KEY_AUDIT = 'kelasgue_audit_logs_v1';
+
+  public static getAuditLogs(): AuditLogEntry[] {
+    const data = localStorage.getItem(this.STORAGE_KEY_AUDIT);
+    if (!data) return [];
+    try {
+      return JSON.parse(data);
+    } catch {
+      return [];
+    }
+  }
+
+  public static addAuditLog(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): AuditLogEntry {
+    const current = this.getAuditLogs();
+    const newLog: AuditLogEntry = {
+      ...entry,
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: new Date().toISOString()
+    };
+    const updated = [newLog, ...current].slice(0, 500);
+    localStorage.setItem(this.STORAGE_KEY_AUDIT, JSON.stringify(updated));
+
+    // Also attempt pushing to Supabase
+    const client = getSupabaseClient();
+    if (client) {
+      Promise.resolve(
+        client.from('audit_logs').insert([{
+          action: newLog.action,
+          details: newLog.details,
+          performed_by: newLog.performedBy,
+          user_role: newLog.userRole,
+          created_at: newLog.timestamp
+        }])
+      ).catch(() => {});
+    }
+
+    return newLog;
   }
 }

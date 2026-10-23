@@ -6,6 +6,7 @@ import { KasOverview } from './components/Doodle/KasOverview.tsx';
 import { KasBook } from './components/Doodle/KasBook.tsx';
 import { KasChecklist } from './components/Doodle/KasChecklist.tsx';
 import { KasSettings } from './components/Doodle/KasSettings.tsx';
+import { KasAuditLog } from './components/Doodle/KasAuditLog.tsx';
 import { PrintableBinderModal } from './components/Doodle/PrintableBinderModal.tsx';
 import { WhatsAppShareModal } from './components/Doodle/WhatsAppShareModal.tsx';
 import { AnimatedIntroScreen } from './components/Doodle/AnimatedIntroScreen.tsx';
@@ -23,14 +24,14 @@ import { sfx } from './utils/soundEffects.ts';
 const AppContent: React.FC = () => {
   const { isLoggedIn, canEditKas } = useAuth();
   const [showIntro, setShowIntro] = useState(true);
-  const [currentTab, setCurrentTab] = useState<'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan'>('ringkasan');
+  const [currentTab, setCurrentTab] = useState<'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog'>('ringkasan');
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
 
   // Auto redirect from settings tab if user is read-only Anggota
   useEffect(() => {
-    if (!canEditKas && currentTab === 'pengaturan') {
+    if (!canEditKas && (currentTab === 'pengaturan' || currentTab === 'auditlog')) {
       setCurrentTab('ringkasan');
     }
   }, [canEditKas, currentTab]);
@@ -39,19 +40,22 @@ const AppContent: React.FC = () => {
   const [transactions, setTransactions] = useState<KasTransaction[]>(() => LocalKasRepository.getTransactions());
   const [members, setMembers] = useState<KasMember[]>(() => LocalKasRepository.getMembers());
   const [settings, setSettings] = useState<ClassSettings>(() => LocalKasRepository.getSettings());
+  const [auditLogs, setAuditLogs] = useState(() => LocalKasRepository.getAuditLogs());
 
   // Supabase Realtime Broadcast subscription
   useEffect(() => {
     const unsubscribe = subscribeToRealtimeKas(
-      (payload) => {
+      (_payload) => {
         // When transaction is inserted/updated/deleted in Supabase by another device
         sfx.playNotification();
         setTransactions(LocalKasRepository.getTransactions());
+        setAuditLogs(LocalKasRepository.getAuditLogs());
       },
-      (payload) => {
+      (_payload) => {
         // When member weekly dues status is updated in Supabase by another device
         sfx.playNotification();
         setMembers(LocalKasRepository.getMembers());
+        setAuditLogs(LocalKasRepository.getAuditLogs());
       }
     );
 
@@ -95,6 +99,17 @@ const AppContent: React.FC = () => {
 
   const handleToggleWeek = (memberId: string, weekKey: string) => {
     LocalKasRepository.toggleMemberWeek(memberId, weekKey);
+    const targetMember = members.find(m => m.id === memberId);
+    if (targetMember) {
+      const isNowPaid = !targetMember.weeklyStatus[weekKey];
+      LocalKasRepository.addAuditLog({
+        action: 'IURAN MINGGUAN',
+        details: `${isNowPaid ? 'Mencatat LUNAS' : 'Membatalkan Status Lunas'} Iuran Minggu ${weekKey} untuk ${targetMember.name} (${targetMember.studentId})`,
+        performedBy: 'Bendahara / Super Admin',
+        userRole: 'bendahara',
+      });
+      setAuditLogs(LocalKasRepository.getAuditLogs());
+    }
     setMembers(prev => prev.map(m => {
       if (m.id === memberId) {
         return {
@@ -111,11 +126,25 @@ const AppContent: React.FC = () => {
 
   const handleAddMember = (name: string, studentId: string, phone?: string) => {
     const newM = LocalKasRepository.addMember(name, studentId, phone);
+    LocalKasRepository.addAuditLog({
+      action: 'TAMBAH ANGGOTA',
+      details: `Menambahkan siswa baru: ${name} (NIM: ${studentId})`,
+      performedBy: 'Bendahara Kelas',
+      userRole: 'bendahara',
+    });
+    setAuditLogs(LocalKasRepository.getAuditLogs());
     setMembers(prev => [...prev, newM]);
   };
 
   const handleAddMembers = (newMembersList: { name: string; studentId: string; phone?: string }[]) => {
     const created = LocalKasRepository.addMembers(newMembersList);
+    LocalKasRepository.addAuditLog({
+      action: 'IMPORT ANGGOTA',
+      details: `Impor massal ${created.length} siswa baru dari file Excel/CSV`,
+      performedBy: 'Bendahara Kelas',
+      userRole: 'bendahara',
+    });
+    setAuditLogs(LocalKasRepository.getAuditLogs());
     setMembers(prev => [...prev, ...created]);
   };
 
@@ -189,6 +218,13 @@ const AppContent: React.FC = () => {
             onToggleWeek={handleToggleWeek}
             onAddMember={handleAddMember}
             onAddMembers={handleAddMembers}
+          />
+        )}
+
+        {currentTab === 'auditlog' && (
+          <KasAuditLog
+            auditLogs={auditLogs}
+            onRefreshLogs={() => setAuditLogs(LocalKasRepository.getAuditLogs())}
           />
         )}
 

@@ -15,8 +15,8 @@ import {
 } from 'lucide-react';
 
 interface DoodleNavbarProps {
-  currentTab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan';
-  onSelectTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan') => void;
+  currentTab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog';
+  onSelectTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog') => void;
   classNameTitle: string;
   onReplayIntro?: () => void;
 }
@@ -48,6 +48,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
     { id: 'ringkasan', label: 'Ringkasan Kas' },
     { id: 'bukukas', label: 'Buku Kas & Nota' },
     { id: 'checklist', label: 'Checklist Iuran' },
+    ...(isSuperAdmin ? [{ id: 'auditlog', label: 'Laporan Audit' }] : []),
     ...(canEditKas ? [{ id: 'pengaturan', label: 'Pengaturan & Versi' }] : []),
   ] as const;
 
@@ -187,13 +188,55 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                     </p>
                   </div>
 
-                  {canEditKas ? (
+                  {isSuperAdmin ? (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 mb-1">
+                        Mode Simulasi / Preview Role:
+                      </p>
+                      <button
+                        onClick={() => {
+                          switchRole('superadmin');
+                          setShowRoleMenu(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
+                          role === 'superadmin' ? 'bg-amber-100 text-amber-900 border border-slate-900 font-black' : 'hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>👑 Super Admin (Penuh)</span>
+                        {role === 'superadmin' && <span>✓</span>}
+                      </button>
+                      <button
+                        onClick={() => {
+                          switchRole('bendahara');
+                          setShowRoleMenu(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
+                          role === 'bendahara' ? 'bg-emerald-100 text-emerald-900 border border-slate-900 font-black' : 'hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>🛡️ Preview Bendahara</span>
+                        {role === 'bendahara' && <span>✓</span>}
+                      </button>
+                      <button
+                        onClick={() => {
+                          switchRole('anggota');
+                          setShowRoleMenu(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
+                          role === 'anggota' ? 'bg-sky-100 text-sky-900 border border-slate-900 font-black' : 'hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>👀 Preview Anggota</span>
+                        {role === 'anggota' && <span>✓</span>}
+                      </button>
+                    </div>
+                  ) : isBendahara ? (
                     <div className="space-y-1">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                         Hak Akses Aktif:
                       </p>
-                      <div className="p-2 bg-amber-50 border border-amber-300 rounded text-xs font-bold text-amber-900 flex items-center justify-between">
-                        <span>{isSuperAdmin ? '👑 Super Admin Pemilik' : '🛡️ Bendahara Kelas'}</span>
+                      <div className="p-2 bg-emerald-50 border border-emerald-300 rounded text-xs font-bold text-emerald-900 flex items-center justify-between">
+                        <span>🛡️ Bendahara Kelas</span>
                         <span className="text-[10px] bg-emerald-300 text-slate-900 px-1.5 py-0.2 rounded font-mono">Aktif</span>
                       </div>
                     </div>

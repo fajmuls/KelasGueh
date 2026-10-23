@@ -6,7 +6,8 @@ import { CURRENT_APP_VERSION } from '../../version.ts';
 import { ScotchTape, DoodleCrown } from './DoodleDecorations.tsx';
 import { getSupabaseClient, signInWithGoogleSupabase } from '../../services/supabaseClient.ts';
 import { getRegisteredUsers, updateUserRole, RegisteredUser } from '../../utils/userManagement.ts';
-import { Database, Shield, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Save, UserCheck, UserPlus, ShieldCheck, User } from 'lucide-react';
+import { Database, Shield, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Save, UserCheck, UserPlus, ShieldCheck, User, Lock, KeyRound } from 'lucide-react';
+import { saveNewPin, DEFAULT_PIN } from '../../utils/security.ts';
 
 interface KasSettingsProps {
   settings: ClassSettings;
@@ -29,6 +30,27 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
   // User Role Management state for Super Admin
   const [userList, setUserList] = useState<RegisteredUser[]>(() => getRegisteredUsers());
   const [manualEmail, setManualEmail] = useState('');
+
+  // 6-Digit PIN Security State
+  const [newPin, setNewPin] = useState('');
+  const [pinMessage, setPinMessage] = useState<string | null>(null);
+
+  const handleUpdatePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(newPin)) {
+      setPinMessage('PIN harus terdiri dari tepat 6 angka (misal: 123456).');
+      return;
+    }
+    try {
+      await saveNewPin(newPin);
+      sfx.playSuccess();
+      setPinMessage('✓ PIN 6-digit keamanan transaksi besar berhasil diperbarui!');
+      setNewPin('');
+      setTimeout(() => setPinMessage(null), 3500);
+    } catch (err: any) {
+      setPinMessage(`Gagal menyimpan PIN: ${err.message}`);
+    }
+  };
 
   const handleRoleToggle = (email: string, currentRole: string) => {
     sfx.playClick();
@@ -377,6 +399,49 @@ USING (
   OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('superadmin', 'bendahara')
 );`}
               </pre>
+            </div>
+          </div>
+
+          {/* Section 5: Konfigurasi PIN 6-Digit Keamanan Transaksi Besar */}
+          <div className="pt-4 border-t-2 border-dashed border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <Lock className="w-4 h-4 text-amber-600" />
+                <span>05. Keamanan PIN 6-Digit Transaksi Pengeluaran Kas &gt; Rp 500.000</span>
+              </h3>
+              <span className="text-[10px] bg-amber-100 text-amber-900 font-bold border border-slate-900 px-2 py-0.5 rounded">
+                SHA-256 Web Crypto
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-600 mb-3">
+              PIN ini wajib dimasukkan oleh Bendahara / Super Admin setiap kali mencatat pengeluaran bernilai tinggi di atas Rp 500.000. PIN awal default adalah <strong>123456</strong>.
+            </p>
+
+            {pinMessage && (
+              <div className="mb-3 p-2.5 bg-emerald-100 border-2 border-slate-900 rounded text-xs font-bold text-emerald-900 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                <span>{pinMessage}</span>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+              <input
+                type="password"
+                maxLength={6}
+                placeholder="Masukkan 6 angka PIN baru (misal: 889900)..."
+                value={newPin}
+                onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+                className="w-full sm:w-64 px-3 py-2 text-xs font-mono border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
+              />
+              <button
+                type="button"
+                onClick={handleUpdatePin}
+                className="btn-doodle px-4 py-2 bg-amber-300 hover:bg-amber-400 text-slate-900 font-bold text-xs rounded-md flex items-center gap-1.5"
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>Perbarui PIN SHA-256</span>
+              </button>
             </div>
           </div>
 

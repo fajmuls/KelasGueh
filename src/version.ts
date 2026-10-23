@@ -11,36 +11,38 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '2.7.0',
-  codename: 'Dropdown Overlay Fix, Super Admin User Role Management & SVG Favicon Edition',
+  version: '3.0.0',
+  codename: 'Realtime Multi-User Audit Logs, 6-Digit PIN Security & Google Sheets Sync Edition',
   releaseDate: '2026-10-23',
   changes: [
-    'Perbaikan Dropdown Topbar (No Horizontal Scroll): Menu profile & role kini melayang dengan z-index tinggi di atas konten tanpa menyebabkan pergeseran top bar.',
-    'Manajemen Role Akun Google oleh Super Admin: Akun Google baru otomatis berstatus Anggota. Super Admin berhak mengelola dan memberikan wewenang Bendahara di tab Pengaturan.',
-    'Pembaruan Logo Favicon Tab Chrome: Tab browser Chrome kini menampilkan logo resmi vektor SVG Kelas Gue secara sempurna.',
-    'Verifikasi Login Iframe AI Studio (Bypass Error 403): Kemudahan login langsung yang stabil dalam lingkungan preview Google AI Studio.',
-    'Pembersihan Keterangan Email Privat: Menghapus penyebutan email privat Super Admin dari tampilan awal login demi kerahasiaan pemilik.'
+    'Aktivitas Log Realtime Multi-User: Pencatatan riwayat otomatis setiap kali Bendahara atau Admin mencatat pengeluaran, mencentang iuran, atau merubah status dengan penanda waktu & nama pengubah.',
+    'Autentikasi PIN 6-Digit SHA-256 Tambahan: Verifikasi PIN modal keamanan wajib untuk pengeluaran kas bernilai besar di atas Rp 500.000 (PIN Default: 123456).',
+    'Ekspor Rekap Kas ke Google Sheets: Fitur ekspor CSV terstruktur lengkap dengan panduan link impor otomatis ke lembar kerja Google Sheets.',
+    'Pembersihan Total Residual Firebase: Aplikasi kini 100% tersambung ke Supabase Cloud Postgres & Realtime Broadcast tanpa beban dependensi Firebase.',
+    'Dropdown Topbar Overlay Fix: Menu profil & role switcher melayang rapi di atas konten tanpa pergeseran layout topbar.',
+    'Super Admin Role Preview Switcher: Super Admin dapat menguji tampilan sebagai Bendahara atau Anggota (Read-Only) kapan saja.',
+    'Panduan Step-by-Step Supabase SQL Editor: Dokumentasi panduan lengkap pemasangan tabel SQL & RLS di dalam aplikasi.'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
-      title: 'Aktivitas Log Realtime Multi-User',
-      description: 'Pencatatan riwayat setiap kali bendahara mencatat pengeluaran atau mencentang iuran dengan penanda nama & jam.'
+      title: 'Notifikasi Otomatis PWA Push Notification',
+      description: 'Pengiriman notifikasi otomatis langsung ke ponsel siswa saat mendekati tenggat iuran kas kelas mingguan.'
     },
     {
       category: 'optimasi',
-      title: 'Ekspor Otomatis Rekap Kas ke Google Sheets',
-      description: 'Fitur sinkronisasi otomatis seluruh laporan kas ke lembar kerja Google Sheets secara berkala.'
+      title: 'Auto Sync Background Worker Supabase',
+      description: 'Sinkronisasi kas offline-first ke Supabase secara otomatis saat koneksi internet kembali pulih.'
     },
     {
       category: 'keamanan',
-      title: 'Autentikasi PIN 6-Digit Tambahan untuk Transaksi Besar',
-      description: 'Konfirmasi PIN keamanan tambahan khusus untuk transaksi pengeluaran kas di atas Rp 500.000.'
+      title: 'Enkripsi Multi-Factor Authentication (MFA)',
+      description: 'Otentikasi dua langkah (2FA/MFA) khusus untuk peran Super Admin pemilik saat mengakses dashboard keuangan.'
     },
     {
       category: 'fitur',
-      title: 'Pengingat Otomatis Push Notification PWA',
-      description: 'Notifikasi otomatis langsung ke ponsel siswa saat mendekati jadwal pembayaran iuran mingguan.'
+      title: 'Multi-Kelas / Multi-Jurusan Dashboard',
+      description: 'Pengelolaan kas paralel untuk beberapa angkatan atau jurusan sekaligus dalam satu akun.'
     }
   ]
 };

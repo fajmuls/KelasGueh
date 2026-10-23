@@ -21,11 +21,13 @@ import {
   CheckCheck,
   Check
 } from 'lucide-react';
-import { uploadReceiptToSupabase } from '../../services/supabaseClient.ts';
+import { uploadReceiptToSupabase, LocalKasRepository } from '../../services/supabaseClient.ts';
 import { scanReceiptOcr, OcrDetectionResult } from '../../utils/receiptOcr.ts';
+import { PinVerificationModal } from './PinVerificationModal.tsx';
+import { generateGoogleSheetsCsv, downloadCsvFile, openGoogleSheetsImportGuide } from '../../utils/exportToGoogleSheets.ts';
 
 import { ClassSettings } from '../../types/kas.ts';
-import { Settings as SettingsIcon, MessageSquare } from 'lucide-react';
+import { Settings as SettingsIcon, MessageSquare, FileSpreadsheet, ExternalLink } from 'lucide-react';
 
 interface KasBookProps {
   transactions: KasTransaction[];
@@ -62,7 +64,7 @@ export const KasBook: React.FC<KasBookProps> = ({
   onOpenPrintModal,
   onOpenWhatsAppModal,
 }) => {
-  const { canEditKas, isSuperAdmin, user } = useAuth();
+  const { canEditKas, isSuperAdmin, user, role } = useAuth();
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,6 +75,10 @@ export const KasBook: React.FC<KasBookProps> = ({
     kasTargetAmount: settings.kasTargetAmount,
     academicYear: settings.academicYear
   });
+
+  // PIN Verification State
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pendingTxData, setPendingTxData] = useState<Omit<KasTransaction, 'id' | 'createdAt'> | null>(null);
 
   // New transaction form state
   const [txType, setTxType] = useState<'income' | 'expense'>('expense');
@@ -194,6 +200,28 @@ export const KasBook: React.FC<KasBookProps> = ({
     }
   };
 
+  const executeSaveTransaction = (txPayload: Omit<KasTransaction, 'id' | 'createdAt'>) => {
+    onAddTransaction(txPayload);
+    sfx.playCoinChime();
+
+    // Log to Audit Trail
+    LocalKasRepository.addAuditLog({
+      action: txPayload.amount >= 500000 ? 'CATAT_TRANSAKSI_BESAR' : 'CATAT_TRANSAKSI',
+      details: `Dicatat ${txPayload.type === 'income' ? 'Pemasukan' : 'Pengeluaran'} "${txPayload.title}" senilai Rp ${txPayload.amount.toLocaleString('id-ID')} (${txPayload.category})`,
+      performedBy: user?.name || 'Bendahara',
+      userRole: role
+    });
+
+    // Reset form
+    setTxTitle('');
+    setTxAmount('');
+    setTxNotes('');
+    setTxReceipt('');
+    setPendingTxData(null);
+    setIsPinModalOpen(false);
+    onCloseModal();
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!txTitle.trim() || !txAmount || Number(txAmount) <= 0) {
@@ -201,7 +229,7 @@ export const KasBook: React.FC<KasBookProps> = ({
       return;
     }
 
-    onAddTransaction({
+    const payload: Omit<KasTransaction, 'id' | 'createdAt'> = {
       type: txType,
       title: txTitle.trim(),
       amount: Number(txAmount),
@@ -210,15 +238,14 @@ export const KasBook: React.FC<KasBookProps> = ({
       recordedBy: user?.name || 'Bendahara Kelas',
       notes: txNotes.trim() || undefined,
       receiptUrl: txReceipt || undefined
-    });
+    };
 
-    sfx.playCoinChime();
-    // Reset form
-    setTxTitle('');
-    setTxAmount('');
-    setTxNotes('');
-    setTxReceipt('');
-    onCloseModal();
+    if (Number(txAmount) >= 500000) {
+      setPendingTxData(payload);
+      setIsPinModalOpen(true);
+    } else {
+      executeSaveTransaction(payload);
+    }
   };
 
   // Filtered transactions
@@ -285,6 +312,21 @@ export const KasBook: React.FC<KasBookProps> = ({
                 <span>Cetak / PDF Binder</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => {
+                sfx.playFileDownload();
+                const csvContent = generateGoogleSheetsCsv(transactions, [], settings);
+                downloadCsvFile(`laporan_kas_${settings.className.replace(/\s+/g, '_')}_${Date.now()}.csv`, csvContent);
+                openGoogleSheetsImportGuide();
+              }}
+              className="btn-doodle px-3.5 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
+              title="Ekspor Laporan Kas ke File CSV yang Siap Diimpor ke Google Sheets"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-800" />
+              <span>Ekspor Google Sheets</span>
+            </button>
 
             {isSuperAdmin && (
               <button
@@ -1061,6 +1103,20 @@ export const KasBook: React.FC<KasBookProps> = ({
           </div>
         </div>
       )}
+      {/* PIN Verification Modal for Large Transactions >= 500k */}
+      <PinVerificationModal
+        isOpen={isPinModalOpen}
+        onClose={() => {
+          setIsPinModalOpen(false);
+          setPendingTxData(null);
+        }}
+        onSuccess={() => {
+          if (pendingTxData) {
+            executeSaveTransaction(pendingTxData);
+          }
+        }}
+        requiredAmount={pendingTxData?.amount}
+      />
     </div>
   );
 };
