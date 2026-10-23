@@ -232,12 +232,18 @@ class SoundEngine {
   }
 
   private isIntroPlaying: boolean = false;
+  private lastIntroPlay: number = 0;
   /**
    * Kelas_Gueh_Animated_Intro_SFX.mp3 - Audio opening intro
    */
   public playIntro(): Promise<void> {
-    if (this.isIntroPlaying) return Promise.resolve();
+    const now = Date.now();
+    if (this.isIntroPlaying || (now - this.lastIntroPlay < 5000)) {
+      return Promise.resolve();
+    }
+    
     this.isIntroPlaying = true;
+    this.lastIntroPlay = now;
 
     return new Promise((resolve) => {
       try {

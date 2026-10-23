@@ -54,14 +54,14 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 🎓 ${settings.academicYear}
 
 💰 *RINGKASAN SALDO:*
-🟢 Total Pemasukan: ${formatRupiah(totalIncome)}
-🔴 Total Pengeluaran: ${formatRupiah(totalExpense)}
+🟢 Total Debit: ${formatRupiah(totalIncome)}
+🔴 Total Kredit: ${formatRupiah(totalExpense)}
 💵 *SALDO KAS BERSIH: ${formatRupiah(balance)}*
 🎯 Target Kas Semester: ${formatRupiah(settings.kasTargetAmount)}
 📌 Iuran Kas Mingguan: ${formatRupiah(settings.weeklyDuesAmount)}/minggu
 
-📝 *5 PENGELUARAN TERAKHIR:*
-${recentExpenses || '• Belum ada pengeluaran kas.'}
+📝 *5 KREDIT (PENGELUARAN) TERAKHIR:*
+${recentExpenses || '• Belum ada kredit kas.'}
 
 ✨ _Laporan ini dihasilkan secara transparan & akurat dari sistem buku kas Kelas Gue._
 🌐 Cek bukti kuitansi & status iuran selengkapnya di aplikasi Kelas Gue.`;

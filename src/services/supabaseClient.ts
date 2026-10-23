@@ -414,6 +414,31 @@ export class LocalKasRepository {
     return newMember;
   }
 
+  public static updateMember(memberId: string, updates: Partial<KasMember>): void {
+    const members = this.getMembers();
+    let updatedMember: KasMember | null = null;
+    const updated = members.map(m => {
+      if (m.id === memberId) {
+        updatedMember = { ...m, ...updates };
+        return updatedMember;
+      }
+      return m;
+    });
+    this.saveMembers(updated);
+
+    if (updatedMember) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('kas_members').update({
+          name: (updatedMember as KasMember).name,
+          student_id: (updatedMember as KasMember).studentId,
+          phone: (updatedMember as KasMember).phone,
+          weekly_status: (updatedMember as KasMember).weeklyStatus
+        }).eq('id', memberId).then();
+      }
+    }
+  }
+
   public static addMembers(newMembersList: { name: string; studentId: string; phone?: string }[]): KasMember[] {
     const members = this.getMembers();
     const created: KasMember[] = newMembersList.map((m, idx) => ({

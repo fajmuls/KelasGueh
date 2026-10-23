@@ -11,33 +11,34 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.3.2',
-  codename: 'Doodle Pure-Polish & Audio Fix Edition',
-  releaseDate: '2026-10-26',
+  version: '3.4.1',
+  codename: 'Financial Clarity & Grid Precision Edition',
+  releaseDate: '2026-10-27',
   changes: [
-    'Fix Sound Playback: Memperbaiki bug suara SFX/BGM yang terputar ganda atau tiga kali saat aplikasi dimuat.',
-    'Fix Navbar Visibility: Bilah navigasi kini hanya muncul setelah intro selesai, mencegah UI bertumpuk.',
-    'Restorasi Logo Brand: Mengganti ikon placeholder dengan logo resmi "Kelas Gue" SVG di bilah navigasi.',
-    'Cleanup Versi UI: Menghapus teks versi yang berlebihan di Tren Kas dan Data Real-Sync agar tampilan lebih bersih.',
-    'Sinkronisasi Tipografi: Memastikan font "Bricolage Grotesque" diterapkan secara konsisten di seluruh elemen teks aplikasi.',
-    'Optimasi Scroll Layout: Menghilangkan overflow horizontal di mobile dan PC untuk pengalaman navigasi yang lebih nyaman.',
-    'PWA Compliance: Memastikan fitur instalasi PWA aktif dan terdeteksi dengan benar di berbagai browser.'
+    'Refaktor Terminologi: Mengubah label "Pemasukan" menjadi "Debit" dan "Pengeluaran" menjadi "Kredit" untuk standardisasi akuntansi kas.',
+    'Optimasi Tabel Checklist: Implementasi "Sticky Name Column" dan "Sticky Header" untuk memudahkan pemantauan data anggota yang banyak.',
+    'Data Persistence Fix: Memperbaiki bug sinkronisasi Supabase saat melakukan update nama, NIM, atau nomor HP anggota.',
+    'High Information Density: Mengecilkan ukuran sel tabel checklist agar lebih banyak data terlihat dalam satu layar tanpa scroll berlebih.',
+    'Mobile UI Polish: Penyesuaian ukuran font dan logo di navbar untuk mencegah overflow kanan dan pemotongan menu dropdown pada ponsel.',
+    'Audio Engine Lock: Peningkatan sistem pengunci audio intro untuk memastikan suara pembuka hanya diputar satu kali dengan durasi 5 detik.',
+    'Fitur Edit Anggota: Kini Bendahara dapat langsung mengubah informasi anggota (Nama/NIM/WA) secara inline di tabel checklist.',
+    'PWA Branding: Memperbaiki ikon aplikasi saat instalasi PWA agar menggunakan logo resmi "Kelas Gue".'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
-      title: 'Auto-Sync Google Sheets API',
-      description: 'Integrasi langsung ke Google Sheets untuk rekap kas otomatis tanpa perlu ekspor/impor CSV manual.'
-    },
-    {
-      category: 'fitur',
-      title: 'Laporan PDF Kuitansi Massal',
-      description: 'Fitur untuk mencetak seluruh foto nota pengeluaran dalam satu file PDF rapi untuk arsip fisik.'
+      title: 'Automated PWA Push Notifications',
+      description: 'Pengiriman notifikasi otomatis ke HP siswa saat ada iuran yang belum lunas di akhir bulan.'
     },
     {
       category: 'optimasi',
-      title: 'Offline-First Persistence',
-      description: 'Peningkatan Service Worker untuk memastikan semua data tetap tersimpan dan dapat diakses meski tanpa koneksi internet.'
+      title: 'Real-time Multi-device Sync',
+      description: 'Peningkatan background worker untuk memastikan data terupdate seketika di semua perangkat yang membuka aplikasi.'
+    },
+    {
+      category: 'fitur',
+      title: 'Audit Trail Detail',
+      description: 'Penambahan rincian perubahan data pada log audit untuk transparansi penuh siapa mengubah apa dan kapan.'
     }
   ]
 };

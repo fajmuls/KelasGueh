@@ -16,7 +16,8 @@ import {
   Copy,
   Send,
   AlertTriangle,
-  FileText
+  Edit2,
+  Save
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -27,6 +28,7 @@ interface KasChecklistProps {
   onToggleAllWeek?: (weekKey: string, shouldPay: boolean) => void;
   onAddMember: (name: string, studentId: string, phone?: string) => void;
   onAddMembers?: (newMembersList: { name: string; studentId: string; phone?: string }[]) => void;
+  onUpdateMember?: (memberId: string, updates: Partial<KasMember>) => void;
 }
 
 const MONTHS = [
@@ -43,6 +45,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   onToggleAllWeek,
   onAddMember,
   onAddMembers,
+  onUpdateMember,
 }) => {
   const { canEditKas } = useAuth();
   const [search, setSearch] = useState('');
@@ -55,16 +58,37 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   };
 
   const getWeekRangeLabel = (weekIndex: number) => {
-    // Standard 4-week split: 1-7, 8-14, 15-21, 22-end
     const starts = [1, 8, 15, 22];
-    const ends = [7, 14, 21, 31];
-    
-    // Get last day of month
     const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    const endDay = weekIndex === 3 ? lastDay : ends[weekIndex];
-    
+    const ends = [7, 14, 21, lastDay];
     const monthName = MONTHS[selectedMonth].substring(0, 3);
-    return `${starts[weekIndex]}-${endDay} ${monthName}`;
+    return `${starts[weekIndex]}-${ends[weekIndex]} ${monthName}`;
+  };
+
+  // Editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', studentId: '', phone: '' });
+
+  const startEditing = (member: KasMember) => {
+    setEditingId(member.id);
+    setEditForm({
+      name: member.name,
+      studentId: member.studentId,
+      phone: member.phone || ''
+    });
+    sfx.playClick();
+  };
+
+  const handleSaveEdit = () => {
+    if (editingId && onUpdateMember) {
+      onUpdateMember(editingId, {
+        name: editForm.name,
+        studentId: editForm.studentId,
+        phone: editForm.phone || undefined
+      });
+      sfx.playSuccess();
+    }
+    setEditingId(null);
   };
 
   // Single member modal
@@ -110,7 +134,16 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
   };
 
-  // Process Excel / CSV file
+  const formatPhone = (raw: string): string => {
+    let clean = raw.replace(/[^\d+]/g, '');
+    if (clean.startsWith('0')) {
+      clean = '62' + clean.slice(1);
+    } else if (clean.startsWith('+62')) {
+      clean = clean.slice(1);
+    }
+    return clean;
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -133,10 +166,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
           return;
         }
 
-        // Parse rows
         const parsedList: { name: string; studentId: string; phone?: string }[] = [];
-        
-        // Find header row or assume row 0 is header if it contains text like 'nama' or 'nim'
         let startIndex = 0;
         const firstRowStr = (rawJson[0] || []).join(' ').toLowerCase();
         if (firstRowStr.includes('nama') || firstRowStr.includes('nim') || firstRowStr.includes('siswa')) {
@@ -146,13 +176,9 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
         for (let i = startIndex; i < rawJson.length; i++) {
           const row = rawJson[i];
           if (!row || row.length === 0) continue;
-
-          // Expect: col 0 = No/NIM/Nama, col 1 = Nama/NIM, etc.
           let name = '';
           let studentId = '';
           let phone = '';
-
-          // Heuristic parser
           const cells = row.map((c: any) => String(c ?? '').trim()).filter((c: string) => c !== '');
           if (cells.length === 0) continue;
 
@@ -160,10 +186,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
             name = cells[0];
             studentId = `230101${(members.length + parsedList.length + 1).toString().padStart(3, '0')}`;
           } else if (cells.length >= 2) {
-            // Check if first is numeric (NIM/No) or text (Nama)
             const firstIsNum = /^\d+$/.test(cells[0]);
             const secondIsNum = /^\d+$/.test(cells[1]);
-
             if (firstIsNum && cells[0].length >= 7) {
               studentId = cells[0];
               name = cells[1];
@@ -173,7 +197,6 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
               studentId = cells[1];
               phone = cells[2] || '';
             } else if (firstIsNum && cells[0].length <= 3) {
-              // Col 0 is sequence number (1, 2, 3)
               name = cells[1];
               studentId = cells[2] || `230101${(members.length + parsedList.length + 1).toString().padStart(3, '0')}`;
               phone = cells[3] || '';
@@ -194,58 +217,36 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
         }
 
         if (parsedList.length === 0) {
-          setImportError('Tidak dapat mengekstrak nama siswa dari file. Pastikan format kolom: Nama, NIM, No HP.');
+          setImportError('Tidak dapat mengekstrak nama siswa dari file.');
         } else {
           setImportPreview(parsedList);
           sfx.playSuccess();
         }
       } catch (err: any) {
-        setImportError(`Gagal membaca file Excel/CSV: ${err.message}`);
+        setImportError(`Gagal membaca file: ${err.message}`);
       }
     };
     reader.readAsBinaryString(file);
   };
 
-  // Helper to format phone numbers to standard 628xxx format
-  const formatPhone = (raw: string): string => {
-    let clean = raw.replace(/[^\d+]/g, '');
-    if (clean.startsWith('0')) {
-      clean = '62' + clean.slice(1);
-    } else if (clean.startsWith('+62')) {
-      clean = clean.slice(1);
-    }
-    return clean;
-  };
-
-  // Handle direct text paste
   const handleParsePaste = () => {
     if (!pasteData.trim()) return;
     const lines = pasteData.trim().split(/\r?\n/);
     const parsedList: { name: string; studentId: string; phone?: string }[] = [];
-
     lines.forEach((line) => {
-      // Split by tab, comma, or semicolon
       const parts = line.split(/[\t,;]+/).map(p => p.trim()).filter(Boolean);
       if (parts.length >= 1) {
         let name = parts[0];
         let studentId = parts[1] || `230101${(members.length + parsedList.length + 1).toString().padStart(3, '0')}`;
         let phone = parts[2] || '';
-
-        // If first part was just a number like "1."
         if (/^\d+\.?$/.test(parts[0]) && parts.length >= 2) {
           name = parts[1];
           studentId = parts[2] || `230101${(members.length + parsedList.length + 1).toString().padStart(3, '0')}`;
           phone = parts[3] || '';
         }
-
-        parsedList.push({
-          name,
-          studentId,
-          phone: phone ? formatPhone(phone) : undefined
-        });
+        parsedList.push({ name, studentId, phone: phone ? formatPhone(phone) : undefined });
       }
     });
-
     if (parsedList.length > 0) {
       setImportPreview(parsedList);
       setPasteData('');
@@ -255,7 +256,6 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
     }
   };
 
-  // Execute bulk import
   const handleConfirmImport = () => {
     if (importPreview.length === 0) return;
     if (onAddMembers) {
@@ -266,43 +266,26 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
     sfx.playLevelUp();
     setShowImportModal(false);
     setImportPreview([]);
-    setImportFileName('');
   };
 
-  // Download sample CSV template
   const handleDownloadTemplate = () => {
     sfx.playFileDownload();
-    const csvContent =
-      'No,Nama Siswa,NIM,No WhatsApp\n' +
-      '1,Ahmad Fauzi,230101001,081234567890\n' +
-      '2,Bella Cantika,230101002,082198765432\n' +
-      '3,Citra Kirana,230101003,085712345678\n' +
-      '4,Dimas Ramadhan,230101004,089912345678\n' +
-      '5,Eka Pratama,230101005,087812345678\n';
-
+    const csvContent = 'No,Nama Siswa,NIM,No WhatsApp\n1,Ahmad Fauzi,230101001,081234567890\n';
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'template_daftar_siswa_kelasgue.csv');
+    link.setAttribute('download', 'template_siswa.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Generate WhatsApp reminder text
   const getWhatsAppReminderMessage = (member: KasMember) => {
     const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
     const unpaidWeeks = monthWeekKeys.filter(key => !member.weeklyStatus[key]);
     const totalUnpaid = unpaidWeeks.length * settings.weeklyDuesAmount;
-    const monthName = MONTHS[selectedMonth];
-
-    return `Halo *${member.name}* 👋\n\n` +
-      `Mengingatkan mengenai kewajiban iuran kas kelas *${settings.className}* bulan *${monthName} ${selectedYear}*.\n` +
-      `Tercatat masih ada tunggakan untuk *${unpaidWeeks.length} minggu* dengan total *${formatRupiah(totalUnpaid)}*.\n\n` +
-      `Iuran kas mingguan kelas: ${formatRupiah(settings.weeklyDuesAmount)}/minggu.\n` +
-      `Mohon agar dapat segera melunasi kepada Bendahara kelas demi kelancaran kegiatan kelas kita bersama ya.\n\n` +
-      `Terima kasih banyak atas kerjasamanya! 🙏✨`;
+    return `Halo *${member.name}* 👋\n\nMengingatkan mengenai iuran kas *${settings.className}* bulan *${MONTHS[selectedMonth]} ${selectedYear}*.\nMasih ada tunggakan *${unpaidWeeks.length} minggu* senilai *${formatRupiah(totalUnpaid)}*.\n\nTerima kasih! 🙏`;
   };
 
   const handleSendWhatsApp = (member: KasMember) => {
@@ -310,146 +293,91 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
     const msg = getWhatsAppReminderMessage(member);
     const encoded = encodeURIComponent(msg);
     const phone = member.phone ? formatPhone(member.phone) : '';
-    const url = phone
-      ? `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}`
-      : `https://api.whatsapp.com/send?text=${encoded}`;
+    const url = phone ? `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}` : `https://api.whatsapp.com/send?text=${encoded}`;
     window.open(url, '_blank');
   };
 
-  // Calculate overall arrears for the selected month
   const membersWithArrears = members.filter(m => {
     const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
-    const paidWeeks = monthWeekKeys.filter(key => m.weeklyStatus[key]).length;
-    return paidWeeks < 4;
+    return monthWeekKeys.some(key => !m.weeklyStatus[key]);
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header card */}
-      <div className="card-doodle p-5 rounded-lg bg-[#FFFDF9] relative">
+      <div className="card-doodle p-4 rounded-lg bg-[#FFFDF9] relative">
         <ScotchTape className="absolute -top-3 left-10 rotate-[-1deg]" />
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-slate-900 pb-4 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-900 pb-3 mb-3">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-              <CheckCircle2 className="w-6 h-6 text-emerald-700" />
-              <span>Matriks Checklist Iuran Kas Mingguan</span>
+            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+              <span>Matriks Checklist Iuran Mingguan</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600">
-              Iuran per minggu: <strong className="text-slate-900">{formatRupiah(settings.weeklyDuesAmount)}</strong>.
-              {canEditKas
-                ? ' Klik kotak untuk menandai status lunas anggota.'
-                : ' Mode transparansi: Periksa status pembayaran Anda secara mandiri.'}
+            <p className="text-[10px] sm:text-xs text-slate-600">
+              Iuran: <strong className="text-slate-900">{formatRupiah(settings.weeklyDuesAmount)}</strong>.
             </p>
           </div>
-
           <div className="flex flex-wrap items-center gap-2">
-            {/* WhatsApp Tunggakan Broadcast button (Khusus Bendahara & Super Admin) */}
             {canEditKas && membersWithArrears.length > 0 && (
               <button
                 type="button"
-                onClick={() => {
-                  sfx.playCardOpen();
-                  setShowAllArrearsModal(true);
-                }}
-                className="btn-doodle px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
-                title="Kirim pengingat WhatsApp ke siswa yang belum lunas"
+                onClick={() => setShowAllArrearsModal(true)}
+                className="btn-doodle px-2 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-slate-900 font-bold rounded text-[10px] flex items-center gap-1"
               >
-                <MessageCircle className="w-4 h-4 text-emerald-800" />
-                <span>Pengingat WA ({membersWithArrears.length})</span>
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>WA ({membersWithArrears.length})</span>
               </button>
             )}
-
-            {/* Excel / CSV Import button */}
             {canEditKas && (
-              <button
-                type="button"
-                onClick={() => {
-                  sfx.playPaperRustle();
-                  setShowImportModal(true);
-                }}
-                className="btn-doodle px-3.5 py-2 bg-sky-200 hover:bg-sky-300 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
-                title="Import puluhan nama siswa dari file Excel / CSV (1-Klik)"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-slate-900" />
-                <span>Import Excel / CSV</span>
-              </button>
-            )}
-
-            {/* Manual add member button */}
-            {canEditKas && (
-              <button
-                type="button"
-                onClick={() => {
-                  sfx.playClick();
-                  setShowAddMember(true);
-                }}
-                className="btn-doodle px-3.5 py-2 bg-amber-300 hover:bg-amber-400 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>+ Tambah Anggota</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowImportModal(true)}
+                  className="btn-doodle px-2 py-1.5 bg-sky-100 hover:bg-sky-200 text-slate-900 font-bold rounded text-[10px] flex items-center gap-1"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Import</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddMember(true)}
+                  className="btn-doodle px-2 py-1.5 bg-amber-300 hover:bg-amber-400 text-slate-900 font-bold rounded text-[10px] flex items-center gap-1"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Tambah</span>
+                </button>
+              </>
             )}
           </div>
         </div>
 
-        {/* Month Selector & Search Input */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4 mt-2">
-          <div className="flex items-center gap-2 bg-slate-100 p-1 border-2 border-slate-900 rounded-md">
-            <button
-              onClick={() => {
-                sfx.playToggle();
-                const prev = selectedMonth === 0 ? 11 : selectedMonth - 1;
-                if (selectedMonth === 0) setSelectedYear(y => y - 1);
-                setSelectedMonth(prev);
-              }}
-              className="p-1 hover:bg-white rounded"
-            >
-              ←
-            </button>
-            <div className="px-4 py-1 text-sm font-black text-slate-900 whitespace-nowrap min-w-[140px] text-center">
-              {MONTHS[selectedMonth]} {selectedYear}
-            </div>
-            <button
-              onClick={() => {
-                sfx.playToggle();
-                const next = selectedMonth === 11 ? 0 : selectedMonth + 1;
-                if (selectedMonth === 11) setSelectedYear(y => y + 1);
-                setSelectedMonth(next);
-              }}
-              className="p-1 hover:bg-white rounded"
-            >
-              →
-            </button>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 border-2 border-slate-900 rounded">
+            <button onClick={() => { sfx.playToggle(); const prev = selectedMonth === 0 ? 11 : selectedMonth - 1; if (selectedMonth === 0) setSelectedYear(y => y - 1); setSelectedMonth(prev); }} className="p-1 hover:bg-white rounded text-xs">←</button>
+            <div className="px-2 text-[10px] font-black text-slate-900 min-w-[100px] text-center">{MONTHS[selectedMonth]} {selectedYear}</div>
+            <button onClick={() => { sfx.playToggle(); const next = selectedMonth === 11 ? 0 : selectedMonth + 1; if (selectedMonth === 11) setSelectedYear(y => y + 1); setSelectedMonth(next); }} className="p-1 hover:bg-white rounded text-xs">→</button>
           </div>
-
-          <div className="flex-1 relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari nama anggota atau NIM..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-white border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
-            />
+          <div className="flex-1 relative w-full">
+            <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="text" placeholder="Cari nama atau NIM..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-7 pr-2 py-1.5 text-[11px] bg-white border-2 border-slate-900 rounded focus:outline-none focus:bg-amber-50/50" />
           </div>
         </div>
       </div>
 
-      {/* Checklist Table */}
-      <div className="card-doodle rounded-lg bg-white overflow-hidden overflow-x-auto shadow-sm border-2 border-slate-900">
-        <div className="min-w-fit md:min-w-full">
-          <table className="w-full text-left text-xs border-collapse table-fixed">
-            <thead className="bg-[#FAF7F2] border-b-2 border-slate-900 text-xs font-black uppercase text-slate-700">
+      {/* Checklist Table - Sticky Columns & High Density */}
+      <div className="card-doodle rounded-lg bg-white overflow-hidden shadow-sm border-2 border-slate-900">
+        <div className="overflow-x-auto max-h-[60vh] relative">
+          <table className="w-full text-left text-[10px] border-collapse min-w-[600px]">
+            <thead className="bg-[#FAF7F2] border-b-2 border-slate-900 font-black uppercase text-slate-700 sticky top-0 z-40">
               <tr>
-                <th className="py-2 px-2 w-8 text-center">#</th>
-                <th className="py-2 px-3 w-[150px] sm:w-[220px]">Nama</th>
-                <th className="py-2 px-2 w-[80px] font-mono hidden sm:table-cell">NIM</th>
+                <th className="py-2 px-1 w-6 text-center bg-[#FAF7F2]">#</th>
+                <th className="py-2 px-2 w-[140px] sticky left-0 z-50 bg-[#FAF7F2] border-r border-slate-200">Nama</th>
+                <th className="py-2 px-2 w-16 font-mono text-center hidden sm:table-cell">NIM</th>
                 {WEEKS_LABELS.map((label, idx) => (
-                  <th key={idx} className="py-2 px-1 text-center font-mono w-16 sm:w-20">
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="text-[9px] opacity-70 leading-tight">{getWeekRangeLabel(idx)}</div>
-                      <div className="leading-tight">{label}</div>
+                  <th key={idx} className="py-2 px-1 text-center font-mono w-14">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <div className="text-[8px] opacity-70 scale-90">{getWeekRangeLabel(idx)}</div>
+                      <div className="text-[9px] leading-tight">W{idx + 1}</div>
                       {canEditKas && (
                         <button
                           onClick={() => {
@@ -460,8 +388,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                               sfx.playLevelUp();
                             }
                           }}
-                          className="mt-1 px-1.5 py-0.5 bg-slate-900 text-white text-[8px] font-black rounded hover:bg-slate-700 transition-colors uppercase tracking-tighter"
-                          title="Centang/Hapus Semua untuk minggu ini"
+                          className="px-1 bg-slate-900 text-white text-[7px] font-black rounded hover:bg-slate-700 transition-colors uppercase"
+                          title="Pilih Semua"
                         >
                           All
                         </button>
@@ -469,136 +397,112 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                     </div>
                   </th>
                 ))}
-                <th className="py-3 px-3 text-right font-mono">Total Bayar</th>
-                {canEditKas ? (
-                  <th className="py-3 px-3 text-center">Aksi / WA</th>
-                ) : (
-                  <th className="py-3 px-3 text-center">Status</th>
-                )}
+                <th className="py-2 px-2 text-right font-mono w-16">Total</th>
+                <th className="py-2 px-1 text-center w-12">Status</th>
+                <th className="py-2 px-1 text-center w-10">WA</th>
+                {canEditKas && <th className="py-2 px-1 text-center w-10">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filteredMembers.length === 0 ? (
-                <tr>
-                  <td colSpan={13} className="py-8 text-center text-slate-500 font-medium">
-                    {members.length === 0 ? (
-                      <div className="space-y-3 py-4">
-                        <p className="text-slate-600 font-bold">Daftar siswa masih kosong.</p>
-                        {canEditKas && (
-                          <div className="flex items-center justify-center gap-3">
-                            <button
-                              onClick={() => setShowImportModal(true)}
-                              className="btn-doodle px-4 py-2 bg-sky-200 text-slate-900 font-bold rounded-md text-xs inline-flex items-center gap-1.5"
-                            >
-                              <FileSpreadsheet className="w-4 h-4" />
-                              <span>Import File Excel / CSV</span>
-                            </button>
-                            <button
-                              onClick={() => setShowAddMember(true)}
-                              className="btn-doodle px-4 py-2 bg-amber-300 text-slate-900 font-bold rounded-md text-xs inline-flex items-center gap-1.5"
-                            >
-                              <UserPlus className="w-4 h-4" />
-                              <span>Tambah Manual</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      'Tidak ditemukan anggota yang sesuai pencarian.'
-                    )}
-                  </td>
-                </tr>
+                <tr><td colSpan={13} className="py-8 text-center text-slate-500 font-medium italic text-[11px]">Tidak ada data.</td></tr>
               ) : (
                 filteredMembers.map((member, index) => {
                   const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
                   const paidWeeksInMonth = monthWeekKeys.filter(key => member.weeklyStatus[key]).length;
                   const totalPaid = paidWeeksInMonth * settings.weeklyDuesAmount;
                   const hasArrears = paidWeeksInMonth < 4;
+                  const isEditing = editingId === member.id;
 
                   return (
-                    <tr key={member.id} className="hover:bg-amber-50/30 transition-colors">
-                      <td className="py-2 px-2 text-center font-mono text-[10px] text-slate-500">
-                        {index + 1}
+                    <tr key={member.id} className="hover:bg-amber-50/30 transition-colors group">
+                      <td className="py-1 px-1 text-center font-mono text-[9px] text-slate-500">{index + 1}</td>
+                      <td className="py-1 px-2 font-bold text-slate-900 sticky left-0 z-20 bg-white group-hover:bg-amber-50 transition-colors border-r border-slate-200">
+                        {isEditing ? (
+                          <input
+                            className="w-full bg-amber-50 border border-amber-300 rounded px-1 py-0.5 text-[10px] focus:outline-none"
+                            value={editForm.name}
+                            onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                          />
+                        ) : (
+                          <span className="truncate block max-w-[130px]">{member.name}</span>
+                        )}
                       </td>
-                      <td className="py-1.5 px-1 font-bold text-slate-900">
-                        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs">
-                          <span className="truncate">{member.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-1.5 px-2 font-mono text-[9px] text-slate-500 whitespace-nowrap hidden sm:table-cell">
-                        {member.studentId}
+                      <td className="py-1 px-2 font-mono text-[8px] text-slate-500 text-center hidden sm:table-cell">
+                        {isEditing ? (
+                          <input
+                            className="w-full bg-amber-50 border border-amber-300 rounded px-1 py-0.5 text-[8px] focus:outline-none"
+                            value={editForm.studentId}
+                            onChange={e => setEditForm({ ...editForm, studentId: e.target.value })}
+                          />
+                        ) : (
+                          member.studentId
+                        )}
                       </td>
 
                       {/* Weekly checkboxes */}
                       {monthWeekKeys.map((wKey, idx) => {
                         const isPaid = !!member.weeklyStatus[wKey];
                         return (
-                          <td key={idx} className="py-1.5 px-0.5 text-center">
+                          <td key={idx} className="py-1 px-0.5 text-center">
                             {canEditKas ? (
                               <button
                                 type="button"
-                                onClick={() => {
-                                  sfx.playCoinChime();
-                                  onToggleWeek(member.id, wKey);
-                                }}
-                                title={`${member.name} - ${WEEKS_LABELS[idx]}: ${isPaid ? 'Sudah Lunas' : 'Belum Bayar'}`}
-                                className={`w-6 h-6 mx-auto rounded border border-slate-900 flex items-center justify-center transition-all ${
-                                  isPaid
-                                    ? 'bg-emerald-400 text-slate-900 shadow-[1px_1px_0px_#1E293B]'
-                                    : 'bg-white hover:bg-slate-100 text-transparent'
+                                onClick={() => { sfx.playCoinChime(); onToggleWeek(member.id, wKey); }}
+                                className={`w-5 h-5 mx-auto rounded border border-slate-800 flex items-center justify-center transition-all ${
+                                  isPaid ? 'bg-emerald-400 text-slate-900 shadow-[1px_1px_0px_#1E293B]' : 'bg-white hover:bg-slate-100'
                                 }`}
                               >
-                                {isPaid ? <Check className="w-3 h-3 stroke-[4]" /> : <span className="text-[8px] text-slate-200">·</span>}
+                                {isPaid && <Check className="w-3 h-3 stroke-[4]" />}
                               </button>
                             ) : (
-                              <div
-                                className={`w-6 h-6 mx-auto rounded border border-slate-900 flex items-center justify-center ${
-                                  isPaid ? 'bg-emerald-400 text-slate-900' : 'bg-slate-50 text-slate-300'
-                                }`}
-                              >
-                                {isPaid ? <Check className="w-3 h-3 stroke-[4]" /> : <X className="w-2.5 h-2.5" />}
+                              <div className={`w-5 h-5 mx-auto rounded border border-slate-800 flex items-center justify-center ${isPaid ? 'bg-emerald-400 text-slate-900' : 'bg-slate-50 text-slate-300'}`}>
+                                {isPaid ? <Check className="w-3 h-3 stroke-[4]" /> : <X className="w-2 h-2" />}
                               </div>
                             )}
                           </td>
                         );
                       })}
 
-                      <td className="py-1.5 px-2 text-right font-mono font-black whitespace-nowrap tabular-nums text-slate-900 text-[10px] sm:text-xs">
-                        {formatRupiah(totalPaid)}
-                      </td>
+                      <td className="py-1 px-2 text-right font-mono font-black tabular-nums text-slate-900 text-[9px]">{formatRupiah(totalPaid)}</td>
 
-                      {/* WhatsApp Reminder Button or Status Text */}
-                      <td className="py-1.5 px-2 text-center whitespace-nowrap">
-                        {canEditKas ? (
-                          hasArrears ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                sfx.playClick();
-                                setReminderMember(member);
-                              }}
-                              className="btn-doodle px-1.5 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded text-[9px] font-black inline-flex items-center gap-1"
-                            >
-                              <MessageCircle className="w-2.5 h-2.5 text-emerald-700" />
-                              <span>WA</span>
-                            </button>
-                          ) : (
-                            <span className="text-[8px] text-emerald-700 font-black bg-emerald-50 px-1 py-0.5 rounded border border-emerald-300 uppercase">
-                              Lunas
-                            </span>
-                          )
+                      <td className="py-1 px-1 text-center">
+                        {hasArrears ? (
+                          <span className="text-[7px] text-rose-700 font-black bg-rose-50 px-1 py-0.2 rounded border border-rose-200">-{4 - paidWeeksInMonth}</span>
                         ) : (
-                          hasArrears ? (
-                            <span className="text-[8px] text-rose-700 font-black bg-rose-50 px-1 py-0.5 rounded border border-rose-200 uppercase">
-                              -{4 - paidWeeksInMonth}
-                            </span>
-                          ) : (
-                            <span className="text-[8px] text-emerald-700 font-black bg-emerald-50 px-1 py-0.5 rounded border border-emerald-300 uppercase">
-                              Lunas
-                            </span>
-                          )
+                          <span className="text-[7px] text-emerald-700 font-black bg-emerald-50 px-1 py-0.2 rounded border border-emerald-300 uppercase">Lunas</span>
                         )}
                       </td>
+
+                      <td className="py-1 px-1 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isEditing) {
+                              // If editing, phone input is in edit form
+                            } else {
+                              sfx.playClick();
+                              setReminderMember(member);
+                            }
+                          }}
+                          disabled={!member.phone && !isEditing}
+                          className={`p-1 rounded flex items-center justify-center transition-colors ${
+                            member.phone ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800' : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                          }`}
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                        </button>
+                      </td>
+
+                      {canEditKas && (
+                        <td className="py-1 px-1 text-center">
+                          {isEditing ? (
+                            <button onClick={handleSaveEdit} className="p-1 bg-sky-100 text-sky-800 rounded hover:bg-sky-200" title="Simpan"><Save className="w-3 h-3" /></button>
+                          ) : (
+                            <button onClick={() => startEditing(member)} className="p-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200" title="Ubah Data"><Edit2 className="w-3 h-3" /></button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })
@@ -608,435 +512,110 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
         </div>
       </div>
 
-      {/* MODAL: Import Excel / CSV */}
+      {/* Bulk Import Modal (Simplified for size) */}
       {showImportModal && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              sfx.playCardClose();
-              setShowImportModal(false);
-            }
-          }}
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
-        >
-          <div className="card-doodle bg-white max-w-2xl w-full rounded-xl p-6 relative max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="card-doodle bg-white max-w-lg w-full rounded-xl p-5 relative">
             <ScotchTape className="absolute -top-3 left-10 rotate-1" />
-
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-6 h-6 text-sky-600" />
-                <div>
-                  <h3 className="text-xl font-black text-slate-900">
-                    Import Daftar Siswa dari File Excel / CSV (1-Klik)
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Unggah daftar nama siswa dan NIM agar tidak perlu mengetik manual satu per satu.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  sfx.playCardClose();
-                  setShowImportModal(false);
-                }}
-                className="w-8 h-8 btn-doodle bg-slate-100 rounded-md flex items-center justify-center text-slate-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <h3 className="text-lg font-black text-slate-900">Import Daftar Siswa (Excel/CSV)</h3>
+              <button onClick={() => { sfx.playCardClose(); setShowImportModal(false); }} className="w-7 h-7 btn-doodle bg-slate-100 rounded flex items-center justify-center"><X className="w-4 h-4" /></button>
             </div>
-
-            {/* Step 1: Upload or Paste */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between bg-sky-50 p-3 rounded-md border-2 border-slate-900 text-xs text-slate-700">
-                <span>Format kolom yang didukung: <strong>Nama Siswa</strong>, <strong>NIM</strong>, <strong>No HP/WA (opsional)</strong>.</span>
-                <button
-                  type="button"
-                  onClick={handleDownloadTemplate}
-                  className="btn-doodle px-3 py-1 bg-white hover:bg-slate-50 text-slate-900 text-xs font-bold rounded flex items-center gap-1 shrink-0 ml-2"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download Template CSV</span>
-                </button>
+              <div className="border-2 border-dashed border-slate-800 rounded p-6 text-center bg-slate-50 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="w-6 h-6 mx-auto text-slate-400 mb-2" />
+                <p className="text-xs font-black text-slate-900">{importFileName || 'Klik untuk pilih file'}</p>
+                <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
               </div>
-
-              {/* Drag/Drop Box */}
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-800 rounded-lg p-6 text-center bg-slate-50 hover:bg-amber-50/50 cursor-pointer transition-colors"
-              >
-                <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-                <p className="text-sm font-black text-slate-900">
-                  {importFileName ? `File Terpilih: ${importFileName}` : 'Klik untuk memilih file Excel (.xlsx, .xls) atau CSV (.csv)'}
-                </p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Mendukung pembacaan otomatis format Excel tabel kelas Anda.
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv,.xlsx,.xls,.tsv,.txt"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </div>
-
-              {/* Alternative: Paste CSV or Spreadsheet rows */}
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  Atau Paste Langsung Teks dari Excel / Notepad:
-                </label>
-                <div className="flex gap-2">
-                  <textarea
-                    rows={3}
-                    placeholder="Contoh:&#10;Ahmad Fauzi, 230101001, 081234567890&#10;Bella Cantika, 230101002, 082198765432"
-                    value={pasteData}
-                    onChange={(e) => setPasteData(e.target.value)}
-                    className="flex-1 p-2 text-xs font-mono border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleParsePaste}
-                    className="btn-doodle px-4 bg-amber-300 hover:bg-amber-400 text-slate-900 text-xs font-black rounded-md shrink-0"
-                  >
-                    Proses Teks
-                  </button>
-                </div>
+                <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Paste dari Excel:</label>
+                <textarea rows={2} placeholder="Nama, NIM, WA..." value={pasteData} onChange={e => setPasteData(e.target.value)} className="w-full p-2 text-[10px] font-mono border-2 border-slate-900 rounded focus:outline-none" />
+                <button onClick={handleParsePaste} className="w-full mt-1 btn-doodle py-1.5 bg-amber-300 text-[10px] font-black rounded">Proses Teks</button>
               </div>
-
-              {/* Error Alert */}
-              {importError && (
-                <div className="p-3 bg-rose-50 border-2 border-rose-500 rounded-md text-rose-800 text-xs font-bold flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{importError}</span>
-                </div>
-              )}
-
-              {/* Preview Table */}
+              {importError && <p className="text-[10px] text-rose-600 font-bold">{importError}</p>}
               {importPreview.length > 0 && (
-                <div className="space-y-2 border-t-2 border-slate-900 pt-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase text-slate-800">
-                      Pratinjau Data Siswa Terdeteksi ({importPreview.length} Orang):
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setImportPreview([])}
-                      className="text-xs text-rose-600 hover:underline font-bold"
-                    >
-                      Batal Pilih
-                    </button>
-                  </div>
-
-                  <div className="max-h-48 overflow-y-auto border-2 border-slate-900 rounded-md bg-slate-50">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-200 text-slate-700 font-bold border-b border-slate-300 sticky top-0">
-                        <tr>
-                          <th className="p-2 w-8 text-center">No</th>
-                          <th className="p-2">Nama Siswa</th>
-                          <th className="p-2">NIM</th>
-                          <th className="p-2">No HP / WhatsApp</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {importPreview.map((m, idx) => (
-                          <tr key={idx} className="bg-white">
-                            <td className="p-2 text-center font-mono text-slate-500">{idx + 1}</td>
-                            <td className="p-2 font-bold text-slate-900">{m.name}</td>
-                            <td className="p-2 font-mono text-slate-600">{m.studentId}</td>
-                            <td className="p-2 font-mono text-slate-500">{m.phone || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                <div className="max-h-32 overflow-y-auto border-2 border-slate-900 rounded text-[9px]">
+                  <table className="w-full">
+                    <thead className="bg-slate-100 sticky top-0"><tr><th className="p-1">Nama</th><th className="p-1">NIM</th></tr></thead>
+                    <tbody>{importPreview.map((m, i) => <tr key={i} className="border-t border-slate-200"><td className="p-1 font-bold">{m.name}</td><td className="p-1">{m.studentId}</td></tr>)}</tbody>
+                  </table>
                 </div>
               )}
-
-              {/* Modal Actions */}
-              <div className="pt-3 flex items-center justify-end gap-2 border-t-2 border-dashed border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 border-2 border-slate-900 rounded-md text-xs sm:text-sm font-bold bg-white hover:bg-slate-100"
-                >
-                  Tutup
-                </button>
-                <button
-                  type="button"
-                  disabled={importPreview.length === 0}
-                  onClick={handleConfirmImport}
-                  className={`btn-doodle px-5 py-2 rounded-md text-xs sm:text-sm font-black flex items-center gap-1.5 ${
-                    importPreview.length > 0
-                      ? 'bg-emerald-300 hover:bg-emerald-400 text-slate-900'
-                      : 'bg-slate-200 text-slate-400 cursor-not-allowed border-2 border-slate-400'
-                  }`}
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Impor {importPreview.length} Siswa Sekarang (1-Klik)</span>
-                </button>
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <button onClick={() => setShowImportModal(false)} className="px-3 py-1.5 border border-slate-900 rounded text-[10px] font-bold">Batal</button>
+                <button disabled={importPreview.length === 0} onClick={handleConfirmImport} className="btn-doodle px-4 py-1.5 bg-emerald-300 text-[10px] font-black rounded">Impor {importPreview.length} Siswa</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL: Single Student WhatsApp Reminder */}
+      {/* Single WhatsApp Modal */}
       {reminderMember && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              sfx.playCardClose();
-              setReminderMember(null);
-            }
-          }}
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
-        >
-          <div className="card-doodle bg-white max-w-lg w-full rounded-xl p-6 relative">
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="card-doodle bg-white max-w-md w-full rounded-xl p-5 relative">
             <ScotchTape className="absolute -top-3 right-10 rotate-[-1deg]" />
-
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 border-2 border-slate-900 flex items-center justify-center">
-                  <MessageCircle className="w-4 h-4 text-emerald-800" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-slate-900">
-                    Pengingat Tunggakan Kas WhatsApp
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Pesan sopan & otomatis ke {reminderMember.name}.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReminderMember(null)}
-                className="w-7 h-7 btn-doodle bg-slate-100 rounded flex items-center justify-center text-slate-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <h3 className="text-lg font-black text-slate-900">Pengingat WhatsApp</h3>
+              <button onClick={() => setReminderMember(null)} className="w-7 h-7 btn-doodle bg-slate-100 rounded flex items-center justify-center"><X className="w-4 h-4" /></button>
             </div>
-
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  Nomor WhatsApp Siswa:
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: 081234567890 atau 6281234567890"
-                  value={reminderMember.phone || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setReminderMember(prev => prev ? { ...prev, phone: val } : null);
-                  }}
-                  className="w-full px-3 py-2 text-xs font-mono border-2 border-slate-900 rounded-md focus:outline-none"
-                />
+                <label className="block text-[10px] font-bold uppercase text-slate-600 mb-1">Nomor WhatsApp:</label>
+                <input type="text" value={reminderMember.phone || ''} onChange={e => setReminderMember({ ...reminderMember, phone: e.target.value })} className="w-full px-2 py-1.5 text-[11px] font-mono border-2 border-slate-900 rounded focus:outline-none" />
               </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  Pratinjau Pesan yang Akan Dikirim:
-                </label>
-                <textarea
-                  readOnly
-                  rows={8}
-                  value={getWhatsAppReminderMessage(reminderMember)}
-                  className="w-full p-3 font-mono text-xs bg-slate-50 border-2 border-slate-900 rounded-md text-slate-800 focus:outline-none resize-none leading-relaxed"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-between gap-2 border-t-2 border-dashed border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    sfx.playClick();
-                    navigator.clipboard.writeText(getWhatsAppReminderMessage(reminderMember));
-                    setCopiedKey(reminderMember.id);
-                    setTimeout(() => setCopiedKey(null), 2500);
-                  }}
-                  className="btn-doodle px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-900 text-xs font-bold rounded-md flex items-center gap-1.5"
-                >
-                  {copiedKey === reminderMember.id ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                  <span>{copiedKey === reminderMember.id ? 'Tersalin!' : 'Salin Pesan'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSendWhatsApp(reminderMember)}
-                  className="btn-doodle px-5 py-2 bg-emerald-400 hover:bg-emerald-500 text-slate-900 text-xs sm:text-sm font-black rounded-md flex items-center gap-1.5"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>Buka WhatsApp Sekarang</span>
-                </button>
+              <textarea readOnly rows={6} value={getWhatsAppReminderMessage(reminderMember)} className="w-full p-2 font-mono text-[10px] bg-slate-50 border-2 border-slate-900 rounded text-slate-800 resize-none" />
+              <div className="flex justify-between gap-2 pt-2 border-t border-slate-200">
+                <button onClick={() => { sfx.playClick(); navigator.clipboard.writeText(getWhatsAppReminderMessage(reminderMember)); setCopiedKey(reminderMember.id); setTimeout(() => setCopiedKey(null), 2000); }} className="btn-doodle px-3 py-1.5 bg-white text-[10px] font-bold rounded flex items-center gap-1">{copiedKey === reminderMember.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}<span>Salin</span></button>
+                <button onClick={() => handleSendWhatsApp(reminderMember)} className="btn-doodle px-4 py-1.5 bg-emerald-400 text-[10px] font-black rounded flex items-center gap-1"><Send className="w-3.5 h-3.5" /><span>Kirim Sekarang</span></button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL: All Arrears Summary & Batch Reminder */}
-      {showAllArrearsModal && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              sfx.playCardClose();
-              setShowAllArrearsModal(false);
-            }
-          }}
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
-        >
-          <div className="card-doodle bg-white max-w-xl w-full rounded-xl p-6 relative max-h-[90vh] overflow-y-auto">
-            <ScotchTape className="absolute -top-3 left-10 rotate-1" />
-
-            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 border-2 border-slate-900 flex items-center justify-center">
-                  <MessageCircle className="w-4 h-4 text-emerald-800" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black text-slate-900">
-                    Daftar Siswa Belum Lunas Kas ({membersWithArrears.length} Orang)
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Kirim pesan WhatsApp langsung ke masing-masing siswa.
-                  </p>
-                </div>
+      {/* Add Member Modal */}
+      {showAddMember && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="card-doodle bg-white max-w-sm w-full rounded-lg p-5 relative">
+            <h3 className="text-lg font-black text-slate-900 mb-3 pb-2 border-b-2 border-slate-900">Tambah Siswa Baru</h3>
+            <form onSubmit={handleAddSubmit} className="space-y-3">
+              <div><label className="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">Nama Lengkap *</label><input required value={newName} onChange={e => setNewName(e.target.value)} className="w-full px-2 py-1.5 text-[11px] border-2 border-slate-900 rounded focus:outline-none" /></div>
+              <div><label className="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">NIM / No Absen</label><input value={newNim} onChange={e => setNewNim(e.target.value)} className="w-full px-2 py-1.5 text-[11px] font-mono border-2 border-slate-900 rounded focus:outline-none" /></div>
+              <div><label className="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">No WhatsApp</label><input value={newPhone} onChange={e => setNewPhone(e.target.value)} className="w-full px-2 py-1.5 text-[11px] font-mono border-2 border-slate-900 rounded focus:outline-none" /></div>
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+                <button type="button" onClick={() => setShowAddMember(false)} className="px-3 py-1.5 border border-slate-900 rounded text-[10px] font-bold">Batal</button>
+                <button type="submit" className="btn-doodle px-4 py-1.5 bg-amber-300 text-[10px] font-black rounded">Simpan</button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAllArrearsModal(false)}
-                className="w-8 h-8 btn-doodle bg-slate-100 rounded-md flex items-center justify-center text-slate-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Arrears Summary Modal */}
+      {showAllArrearsModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="card-doodle bg-white max-w-md w-full rounded-xl p-5 relative max-h-[80vh] overflow-y-auto">
+            <ScotchTape className="absolute -top-3 left-10 rotate-1" />
+            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2 mb-3">
+              <h3 className="text-lg font-black text-slate-900">Belum Lunas ({membersWithArrears.length})</h3>
+              <button onClick={() => setShowAllArrearsModal(false)} className="w-7 h-7 btn-doodle bg-slate-100 rounded flex items-center justify-center"><X className="w-4 h-4" /></button>
             </div>
-
-            <div className="space-y-3">
-              {membersWithArrears.map((m) => {
-                const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
-                const unpaidWeeks = monthWeekKeys.filter(key => !m.weeklyStatus[key]);
-                const totalUnpaid = unpaidWeeks.length * settings.weeklyDuesAmount;
-
+            <div className="space-y-2">
+              {membersWithArrears.map(m => {
+                const monthWeekKeys = [0,1,2,3].map(idx => getWeekKey(idx));
+                const unpaidCount = monthWeekKeys.filter(key => !m.weeklyStatus[key]).length;
                 return (
-                  <div
-                    key={m.id}
-                    className="p-3 bg-slate-50 border-2 border-slate-800 rounded-md flex items-center justify-between gap-3 shadow-2xs"
-                  >
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">{m.name}</p>
-                      <p className="text-xs text-slate-500 font-mono">
-                        NIM: {m.studentId} · Belum bayar: <strong className="text-rose-600">{unpaidWeeks.length} mgg</strong>
-                      </p>
-                      <p className="text-xs font-bold text-rose-700 font-mono mt-0.5">
-                        Tunggakan: {formatRupiah(totalUnpaid)}
-                      </p>
+                  <div key={m.id} className="p-2 bg-slate-50 border border-slate-800 rounded flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold text-slate-900 truncate">{m.name}</p>
+                      <p className="text-[9px] text-rose-600 font-mono">Tunggakan: {unpaidCount} mgg ({formatRupiah(unpaidCount * settings.weeklyDuesAmount)})</p>
                     </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          sfx.playClick();
-                          navigator.clipboard.writeText(getWhatsAppReminderMessage(m));
-                          setCopiedKey(m.id);
-                          setTimeout(() => setCopiedKey(null), 2500);
-                        }}
-                        className="btn-doodle p-1.5 bg-white text-slate-700 rounded text-xs font-bold"
-                        title="Salin teks pesan"
-                      >
-                        {copiedKey === m.id ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSendWhatsApp(m)}
-                        className="btn-doodle px-3 py-1.5 bg-emerald-400 hover:bg-emerald-500 text-slate-900 font-bold rounded text-xs flex items-center gap-1"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>Kirim WA</span>
-                      </button>
-                    </div>
+                    <button onClick={() => handleSendWhatsApp(m)} className="btn-doodle p-1.5 bg-emerald-400 rounded text-slate-900"><Send className="w-3 h-3" /></button>
                   </div>
                 );
               })}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: Manual Add Single Member */}
-      {showAddMember && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              sfx.playCardClose();
-              setShowAddMember(false);
-            }
-          }}
-          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4"
-        >
-          <div className="card-doodle bg-white max-w-md w-full rounded-lg p-6 relative">
-            <h3 className="text-xl font-black text-slate-900 mb-4 pb-2 border-b-2 border-slate-900">
-              Tambah Anggota Kelas Baru
-            </h3>
-            <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  Nama Lengkap Siswa *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Kevin Sanjaya"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  NIM / No. Absen
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: 230101011"
-                  value={newNim}
-                  onChange={(e) => setNewNim(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  Nomor WhatsApp Siswa (Opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: 081234567890"
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
-                />
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Digunakan untuk pengiriman pengingat iuran kas via WhatsApp 1-klik.
-                </p>
-              </div>
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddMember(false)}
-                  className="px-4 py-2 border-2 border-slate-900 rounded-md text-sm font-bold bg-white"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="btn-doodle px-4 py-2 bg-amber-300 border-2 border-slate-900 rounded-md text-sm font-black text-slate-900"
-                >
-                  Simpan Anggota
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

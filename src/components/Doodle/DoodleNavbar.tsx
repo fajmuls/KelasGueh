@@ -58,8 +58,8 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 relative overflow-visible">
         
         {/* Zone 1: Brand Wordmark with Updated SVG Logo */}
-        <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] overflow-hidden p-1 flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink min-w-0">
+          <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-lg bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] overflow-hidden p-1 flex items-center justify-center shrink-0">
             <img 
               src="/logo/Kelas_Gueh_Logo_Static.svg" 
               alt="Logo" 
@@ -67,13 +67,13 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             />
           </div>
           <div className="min-w-0 truncate">
-            <h1 className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5 truncate">
+            <h1 className="text-sm sm:text-xl font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5 truncate">
               <span className="truncate">{classNameTitle || 'Kelas Gue'}</span>
-              <span className="hidden sm:inline-block text-[10px] sm:text-xs bg-emerald-200 border border-slate-900 px-1.5 py-0.2 rounded-xs font-bold text-slate-900 shrink-0">
+              <span className="hidden lg:inline-block text-[10px] sm:text-xs bg-emerald-200 border border-slate-900 px-1.5 py-0.2 rounded-xs font-bold text-slate-900 shrink-0">
                 Kas Transparan
               </span>
             </h1>
-            <p className="text-[10px] sm:text-[11px] text-slate-600 font-medium truncate">Buku Catatan Keuangan Kelas</p>
+            <p className="text-[9px] sm:text-[11px] text-slate-600 font-medium truncate">Buku Kas Digital</p>
           </div>
         </div>
 
@@ -101,7 +101,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
         </nav>
 
         {/* Zone 3: Audio Toggle + Role Badge + Mobile Menu Toggle */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
           {/* PWA Install Button */}
           <PWAInstallButton />
 

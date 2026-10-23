@@ -189,7 +189,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
           <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-emerald-200 border-2 border-slate-900 flex items-center justify-center">
             <ArrowDownRight className="w-5 h-5 text-emerald-800" />
           </div>
-          <p className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Total Pemasukan</p>
+          <p className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Total Debit (Masuk)</p>
           <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">
             {formatRupiah(totalIncome)}
           </p>
@@ -203,13 +203,13 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
           <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-rose-200 border-2 border-slate-900 flex items-center justify-center">
             <ArrowUpRight className="w-5 h-5 text-rose-800" />
           </div>
-          <p className="text-xs font-bold text-rose-900 uppercase tracking-wider">Total Pengeluaran</p>
+          <p className="text-xs font-bold text-rose-900 uppercase tracking-wider">Total Kredit (Keluar)</p>
           <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">
             {formatRupiah(totalExpense)}
           </p>
           <div className="mt-3 pt-3 border-t-2 border-dashed border-slate-300 flex items-center justify-between text-xs font-bold text-rose-950">
             <span>Operational & Acara</span>
-            <span>- Pengeluaran</span>
+            <span>- Kredit</span>
           </div>
         </div>
 
@@ -240,8 +240,8 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
               <h3 className="text-lg font-black text-slate-900">Tren Kas Bulanan</h3>
             </div>
             <div className="flex items-center gap-3 text-[10px] font-bold uppercase">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-400 border border-slate-900 rounded-xs"></span> Pemasukan</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-rose-400 border border-slate-900 rounded-xs"></span> Pengeluaran</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-400 border border-slate-900 rounded-xs"></span> Debit</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-rose-400 border border-slate-900 rounded-xs"></span> Kredit</span>
             </div>
           </div>
 

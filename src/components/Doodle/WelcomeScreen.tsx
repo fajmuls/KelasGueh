@@ -41,7 +41,7 @@ export const WelcomeScreen: React.FC = () => {
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 border border-amber-300 rounded-sm mb-3">
               <DoodleCoin className="w-5 h-5" />
               <span className="text-xs font-bold tracking-wider uppercase text-amber-900">
-                Sistem Transparansi Kas v{CURRENT_APP_VERSION.version}
+                Sistem Transparansi Kas Kelas
               </span>
             </div>
 
@@ -141,7 +141,6 @@ export const WelcomeScreen: React.FC = () => {
           {/* Footer note */}
           <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
             <span>Doodle Art Paper Edition</span>
-            <span>Versi {CURRENT_APP_VERSION.version}</span>
           </div>
         </div>
       </div>

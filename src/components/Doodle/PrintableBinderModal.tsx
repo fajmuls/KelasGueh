@@ -232,13 +232,13 @@ export const PrintableBinderModal: React.FC<PrintableBinderModalProps> = ({
           {/* Kotak Ringkasan Kas */}
           <div className="grid grid-cols-3 gap-3 mb-6 p-4 bg-amber-50/60 border-2 border-slate-900 rounded-sm print:bg-slate-50">
             <div>
-              <p className="text-[11px] uppercase font-bold text-slate-600">Total Pemasukan (+)</p>
+              <p className="text-[11px] uppercase font-bold text-slate-600">Total Debit (Masuk) (+)</p>
               <p className="text-lg sm:text-xl font-black font-mono text-emerald-800 tabular-nums">
                 {formatRupiah(totalIncome)}
               </p>
             </div>
             <div>
-              <p className="text-[11px] uppercase font-bold text-slate-600">Total Pengeluaran (-)</p>
+              <p className="text-[11px] uppercase font-bold text-slate-600">Total Kredit (Keluar) (-)</p>
               <p className="text-lg sm:text-xl font-black font-mono text-rose-800 tabular-nums">
                 {formatRupiah(totalExpense)}
               </p>
@@ -261,7 +261,7 @@ export const PrintableBinderModal: React.FC<PrintableBinderModalProps> = ({
                   <th className="py-2.5 px-2">Uraian / Keterangan</th>
                   <th className="py-2.5 px-2 w-28">Kategori</th>
                   <th className="py-2.5 px-2 text-right w-24">Debit (Masuk)</th>
-                  <th className="py-2.5 px-2 text-right w-24 text-rose-700">Pengeluaran (-)</th>
+                  <th className="py-2.5 px-2 text-right w-24 text-rose-700">Kredit (Keluar)</th>
                   <th className="py-2.5 px-2 text-right w-28">Saldo</th>
                 </tr>
               </thead>

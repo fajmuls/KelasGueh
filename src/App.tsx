@@ -209,6 +209,21 @@ const AppContent: React.FC = () => {
   };
 
 
+  const handleUpdateMember = (memberId: string, updates: Partial<KasMember>) => {
+    LocalKasRepository.updateMember(memberId, updates);
+    const oldM = members.find(m => m.id === memberId);
+    if (oldM) {
+      LocalKasRepository.addAuditLog({
+        action: 'UPDATE ANGGOTA',
+        details: `Mengubah data ${oldM.name}: ${JSON.stringify(updates)}`,
+        performedBy: user?.name || 'Unknown',
+        userRole: role,
+      });
+      setAuditLogs(LocalKasRepository.getAuditLogs());
+    }
+    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, ...updates } : m));
+  };
+
   const handleSaveSettings = (newSettings: ClassSettings) => {
     LocalKasRepository.saveSettings(newSettings);
     setSettings(newSettings);
@@ -282,6 +297,7 @@ const AppContent: React.FC = () => {
             onToggleAllWeek={handleToggleAllWeek}
             onAddMember={handleAddMember}
             onAddMembers={handleAddMembers}
+            onUpdateMember={handleUpdateMember}
           />
         )}
 

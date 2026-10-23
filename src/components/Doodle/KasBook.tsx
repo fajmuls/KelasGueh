@@ -207,7 +207,7 @@ export const KasBook: React.FC<KasBookProps> = ({
     // Log to Audit Trail
     LocalKasRepository.addAuditLog({
       action: txPayload.amount >= 500000 ? 'CATAT_TRANSAKSI_BESAR' : 'CATAT_TRANSAKSI',
-      details: `Dicatat ${txPayload.type === 'income' ? 'Pemasukan' : 'Pengeluaran'} "${txPayload.title}" senilai Rp ${txPayload.amount.toLocaleString('id-ID')} (${txPayload.category})`,
+      details: `Dicatat ${txPayload.type === 'income' ? 'Debit' : 'Kredit'} "${txPayload.title}" senilai Rp ${txPayload.amount.toLocaleString('id-ID')} (${txPayload.category})`,
       performedBy: user?.name || 'Bendahara',
       userRole: role
     });
@@ -280,7 +280,7 @@ export const KasBook: React.FC<KasBookProps> = ({
               <span>Buku Kas & Arsip Kwitansi</span>
             </h2>
             <p className="text-xs sm:text-sm text-slate-600">
-              Catatan mutasi pemasukan, pengeluaran, serta bukti nota yang dapat diverifikasi anggota kelas.
+              Catatan mutasi debit (masuk), kredit (keluar), serta bukti nota yang dapat diverifikasi anggota kelas.
             </p>
           </div>
 
@@ -568,7 +568,7 @@ export const KasBook: React.FC<KasBookProps> = ({
                   Jenis Arus Kas
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
+                    <button
                     type="button"
                     onClick={() => {
                       sfx.playToggle();
@@ -582,7 +582,7 @@ export const KasBook: React.FC<KasBookProps> = ({
                     }`}
                   >
                     <ArrowDownRight className="w-4 h-4 text-emerald-800" />
-                    <span>Pemasukan (+)</span>
+                    <span>Debit (+)</span>
                   </button>
                   <button
                     type="button"
@@ -598,7 +598,7 @@ export const KasBook: React.FC<KasBookProps> = ({
                     }`}
                   >
                     <ArrowUpRight className="w-4 h-4 text-rose-800" />
-                    <span>Pengeluaran (-)</span>
+                    <span>Kredit (-)</span>
                   </button>
                 </div>
               </div>
