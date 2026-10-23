@@ -151,7 +151,7 @@ export interface AuditLogEntry {
   userRole: string;
 }
 
-// Supabase Realtime Listener for kas_transactions, kas_members, and audit_logs
+// Supabase Realtime Listener
 export const subscribeToRealtimeKas = (
   onTransactionChange: (payload: any) => void,
   onMemberChange: (payload: any) => void,
@@ -165,16 +165,12 @@ export const subscribeToRealtimeKas = (
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'kas_transactions' },
-      (payload) => {
-        onTransactionChange(payload);
-      }
+      (payload) => onTransactionChange(payload)
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'kas_members' },
-      (payload) => {
-        onMemberChange(payload);
-      }
+      (payload) => onMemberChange(payload)
     )
     .on(
       'postgres_changes',
@@ -201,7 +197,7 @@ export const signInWithGoogleSupabase = async (): Promise<{ success: boolean; er
   }
 
   try {
-    const { data, error } = await client.auth.signInWithOAuth({
+    const { error } = await client.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin
@@ -230,27 +226,49 @@ export const signInWithGoogleSupabase = async (): Promise<{ success: boolean; er
   }
 };
 
-// Local storage reactive sync repository
+// Local storage reactive sync repository (Hybrid Supabase-Local)
 export class LocalKasRepository {
   private static STORAGE_KEY_TX = 'kelasgue_transactions_v3';
   private static STORAGE_KEY_MEMBERS = 'kelasgue_members_v3';
   private static STORAGE_KEY_SETTINGS = 'kelasgue_settings_v3';
+  private static STORAGE_KEY_AUDIT = 'kelasgue_audit_logs_v1';
 
+  // ---------------- TX METHODS ----------------
   public static getTransactions(): KasTransaction[] {
     const data = localStorage.getItem(this.STORAGE_KEY_TX);
-    if (!data) {
-      this.saveTransactions(INITIAL_TRANSACTIONS);
-      return INITIAL_TRANSACTIONS;
-    }
-    try {
-      return JSON.parse(data);
-    } catch {
-      return INITIAL_TRANSACTIONS;
-    }
+    return data ? JSON.parse(data) : INITIAL_TRANSACTIONS;
   }
 
   public static saveTransactions(txs: KasTransaction[]): void {
     localStorage.setItem(this.STORAGE_KEY_TX, JSON.stringify(txs));
+  }
+
+  public static async fetchTransactionsFromSupabase(): Promise<KasTransaction[]> {
+    const client = getSupabaseClient();
+    if (!client) return this.getTransactions();
+
+    const { data, error } = await client
+      .from('kas_transactions')
+      .select('*')
+      .order('date', { ascending: false });
+
+    if (error) return this.getTransactions();
+
+    const mapped: KasTransaction[] = (data || []).map(t => ({
+      id: t.id,
+      type: t.type,
+      title: t.title,
+      amount: Number(t.amount),
+      category: t.category,
+      date: t.date,
+      recordedBy: t.recorded_by,
+      receiptUrl: t.receipt_url,
+      notes: t.notes,
+      createdAt: t.created_at
+    }));
+
+    this.saveTransactions(mapped);
+    return mapped;
   }
 
   public static addTransaction(tx: Omit<KasTransaction, 'id' | 'createdAt'>): KasTransaction {
@@ -260,8 +278,27 @@ export class LocalKasRepository {
       id: `tx-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
       createdAt: new Date().toISOString()
     };
+    
     const updated = [newTx, ...current];
     this.saveTransactions(updated);
+
+    // Async push to Supabase
+    const client = getSupabaseClient();
+    if (client) {
+      client.from('kas_transactions').insert([{
+        type: tx.type,
+        title: tx.title,
+        amount: tx.amount,
+        category: tx.category,
+        date: tx.date,
+        recorded_by: tx.recordedBy,
+        receipt_url: tx.receiptUrl,
+        notes: tx.notes
+      }]).then(({ error }) => {
+        if (error) console.warn('Sync transaction fail:', error.message);
+      });
+    }
+
     return newTx;
   }
 
@@ -269,40 +306,68 @@ export class LocalKasRepository {
     const current = this.getTransactions();
     const updated = current.filter(t => t.id !== id);
     this.saveTransactions(updated);
+
+    const client = getSupabaseClient();
+    if (client) {
+      client.from('kas_transactions').delete().eq('id', id).then();
+    }
   }
 
+  // ---------------- MEMBER METHODS ----------------
   public static getMembers(): KasMember[] {
     const data = localStorage.getItem(this.STORAGE_KEY_MEMBERS);
-    if (!data) {
-      this.saveMembers(INITIAL_MEMBERS);
-      return INITIAL_MEMBERS;
-    }
-    try {
-      return JSON.parse(data);
-    } catch {
-      return INITIAL_MEMBERS;
-    }
+    return data ? JSON.parse(data) : INITIAL_MEMBERS;
   }
 
   public static saveMembers(members: KasMember[]): void {
     localStorage.setItem(this.STORAGE_KEY_MEMBERS, JSON.stringify(members));
   }
 
+  public static async fetchMembersFromSupabase(): Promise<KasMember[]> {
+    const client = getSupabaseClient();
+    if (!client) return this.getMembers();
+
+    const { data, error } = await client.from('kas_members').select('*').order('name', { ascending: true });
+    if (error) return this.getMembers();
+
+    const mapped: KasMember[] = (data || []).map(m => ({
+      id: m.id,
+      name: m.name,
+      studentId: m.student_id,
+      phone: m.phone,
+      weeklyStatus: m.weekly_status || {}
+    }));
+
+    this.saveMembers(mapped);
+    return mapped;
+  }
+
   public static toggleMemberWeek(memberId: string, weekKey: string): void {
     const members = this.getMembers();
+    let targetMember: KasMember | null = null;
     const updated = members.map(m => {
       if (m.id === memberId) {
-        return {
+        targetMember = {
           ...m,
           weeklyStatus: {
             ...m.weeklyStatus,
             [weekKey]: !m.weeklyStatus[weekKey]
           }
         };
+        return targetMember;
       }
       return m;
     });
     this.saveMembers(updated);
+
+    if (targetMember) {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('kas_members').update({
+          weekly_status: targetMember.weeklyStatus
+        }).eq('id', memberId).then();
+      }
+    }
   }
 
   public static addMember(name: string, studentId: string, phone?: string): KasMember {
@@ -316,6 +381,16 @@ export class LocalKasRepository {
     };
     members.push(newMember);
     this.saveMembers(members);
+
+    const client = getSupabaseClient();
+    if (client) {
+      client.from('kas_members').insert([{
+        name,
+        student_id: studentId,
+        phone,
+        weekly_status: {}
+      }]).then();
+    }
     return newMember;
   }
 
@@ -330,43 +405,49 @@ export class LocalKasRepository {
     }));
     const merged = [...members, ...created];
     this.saveMembers(merged);
+
+    const client = getSupabaseClient();
+    if (client) {
+      client.from('kas_members').insert(created.map(m => ({
+        name: m.name,
+        student_id: m.studentId,
+        phone: m.phone,
+        weekly_status: {}
+      }))).then();
+    }
     return created;
   }
 
+  // ---------------- SETTINGS METHODS ----------------
   public static getSettings(): ClassSettings {
     const data = localStorage.getItem(this.STORAGE_KEY_SETTINGS);
-    if (!data) {
-      this.saveSettings(DEFAULT_SETTINGS);
-      return DEFAULT_SETTINGS;
-    }
-    try {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
-    } catch {
-      return DEFAULT_SETTINGS;
-    }
+    return data ? { ...DEFAULT_SETTINGS, ...JSON.parse(data) } : DEFAULT_SETTINGS;
   }
 
   public static saveSettings(settings: ClassSettings): void {
     localStorage.setItem(this.STORAGE_KEY_SETTINGS, JSON.stringify(settings));
-    if (settings.supabaseUrl) {
-      localStorage.setItem('kelasgue_supabase_url', settings.supabaseUrl);
-    }
-    if (settings.supabaseAnonKey) {
-      localStorage.setItem('kelasgue_supabase_key', settings.supabaseAnonKey);
-    }
+    if (settings.supabaseUrl) localStorage.setItem('kelasgue_supabase_url', settings.supabaseUrl);
+    if (settings.supabaseAnonKey) localStorage.setItem('kelasgue_supabase_key', settings.supabaseAnonKey);
+    
     initSupabase();
+
+    const client = getSupabaseClient();
+    if (client) {
+      client.from('class_settings').upsert([{
+        id: 1,
+        class_name: settings.className,
+        weekly_dues_amount: settings.weeklyDuesAmount,
+        kas_target_amount: settings.kasTargetAmount,
+        currency_prefix: settings.currencyPrefix,
+        academic_year: settings.academicYear
+      }]).then();
+    }
   }
 
-  private static STORAGE_KEY_AUDIT = 'kelasgue_audit_logs_v1';
-
+  // ---------------- AUDIT LOG METHODS ----------------
   public static getAuditLogs(): AuditLogEntry[] {
     const data = localStorage.getItem(this.STORAGE_KEY_AUDIT);
-    if (!data) return [];
-    try {
-      return JSON.parse(data);
-    } catch {
-      return [];
-    }
+    return data ? JSON.parse(data) : [];
   }
 
   public static addAuditLog(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): AuditLogEntry {
@@ -376,23 +457,18 @@ export class LocalKasRepository {
       id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       timestamp: new Date().toISOString()
     };
-    const updated = [newLog, ...current].slice(0, 1000);
+    const updated = [newLog, ...current].slice(0, 500);
     localStorage.setItem(this.STORAGE_KEY_AUDIT, JSON.stringify(updated));
 
-    // Also attempt pushing to Supabase
     const client = getSupabaseClient();
     if (client) {
-      Promise.resolve(
-        client.from('audit_logs').insert([{
-          action: newLog.action,
-          details: newLog.details,
-          performed_by: newLog.performedBy,
-          user_role: newLog.userRole,
-          created_at: newLog.timestamp
-        }])
-      ).catch((err) => {
-        console.warn('Gagal push audit log ke Supabase:', err);
-      });
+      client.from('audit_logs').insert([{
+        action: entry.action,
+        details: entry.details,
+        performed_by: entry.performedBy,
+        user_role: entry.userRole,
+        created_at: newLog.timestamp
+      }]).then();
     }
 
     return newLog;

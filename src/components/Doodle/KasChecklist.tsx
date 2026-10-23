@@ -53,11 +53,16 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   };
 
   const getWeekRangeLabel = (weekIndex: number) => {
-    // Simplified heuristic: 1-7, 8-14, 15-21, 22-28
+    // Standard 4-week split: 1-7, 8-14, 15-21, 22-end
     const starts = [1, 8, 15, 22];
-    const ends = [7, 14, 21, 28];
+    const ends = [7, 14, 21, 31];
+    
+    // Get last day of month
+    const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const endDay = weekIndex === 3 ? lastDay : ends[weekIndex];
+    
     const monthName = MONTHS[selectedMonth].substring(0, 3);
-    return `${starts[weekIndex]}-${ends[weekIndex]} ${monthName}`;
+    return `${starts[weekIndex]}-${endDay} ${monthName}`;
   };
 
   // Single member modal

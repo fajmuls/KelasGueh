@@ -53,14 +53,14 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   ] as const;
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FAF7F2] border-b-2 border-slate-900 shadow-xs w-full">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 relative">
+    <header className="sticky top-0 z-50 bg-[#FAF7F2] border-b-2 border-slate-900 shadow-sm w-full overflow-visible">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 relative overflow-visible">
         
         {/* Zone 1: Brand Wordmark with Updated SVG Logo */}
         <div className="flex items-center gap-2.5 shrink-0 min-w-0">
           <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] overflow-hidden p-0.5 flex items-center justify-center shrink-0">
             <img
-              src="/logo/Kelas_Gueh_Logo_Static.svg"
+              src="/src/assets/images/kelas_gue_new_logo_1792764353979.jpg"
               alt="Logo Kelas Gue"
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
@@ -175,7 +175,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                   onClick={() => setShowRoleMenu(false)}
                 />
                 
-                <div className="absolute right-0 top-full mt-2 w-64 card-doodle p-3.5 rounded-xl z-[100] bg-white shadow-2xl border-2 border-slate-900">
+                <div className="absolute right-0 top-full mt-2 w-64 card-doodle p-3.5 rounded-xl z-[100] bg-white shadow-2xl border-2 border-slate-900 ring-4 ring-black/5 animate-in fade-in zoom-in duration-200">
                   <div className="mb-2 border-b border-slate-200 pb-2">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                       Aktivitas Akun
@@ -336,7 +336,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
         </div>
       ) : (
         /* Single-line mobile tab strip below header for fast tab access */
-        <div className="md:hidden flex border-t-2 border-slate-900 bg-white overflow-x-auto p-1.5 gap-1.5 no-scrollbar">
+        <div className="md:hidden flex border-t-2 border-slate-900 bg-white overflow-x-auto p-1.5 gap-1.5 no-scrollbar touch-pan-x">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
@@ -346,7 +346,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                   sfx.playToggle();
                   onSelectTab(item.id);
                 }}
-                className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded border-2 transition-all whitespace-nowrap text-center shrink-0 ${
+                className={`flex-1 py-1.5 px-3 text-[11px] font-bold rounded border-2 transition-all whitespace-nowrap text-center shrink-0 min-w-[100px] ${
                   isActive
                     ? 'bg-amber-300 border-slate-900 text-slate-900 font-black shadow-[1px_1px_0px_#1E293B]'
                     : 'border-slate-300 bg-slate-50 text-slate-700'

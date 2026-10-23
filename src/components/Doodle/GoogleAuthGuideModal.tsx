@@ -60,7 +60,7 @@ export const GoogleAuthGuideModal: React.FC<GoogleAuthGuideModalProps> = ({
 
         {/* Explanation Card */}
         <div className="p-3 bg-amber-50 border-2 border-slate-900 rounded-md mb-4 text-xs text-slate-700 leading-relaxed">
-          <strong>Mengapa error ini muncul?</strong> Di proyek Supabase Anda (<code>ireqpxgmlrsmcgidfthg</code>), provider Google secara *default* berstatus <em>nonaktif</em> hingga Anda mengaktifkannya dan memasukkan <strong>Client ID & Client Secret</strong> dari Google Cloud Console.
+          <strong>Mengapa error ini muncul?</strong> Di proyek Supabase Anda, provider Google secara *default* berstatus <em>nonaktif</em> hingga Anda mengaktifkannya dan memasukkan <strong>Client ID & Client Secret</strong> dari Google Cloud Console.
         </div>
 
         {/* Step by step guide */}
@@ -149,7 +149,7 @@ export const GoogleAuthGuideModal: React.FC<GoogleAuthGuideModalProps> = ({
             className="btn-doodle px-4 py-2 bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black rounded-md text-xs sm:text-sm flex items-center justify-center gap-1.5"
           >
             <DoodleCrown className="w-4 h-4" />
-            <span>Masuk Langsung Sebagai Super Admin mrachmanfm@gmail.com</span>
+            <span>Masuk Langsung Sebagai Super Admin (Identitas Tersembunyi)</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

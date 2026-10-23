@@ -6,8 +6,24 @@ import { CURRENT_APP_VERSION } from '../../version.ts';
 import { ScotchTape, DoodleCrown } from './DoodleDecorations.tsx';
 import { getSupabaseClient, signInWithGoogleSupabase } from '../../services/supabaseClient.ts';
 import { getRegisteredUsers, updateUserRole, RegisteredUser } from '../../utils/userManagement.ts';
-import { Database, Shield, Sparkles, CheckCircle2, AlertCircle, RefreshCw, Save, UserCheck, UserPlus, ShieldCheck, User, Lock, KeyRound } from 'lucide-react';
-import { saveNewPin, DEFAULT_PIN } from '../../utils/security.ts';
+import { 
+  Database, 
+  Shield, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertCircle, 
+  Save, 
+  UserPlus, 
+  Lock, 
+  KeyRound,
+  ExternalLink,
+  Copy,
+  Info,
+  Terminal,
+  Bell
+} from 'lucide-react';
+import { saveNewPin } from '../../utils/security.ts';
+import { requestNotificationPermission, sendLocalNotification } from '../../utils/notifications.ts';
 
 interface KasSettingsProps {
   settings: ClassSettings;
@@ -20,7 +36,7 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
   onSaveSettings,
   onResetData,
 }) => {
-  const { isSuperAdmin, isBendahara } = useAuth();
+  const { isSuperAdmin } = useAuth();
   const [form, setForm] = useState<ClassSettings>({ ...settings });
   const [supabaseStatus, setSupabaseStatus] = useState<'connected' | 'not_configured'>(() => {
     return getSupabaseClient() ? 'connected' : 'not_configured';
@@ -86,478 +102,331 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
     sfx.playClick();
     const client = getSupabaseClient();
     if (!client) {
-      alert('Kredensial Supabase URL atau Anon Key belum valid. Masukkan URL https://... dan Anon Key terlebih dahulu.');
+      alert('Kredensial Supabase URL atau Anon Key belum valid.');
       return;
     }
     
     try {
-      setSupabaseStatus('not_configured');
-      // Test basic connectivity by fetching schema
-      const { data, error } = await client.from('kas_transactions').select('count', { count: 'exact', head: true });
-      
+      const { error } = await client.from('kas_transactions').select('count', { count: 'exact', head: true });
       if (error) {
         if (error.code === '42P01') {
-          alert('Koneksi ke Supabase BERHASIL, namun tabel "kas_transactions" belum ditemukan. Silakan jalankan script SQL di bawah!');
+          alert('Koneksi OK, namun tabel belum dibuat. Silakan jalankan script SQL di bawah!');
           setSupabaseStatus('connected');
         } else {
-          alert(`Koneksi Supabase error: ${error.message} (Code: ${error.code})`);
+          alert(`Error: ${error.message}`);
         }
       } else {
-        alert('✓ KONEKSI & DATABASE SUPABASE AKTIF! Seluruh tabel terdeteksi dengan baik.');
+        alert('✓ Database Supabase Aktif & Sinkron!');
         setSupabaseStatus('connected');
       }
     } catch (err: any) {
-      alert(`Koneksi gagal total: ${err?.message || 'Periksa URL dan Key'}`);
+      alert(`Koneksi gagal: ${err?.message}`);
     }
   };
 
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Settings Form Container */}
-      <div className="card-doodle p-6 sm:p-8 rounded-lg bg-white relative">
-        <ScotchTape className="absolute -top-3 right-10 rotate-2" />
+  const handleTestNotification = async () => {
+    sfx.playNotification();
+    const ok = await requestNotificationPermission();
+    if (ok) {
+      sendLocalNotification('Kelas Gue v3.2', {
+        body: 'Notifikasi PWA berhasil diaktifkan! Pengingat iuran akan muncul di sini.',
+        vibrate: [200, 100, 200]
+      });
+    } else {
+      alert('Izin notifikasi ditolak. Silakan aktifkan di pengaturan browser Anda.');
+    }
+  };
 
-        <div className="border-b-2 border-slate-900 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+  const sqlScript = `-- 1. Jalankan script ini di Supabase SQL Editor
+-- Membuat Tabel Transaksi Kas
+CREATE TABLE IF NOT EXISTS public.kas_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    title TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    category TEXT NOT NULL,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    recorded_by TEXT NOT NULL,
+    receipt_url TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Membuat Tabel Anggota
+CREATE TABLE IF NOT EXISTS public.kas_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    student_id TEXT NOT NULL UNIQUE,
+    phone TEXT,
+    weekly_status JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Membuat Tabel Audit Log
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    action TEXT NOT NULL,
+    details TEXT,
+    performed_by TEXT NOT NULL,
+    user_role TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Membuat Tabel Settings
+CREATE TABLE IF NOT EXISTS public.class_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    class_name TEXT NOT NULL DEFAULT 'Kelas Gue',
+    weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000,
+    kas_target_amount NUMERIC NOT NULL DEFAULT 1000000,
+    currency_prefix TEXT NOT NULL DEFAULT 'Rp',
+    academic_year TEXT NOT NULL DEFAULT '2023/2024',
+    CONSTRAINT one_row CHECK (id = 1)
+);
+
+-- Aktifkan Realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE kas_transactions, kas_members, audit_logs, class_settings;`;
+
+  return (
+    <div className="space-y-8 max-w-4xl mx-auto pb-12">
+      {/* 1. Header & Version Info */}
+      <div className="relative card-doodle-yellow p-6 rounded-lg">
+        <ScotchTape className="absolute -top-3 left-8 rotate-[-2deg]" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-              <Database className="w-6 h-6 text-indigo-600" />
-              <span>Pengaturan Kelas & Supabase</span>
+              <Sparkles className="w-6 h-6 text-amber-600" />
+              <span>Pusat Kendali & Versi v3.2.0</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600">
-              Konfigurasi database cloud Supabase, nama kelas, nominal kas, dan pelacakan versi.
+            <p className="text-sm text-slate-700 mt-1">
+              Kelola database Supabase, izin akses bendahara, dan pantau catatan pembaruan aplikasi.
             </p>
           </div>
-
           <div className="flex items-center gap-2">
-            <span className="text-xs bg-amber-200 border border-slate-900 px-2 py-1 rounded-xs font-black text-slate-900">
-              Versi v{CURRENT_APP_VERSION.version}
-            </span>
+            <button
+              onClick={handleTestNotification}
+              className="btn-doodle px-3 py-2 bg-white text-slate-900 text-xs font-bold rounded-md flex items-center gap-1.5"
+            >
+              <Bell className="w-4 h-4 text-amber-500" />
+              <span>Tes Notifikasi PWA</span>
+            </button>
           </div>
         </div>
+      </div>
 
-        {saveMessage && (
-          <div className="mb-4 p-3 bg-emerald-100 border-2 border-slate-900 rounded-md text-emerald-900 text-xs sm:text-sm font-bold flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-            <span>{saveMessage}</span>
+      {/* 2. Supabase Connection Guide (NEW) */}
+      <div className="card-doodle p-6 rounded-lg bg-white relative">
+        <div className="flex items-center gap-2 mb-4 border-b-2 border-slate-900 pb-3">
+          <Info className="w-5 h-5 text-sky-600" />
+          <h3 className="text-lg font-black text-slate-900">Panduan Koneksi Supabase (Nol ke Pro)</h3>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-3 bg-slate-50 border-2 border-slate-900 rounded-md">
+              <p className="text-xs font-black text-slate-900 mb-2">Langkah 1: Buat Project</p>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Buka <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-sky-600 underline">Supabase Dashboard</a>, buat project baru (Gratis). Pilih region <strong>Singapore</strong> untuk kecepatan terbaik di Indonesia.
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 border-2 border-slate-900 rounded-md">
+              <p className="text-xs font-black text-slate-900 mb-2">Langkah 2: Ambil API Keys</p>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Pergi ke <strong>Project Settings &gt; API</strong>. Salin <code>Project URL</code> dan <code>anon public</code> key, lalu tempel di form konfigurasi di bawah.
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 border-2 border-slate-900 rounded-md">
+              <p className="text-xs font-black text-slate-900 mb-2">Langkah 3: Jalankan SQL</p>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Penting! Klik <strong>SQL Editor</strong> di Supabase, pilih <strong>New Query</strong>, salin script SQL di bawah dan klik <strong>Run</strong>. Ini akan membuat tabel otomatis.
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 border-2 border-slate-900 rounded-md">
+              <p className="text-xs font-black text-slate-900 mb-2">Langkah 4: Setup Storage</p>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Klik menu <strong>Storage</strong>, buat bucket baru bernama <code>nota-kas</code>. Pastikan centang <strong>Public Bucket</strong> agar foto nota bisa dilihat semua orang.
+              </p>
+            </div>
           </div>
-        )}
+        </div>
+      </div>
 
+      {/* 3. Supabase Configuration Form */}
+      <div className="card-doodle p-6 rounded-lg bg-white relative">
         <form onSubmit={handleSave} className="space-y-6">
-          {/* Section 1: Integrasi Cloud Supabase */}
-          <div className="p-3 bg-amber-50/70 border-2 border-slate-900 rounded-md text-xs text-slate-700">
-            <strong>Catatan Pengaturan Iuran:</strong> Nominal iuran mingguan dan target kas sekarang diatur secara langsung di modul <strong>Buku Kas</strong> (khusus wewenang <strong>Super Admin</strong>) agar bendahara dan anggota fokus pada pencatatan kas dan checklist.
-          </div>
-
-          {/* Section 2: Konfigurasi Supabase Database & Auth */}
-          <div className="pt-4 border-t-2 border-dashed border-slate-200">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                <span>02. Integrasi Cloud Supabase (Database & Auth)</span>
-              </h3>
-              <div className="flex items-center gap-1 text-xs">
-                {supabaseStatus === 'connected' ? (
-                  <span className="flex items-center gap-1 text-emerald-700 font-bold bg-emerald-100 border border-slate-900 px-2 py-0.5 rounded-xs">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Supabase Terhubung
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-amber-800 font-bold bg-amber-100 border border-slate-900 px-2 py-0.5 rounded-xs">
-                    <AlertCircle className="w-3.5 h-3.5" /> Mode Lokal (Fallback)
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="p-3 bg-amber-50/70 border-2 border-slate-900 rounded-md text-xs text-slate-700 mb-4">
-              <strong>Catatan Supabase:</strong> Anda dapat menginput URL & Anon Key dari dashboard Supabase Anda di bawah ini, atau mendefinisikannya di file <code>.env</code>. Saat belum terisi, sistem otomatis menggunakan penyimpanan lokal reaktif sehingga aplikasi tetap berjalan lancar tanpa error.
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Project URL Supabase
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://xyzproject.supabase.co"
-                  value={form.supabaseUrl}
-                  onChange={(e) => setForm({ ...form, supabaseUrl: e.target.value })}
-                  className="w-full px-3 py-2 text-xs sm:text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                  Project API Anon Key Supabase
-                </label>
-                <input
-                  type="password"
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  value={form.supabaseAnonKey}
-                  onChange={(e) => setForm({ ...form, supabaseAnonKey: e.target.value })}
-                  className="w-full px-3 py-2 text-xs sm:text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleTestSupabase}
-                  className="btn-doodle px-3.5 py-1.5 bg-sky-200 hover:bg-sky-300 text-slate-900 text-xs font-bold rounded-md"
-                >
-                  Tes Koneksi Supabase
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    sfx.playClick();
-                    const res = await signInWithGoogleSupabase();
-                    if (!res.success) {
-                      alert(res.error);
-                    }
-                  }}
-                  className="btn-doodle px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-900 text-xs font-bold rounded-md"
-                >
-                  Login Google via Supabase
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Manajemen Role Akun Google (Khusus Super Admin) */}
-          <div className="pt-4 border-t-2 border-dashed border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                <DoodleCrown className="w-4 h-4 text-amber-600" />
-                <span>03. Manajemen Role Akun Google (Bendahara & Anggota)</span>
-              </h3>
-              <span className="text-[10px] bg-amber-200 text-amber-900 font-bold border border-slate-900 px-2 py-0.5 rounded">
-                Khusus Super Admin
+          <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
+            <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <Database className="w-5 h-5 text-indigo-600" />
+              <span>Konfigurasi API Supabase</span>
+            </h3>
+            {supabaseStatus === 'connected' ? (
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold border border-emerald-300 px-2 py-0.5 rounded flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Aktif
               </span>
-            </div>
-
-            <p className="text-xs text-slate-600 mb-3">
-              Setiap akun Google baru yang terdeteksi login otomatis ditempatkan pada role <strong>Anggota (Read-Only)</strong>. Super Admin berhak memberikan atau mencabut akses <strong>Bendahara</strong> di bawah ini:
-            </p>
-
-            {/* Quick Add Manual Bendahara Email Form */}
-            <form onSubmit={handleAddManualBendahara} className="mb-4 flex gap-2">
-              <input
-                type="email"
-                placeholder="Tambah email Google calon bendahara (misal: bendahara2@gmail.com)..."
-                value={manualEmail}
-                onChange={(e) => setManualEmail(e.target.value)}
-                className="flex-1 px-3 py-1.5 text-xs font-mono border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
-              />
-              <button
-                type="submit"
-                className="btn-doodle px-3.5 py-1.5 bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black text-xs rounded-md flex items-center gap-1 shrink-0"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Jadikan Bendahara</span>
-              </button>
-            </form>
-
-            {/* User List Table */}
-            <div className="border-2 border-slate-900 rounded-lg overflow-hidden bg-white">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 border-b border-slate-300 font-bold text-slate-700">
-                  <tr>
-                    <th className="p-2.5">Email / Nama Akun Google</th>
-                    <th className="p-2.5">Role Akses</th>
-                    <th className="p-2.5 text-center">Tindakan Super Admin</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {userList.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="p-4 text-center text-slate-500 italic">
-                        Belum ada riwayat akun Google yang terdaftar.
-                      </td>
-                    </tr>
-                  ) : (
-                    userList.map((u) => {
-                      const isOwner = u.role === 'superadmin';
-                      return (
-                        <tr key={u.id} className="hover:bg-amber-50/30">
-                          <td className="p-2.5">
-                            <div className="font-bold text-slate-900">{u.name}</div>
-                            <div className="font-mono text-slate-500 text-[11px]">{u.email}</div>
-                          </td>
-                          <td className="p-2.5">
-                            {isOwner ? (
-                              <span className="text-[10px] bg-amber-200 border border-slate-900 text-amber-950 font-black px-2 py-0.5 rounded-xs">
-                                👑 Super Admin Pemilik
-                              </span>
-                            ) : u.role === 'bendahara' ? (
-                              <span className="text-[10px] bg-emerald-200 border border-slate-900 text-emerald-950 font-bold px-2 py-0.5 rounded-xs">
-                                🛡️ Bendahara Kelas
-                              </span>
-                            ) : (
-                              <span className="text-[10px] bg-sky-100 border border-slate-300 text-sky-900 font-bold px-2 py-0.5 rounded-xs">
-                                👀 Anggota (Hanya Lihat)
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-2.5 text-center">
-                            {isOwner ? (
-                              <span className="text-[11px] text-slate-400 italic">Permanen</span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleRoleToggle(u.email, u.role)}
-                                className={`btn-doodle px-3 py-1 text-xs font-bold rounded-md ${
-                                  u.role === 'bendahara'
-                                    ? 'bg-rose-100 hover:bg-rose-200 text-rose-800'
-                                    : 'bg-emerald-300 hover:bg-emerald-400 text-slate-900'
-                                }`}
-                              >
-                                {u.role === 'bendahara' ? 'Cabut Akses (Jadikan Anggota)' : 'Berikan Akses Bendahara'}
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Section 4: Script Generator Row Level Security (RLS) Supabase */}
-          <div className="pt-4 border-t-2 border-dashed border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-emerald-700" />
-                <span>04. Script Generator Row Level Security (RLS) Supabase</span>
-              </h3>
-              <span className="text-[10px] bg-emerald-100 text-emerald-900 font-bold border border-slate-900 px-2 py-0.5 rounded">
-                Keamanan Database
+            ) : (
+              <span className="text-[10px] bg-amber-100 text-amber-800 font-bold border border-amber-300 px-2 py-0.5 rounded flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> Offline
               </span>
-            </div>
-
-            <p className="text-xs text-slate-600 mb-3">
-              Salin dan jalankan query SQL ini di <strong>Supabase SQL Editor</strong> untuk mengunci izin modifikasi tabel kas agar <strong>hanya Bendahara & Super Admin (mrachmanfm@gmail.com)</strong> yang berhak melakukan INSERT/UPDATE/DELETE. Anggota kelas lainnya tetap bisa membaca secara transparan (Read-Only).
-            </p>
-
-            <div className="bg-slate-900 rounded-md p-3 font-mono text-[11px] text-emerald-400 overflow-x-auto border-2 border-slate-900 relative">
-              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-slate-400 text-[10px]">
-                <span>PostgreSQL RLS Security Policies</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      sfx.playClick();
-                      navigator.clipboard.writeText(`-- 1. Aktifkan Row Level Security (RLS) di tabel kas Supabase
-ALTER TABLE IF EXISTS public.kas_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.kas_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.class_settings ENABLE ROW LEVEL SECURITY;
-
--- 2. Kebijakan BACA PUBLIK (Seluruh anggota kelas dapat melihat transparansi kas)
-DROP POLICY IF EXISTS "Public Read Kas Transactions" ON public.kas_transactions;
-CREATE POLICY "Public Read Kas Transactions" ON public.kas_transactions FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Public Read Kas Members" ON public.kas_members;
-CREATE POLICY "Public Read Kas Members" ON public.kas_members FOR SELECT USING (true);
-
--- 3. Kebijakan TULIS / MODIFIKASI (Khusus Super Admin & Bendahara)
-DROP POLICY IF EXISTS "Restricted Write Kas Transactions" ON public.kas_transactions;
-CREATE POLICY "Restricted Write Kas Transactions"
-ON public.kas_transactions FOR ALL
-TO authenticated
-USING (
-  auth.jwt() ->> 'email' = 'mrachmanfm@gmail.com'
-  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('superadmin', 'bendahara')
-)
-WITH CHECK (
-  auth.jwt() ->> 'email' = 'mrachmanfm@gmail.com'
-  OR (auth.jwt() -> 'user_metadata' ->> 'role') IN ('superadmin', 'bendahara')
-);`);
-                      alert('✓ Script SQL RLS Supabase berhasil disalin ke clipboard!');
-                    }}
-                    className="px-2 py-1 bg-amber-300 hover:bg-amber-400 text-slate-900 font-sans font-black rounded text-[10px] transition-colors"
-                  >
-                    Salin Script SQL (1-Klik)
-                  </button>
-                  <a
-                    href="https://supabase.com/dashboard"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-sans font-bold rounded text-[10px] inline-flex items-center gap-1"
-                  >
-                    Buka Supabase SQL Editor ↗
-                  </a>
-                </div>
-              </div>
-
-              <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed">
-{`-- 1. Tabel Transaksi Kas
-CREATE TABLE IF NOT EXISTS public.kas_transactions (
-  id TEXT PRIMARY KEY,
-  type TEXT NOT NULL,
-  title TEXT NOT NULL,
-  amount NUMERIC NOT NULL,
-  category TEXT NOT NULL,
-  date TEXT NOT NULL,
-  recorded_by TEXT,
-  receipt_url TEXT,
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 2. Tabel Anggota Siswa (Weekly status using JSONB for YYYY_MM_W1 keys)
-CREATE TABLE IF NOT EXISTS public.kas_members (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  student_id TEXT NOT NULL,
-  phone TEXT,
-  weekly_status JSONB DEFAULT '{}'::jsonb,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 3. Tabel Laporan Audit Realtime
-CREATE TABLE IF NOT EXISTS public.audit_logs (
-  id BIGSERIAL PRIMARY KEY,
-  action TEXT NOT NULL,
-  details TEXT NOT NULL,
-  performed_by TEXT NOT NULL,
-  user_role TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 4. Aktifkan RLS & Kebijakan
-ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.kas_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Public Read" ON public.kas_transactions FOR SELECT USING (true);
-CREATE POLICY "Public Read Members" ON public.kas_members FOR SELECT USING (true);
-CREATE POLICY "Admin Write" ON public.kas_transactions FOR ALL TO authenticated USING (true);`}
-              </pre>
-            </div>
-          </div>
-
-          {/* Section 5: Konfigurasi PIN 6-Digit Keamanan Transaksi Besar */}
-          <div className="pt-4 border-t-2 border-dashed border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                <Lock className="w-4 h-4 text-amber-600" />
-                <span>05. Keamanan PIN 6-Digit Transaksi Pengeluaran Kas &gt; Rp 500.000</span>
-              </h3>
-              <span className="text-[10px] bg-amber-100 text-amber-900 font-bold border border-slate-900 px-2 py-0.5 rounded">
-                SHA-256 Web Crypto
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-600 mb-3">
-              PIN ini wajib dimasukkan oleh Bendahara / Super Admin setiap kali mencatat pengeluaran bernilai tinggi di atas Rp 500.000. PIN awal default adalah <strong>123456</strong>.
-            </p>
-
-            {pinMessage && (
-              <div className="mb-3 p-2.5 bg-emerald-100 border-2 border-slate-900 rounded text-xs font-bold text-emerald-900 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                <span>{pinMessage}</span>
-              </div>
             )}
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Project URL</label>
+              <input
+                type="text"
+                placeholder="https://your-project.supabase.co"
+                value={form.supabaseUrl}
+                onChange={(e) => setForm({ ...form, supabaseUrl: e.target.value })}
+                className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:bg-amber-50/30 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Anon Public Key</label>
               <input
                 type="password"
-                maxLength={6}
-                placeholder="Masukkan 6 angka PIN baru (misal: 889900)..."
-                value={newPin}
-                onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
-                className="w-full sm:w-64 px-3 py-2 text-xs font-mono border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                value={form.supabaseAnonKey}
+                onChange={(e) => setForm({ ...form, supabaseAnonKey: e.target.value })}
+                className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:bg-amber-50/30 outline-none"
               />
-              <button
-                type="button"
-                onClick={handleUpdatePin}
-                className="btn-doodle px-4 py-2 bg-amber-300 hover:bg-amber-400 text-slate-900 font-bold text-xs rounded-md flex items-center gap-1.5"
-              >
-                <KeyRound className="w-4 h-4" />
-                <span>Perbarui PIN SHA-256</span>
-              </button>
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => {
-                if (window.confirm('Yakin ingin mereset transaksi kas ke data awal sampel?')) {
-                  sfx.playPaperRustle();
-                  onResetData();
-                }
-              }}
-              className="btn-doodle px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-md"
+              onClick={handleTestSupabase}
+              className="btn-doodle px-4 py-2 bg-sky-100 hover:bg-sky-200 text-slate-900 text-xs font-bold rounded-md"
             >
-              Reset ke Sampel Data Awal
+              Cek Tabel & Koneksi
             </button>
-
             <button
               type="submit"
-              className="btn-doodle px-6 py-2.5 bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black rounded-md flex items-center justify-center gap-2 text-sm"
+              className="btn-doodle px-6 py-2 bg-emerald-400 hover:bg-emerald-500 text-slate-900 text-sm font-black rounded-md flex items-center gap-2"
             >
               <Save className="w-4 h-4" />
-              <span>Simpan Perubahan</span>
+              <span>Simpan & Sinkron</span>
             </button>
           </div>
         </form>
       </div>
 
-      {/* App Version & Suggestions Card (User Instruction Requirement) */}
-      <div className="card-doodle p-6 rounded-lg bg-[#FEF9C3] relative">
-        <ScotchTape className="absolute -top-3 left-12 rotate-[-2deg]" />
-
-        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-900" />
-            <h3 className="text-lg font-black text-slate-900">
-              Informasi Versi & Rekomendasi Pembaruan
-            </h3>
-          </div>
-          <span className="text-xs bg-white border border-slate-900 px-2 py-0.5 rounded-xs font-mono font-bold text-slate-900">
-            v{CURRENT_APP_VERSION.version} ({CURRENT_APP_VERSION.releaseDate})
-          </span>
+      {/* 4. SQL Script Section */}
+      <div className="card-doodle p-6 rounded-lg bg-slate-900 relative border-2 border-slate-900">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-black text-emerald-400 flex items-center gap-2 uppercase tracking-tight">
+            <Terminal className="w-4 h-4" />
+            <span>Script SQL Setup Tabel (Salin & Jalankan)</span>
+          </h3>
+          <button
+            onClick={() => {
+              sfx.playClick();
+              navigator.clipboard.writeText(sqlScript);
+              alert('SQL Script berhasil disalin!');
+            }}
+            className="flex items-center gap-1.5 px-2 py-1 bg-white hover:bg-slate-100 text-slate-900 text-[10px] font-black rounded border-2 border-slate-900"
+          >
+            <Copy className="w-3 h-3" />
+            <span>Salin SQL</span>
+          </button>
         </div>
-
-        <p className="text-xs text-slate-800 font-bold mb-3">
-          Codename: {CURRENT_APP_VERSION.codename}
+        <pre className="text-[10px] text-slate-300 font-mono overflow-x-auto max-h-48 p-2 bg-slate-800 rounded border border-slate-700 leading-relaxed">
+          {sqlScript}
+        </pre>
+        <p className="text-[10px] text-slate-500 mt-2 italic flex items-center gap-1">
+          <Info className="w-3 h-3" /> Jalankan ini di Supabase SQL Editor agar database "Kelas Gue" berfungsi penuh.
         </p>
+      </div>
 
-        {/* Changelog list */}
-        <div className="mb-6">
-          <p className="text-xs font-black uppercase text-slate-700 mb-2">
-            Riwayat Pembaruan Terkini:
-          </p>
-          <ul className="space-y-1 text-xs text-slate-800 list-disc list-inside">
-            {CURRENT_APP_VERSION.changes.map((ch, idx) => (
-              <li key={idx} className="leading-relaxed">{ch}</li>
+      {/* 5. Role & PIN Management (Consolidated) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Role Whitelist */}
+        <div className="card-doodle p-5 rounded-lg bg-white relative">
+          <h3 className="text-sm font-black text-slate-900 mb-4 border-b-2 border-slate-900 pb-2 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-emerald-600" />
+            <span>Whitelist Bendahara</span>
+          </h3>
+          <form onSubmit={handleAddManualBendahara} className="flex gap-2 mb-4">
+            <input
+              type="email"
+              placeholder="Email Google..."
+              value={manualEmail}
+              onChange={(e) => setManualEmail(e.target.value)}
+              className="flex-1 px-3 py-1.5 text-xs font-mono border-2 border-slate-900 rounded-md focus:bg-amber-50/30 outline-none"
+            />
+            <button type="submit" className="btn-doodle px-3 py-1.5 bg-emerald-400 text-slate-900 text-xs font-black rounded-md">
+              <UserPlus className="w-3.5 h-3.5" />
+            </button>
+          </form>
+          <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
+            {userList.map(u => (
+              <div key={u.id} className="flex items-center justify-between p-2 bg-slate-50 border-2 border-slate-900 rounded-md">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black text-slate-900 truncate">{u.name}</p>
+                  <p className="text-[10px] text-slate-500 font-mono truncate">{u.email}</p>
+                </div>
+                <button
+                  onClick={() => handleRoleToggle(u.email, u.role)}
+                  className={`px-2 py-1 rounded text-[10px] font-black border-2 border-slate-900 ${
+                    u.role === 'bendahara' ? 'bg-rose-300' : 'bg-slate-200'
+                  }`}
+                >
+                  {u.role === 'bendahara' ? 'Hapus' : 'Jadikan Bendahara'}
+                </button>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
 
-        {/* Proactive update suggestions */}
-        <div>
-          <p className="text-xs font-black uppercase text-slate-700 mb-2">
-            Saran & Rekomendasi Fitur Berguna (Temuan Pengembangan):
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {CURRENT_APP_VERSION.suggestedUpdates.map((sug, idx) => (
-              <div key={idx} className="p-3 bg-white border-2 border-slate-900 rounded-md shadow-[2px_2px_0px_#1E293B]">
+        {/* PIN Security */}
+        <div className="card-doodle p-5 rounded-lg bg-white relative">
+          <h3 className="text-sm font-black text-slate-900 mb-4 border-b-2 border-slate-900 pb-2 flex items-center gap-2">
+            <Lock className="w-4 h-4 text-amber-600" />
+            <span>PIN Transaksi Besar (&gt;500k)</span>
+          </h3>
+          <p className="text-[11px] text-slate-600 mb-3">Gunakan 6 digit angka untuk memverifikasi pengeluaran besar.</p>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              maxLength={6}
+              placeholder="6 Digit PIN..."
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+              className="flex-1 px-3 py-1.5 text-xs font-mono border-2 border-slate-900 rounded-md outline-none"
+            />
+            <button onClick={handleUpdatePin} className="btn-doodle px-3 py-1.5 bg-amber-300 text-slate-900 text-xs font-black rounded-md">
+              <KeyRound className="w-4 h-4" />
+            </button>
+          </div>
+          {pinMessage && <p className="text-[10px] text-emerald-700 font-bold mt-2">{pinMessage}</p>}
+        </div>
+      </div>
+
+      {/* 6. Patch Notes & Suggestions */}
+      <div className="card-doodle p-6 rounded-lg bg-amber-50/80 border-2 border-slate-900">
+        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
+          <h3 className="text-base font-black text-slate-900">Catatan Pembaruan v{CURRENT_APP_VERSION.version}</h3>
+          <span className="text-[10px] font-mono text-slate-500 italic">Rilis: {CURRENT_APP_VERSION.releaseDate}</span>
+        </div>
+        <ul className="space-y-1.5 mb-6">
+          {CURRENT_APP_VERSION.changes.map((c, i) => (
+            <li key={i} className="text-xs text-slate-700 flex gap-2">
+              <span className="text-emerald-600 font-bold shrink-0">✓</span>
+              <span>{c}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="pt-4 border-t-2 border-dashed border-slate-300">
+          <h4 className="text-xs font-black text-slate-800 uppercase mb-3 tracking-wider">Rencana Pembaruan Selanjutnya:</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {CURRENT_APP_VERSION.suggestedUpdates.map((s, i) => (
+              <div key={i} className="p-3 bg-white border-2 border-slate-900 rounded-md">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-black text-slate-900">{sug.title}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-xs font-bold border border-slate-900 ${
-                    sug.category === 'fitur' ? 'bg-sky-200' :
-                    sug.category === 'optimasi' ? 'bg-emerald-200' : 'bg-rose-200'
-                  }`}>
-                    {sug.category}
-                  </span>
+                  <span className="text-[11px] font-black text-slate-900">{s.title}</span>
+                  <span className="text-[9px] bg-sky-100 px-1 rounded font-bold uppercase border border-sky-300">{s.category}</span>
                 </div>
-                <p className="text-[11px] text-slate-600 leading-normal">
-                  {sug.description}
-                </p>
+                <p className="text-[10px] text-slate-500 leading-relaxed">{s.description}</p>
               </div>
             ))}
           </div>

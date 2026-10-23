@@ -42,19 +42,43 @@ const AppContent: React.FC = () => {
   const [settings, setSettings] = useState<ClassSettings>(() => LocalKasRepository.getSettings());
   const [auditLogs, setAuditLogs] = useState(() => LocalKasRepository.getAuditLogs());
 
+  // Fetch initial data from Supabase on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [txs, ms] = await Promise.all([
+          LocalKasRepository.fetchTransactionsFromSupabase(),
+          LocalKasRepository.fetchMembersFromSupabase()
+        ]);
+        setTransactions(txs);
+        setMembers(ms);
+      } catch (err) {
+        console.warn('Initial fetch error:', err);
+      }
+    };
+    fetchData();
+  }, []);
+
   // Supabase Realtime Broadcast subscription
   useEffect(() => {
     const unsubscribe = subscribeToRealtimeKas(
-      (_payload) => {
+      (payload) => {
         // When transaction is inserted/updated/deleted in Supabase by another device
-        sfx.playNotification();
-        setTransactions(LocalKasRepository.getTransactions());
+        if (payload.eventType === 'INSERT') {
+          sfx.playNotification();
+        }
+        LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
+        setAuditLogs(LocalKasRepository.getAuditLogs());
+      },
+      (payload) => {
+        // When member weekly dues status is updated in Supabase by another device
+        if (payload.eventType === 'UPDATE') {
+          sfx.playNotification();
+        }
+        LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
         setAuditLogs(LocalKasRepository.getAuditLogs());
       },
       (_payload) => {
-        // When member weekly dues status is updated in Supabase by another device
-        sfx.playNotification();
-        setMembers(LocalKasRepository.getMembers());
         setAuditLogs(LocalKasRepository.getAuditLogs());
       }
     );

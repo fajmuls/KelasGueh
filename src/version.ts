@@ -11,40 +11,33 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.1.0',
-  codename: 'bcryptjs Security, Monthly Checklist & Zero-Overflow Layout Edition',
+  version: '3.2.0',
+  codename: 'Supabase Real-Sync & Advanced Analytics Edition',
   releaseDate: '2026-10-23',
   changes: [
-    'Enkripsi bcryptjs PIN Transaksi: PIN keamanan kini dienkripsi menggunakan standar industri bcryptjs (Salt: 10) untuk proteksi maksimal.',
-    'Checklist Iuran Bulanan: Tampilan checklist kini berbasis Bulan (Jan-Des) dengan 4 minggu per bulan dan rentang tanggal spesifik.',
-    'Perbaikan Bug Atribusi Audit Log: Aksi Super Admin kini dicatat dengan identitas asli Super Admin (bukan lagi default "Bendahara").',
-    'Layout Zero-Horizontal-Overflow: Optimasi CSS untuk memastikan aplikasi tidak pernah meluap ke samping (no horizontal scroll) di HP maupun Desktop.',
-    'Verifikasi Koneksi Supabase Real-Table: Tombol tes koneksi kini memverifikasi keberadaan tabel fisik di database Anda.',
-    'Integrasi bcrypt pada Modal PIN: Proses verifikasi PIN 6-digit kini berjalan lebih cepat dan sinkron dengan bcrypt.',
-    'Pembersihan Residual Kode Firestore: Memastikan seluruh logika 100% cloud-native Supabase.'
+    'Integrasi Supabase Real-Sync: Seluruh data kini tersinkronisasi secara real-time ke database Supabase (Transactions, Members, Audit Logs).',
+    'Dashboard Grafik Statistik Lanjutan: Visualisasi tren pemasukan vs pengeluaran bulanan menggunakan Recharts interaktif.',
+    'PWA Push Notifications: Dukungan notifikasi aplikasi (Progressive Web App) untuk pengingat iuran kas kelas.',
+    'Perbaikan UI Dropdown Super Admin: Dropdown role kini muncul di atas konten (layering fix) dan tidak lagi merusak layout top bar.',
+    'Fix Horizontal Overflow: Optimasi CSS global untuk menghilangkan scroll samping yang mengganggu di perangkat mobile dan desktop.',
+    'Skema Database SQL Otomatis: File database.sql kini tersedia sebagai panduan setup tabel Supabase yang kokoh.',
+    'Audit Log Atribusi Akurat: Pencatatan audit kini 100% menggunakan identitas akun Google yang masuk untuk keamanan transparansi.'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
-      title: 'Notifikasi Otomatis PWA Push Notification',
-      description: 'Pengiriman notifikasi otomatis langsung ke ponsel siswa saat mendekati tenggat iuran kas kelas mingguan.'
+      title: 'Ekspor Rekap Kas ke Google Sheets Otomatis',
+      description: 'Sinkronisasi laporan kas kelas langsung ke lembar Google Sheets secara berkala untuk backup eksternal.'
     },
     {
       category: 'optimasi',
-      title: 'Auto Sync Background Worker Supabase',
-      description: 'Sinkronisasi kas offline-first ke Supabase secara otomatis saat koneksi internet kembali pulih.'
+      title: 'Offline-First Data Persistence',
+      description: 'Peningkatan kemampuan aplikasi agar tetap bisa digunakan mencatat data saat tidak ada sinyal, dan auto-sync saat online.'
     },
     {
       category: 'keamanan',
       title: 'Enkripsi Multi-Factor Authentication (MFA)',
-      description: 'Otentikasi dua langkah (2FA/MFA) khusus untuk peran Super Admin pemilik saat mengakses dashboard keuangan.'
-    },
-    {
-      category: 'fitur',
-      title: 'Dashboard Grafik Statistik Lanjutan',
-      description: 'Visualisasi grafik garis dan batang untuk tren pemasukan vs pengeluaran bulanan yang lebih detail.'
+      description: 'Otentikasi tambahan (2FA) khusus untuk akses data sensitif oleh Super Admin.'
     }
   ]
 };
-
-

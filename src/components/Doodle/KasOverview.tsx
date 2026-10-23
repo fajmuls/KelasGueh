@@ -3,13 +3,35 @@ import { KasTransaction, ClassSettings, KasMember } from '../../types/kas.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { ScotchTape, DoodleCoin, PushPin, DoodleReceipt } from './DoodleDecorations.tsx';
-import { ArrowDownRight, ArrowUpRight, PlusCircle, FileText, CheckCircle2, Printer, MessageSquare } from 'lucide-react';
+import { 
+  ArrowDownRight, 
+  ArrowUpRight, 
+  PlusCircle, 
+  FileText, 
+  CheckCircle2, 
+  Printer, 
+  MessageSquare,
+  TrendingUp,
+  BarChart3
+} from 'lucide-react';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar,
+  Legend
+} from 'recharts';
 
 interface KasOverviewProps {
   transactions: KasTransaction[];
   settings: ClassSettings;
   members: KasMember[];
-  onNavigateTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan') => void;
+  onNavigateTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog') => void;
   onOpenNewTxModal: () => void;
   onOpenPrintModal?: () => void;
   onOpenWhatsAppModal?: () => void;
@@ -24,7 +46,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
   onOpenPrintModal,
   onOpenWhatsAppModal,
 }) => {
-  const { canEditKas, isBendahara, isSuperAdmin } = useAuth();
+  const { canEditKas, isSuperAdmin } = useAuth();
 
   // Financial calculations
   const totalIncome = transactions
@@ -38,17 +60,43 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
   const currentBalance = totalIncome - totalExpense;
   const targetProgress = Math.min(100, Math.round((currentBalance / (settings.kasTargetAmount || 1)) * 100));
 
-  // Category breakdown for expenses
-  const expenseByCategory: Record<string, number> = {};
-  transactions
-    .filter(t => t.type === 'expense')
-    .forEach(t => {
-      expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount;
+  // Chart Data: Group transactions by date (monthly trend)
+  const getChartData = () => {
+    const monthlyMap: Record<string, { month: string; pemasukan: number; pengeluaran: number }> = {};
+    
+    // Last 6 months trend
+    const last6Months = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - i));
+      const mLabel = d.toLocaleString('id-ID', { month: 'short' });
+      const mKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+      return { key: mKey, label: mLabel };
     });
 
+    last6Months.forEach(m => {
+      monthlyMap[m.key] = { month: m.label, pemasukan: 0, pengeluaran: 0 };
+    });
+
+    transactions.forEach(tx => {
+      const txKey = tx.date.substring(0, 7); // YYYY-MM
+      if (monthlyMap[txKey]) {
+        if (tx.type === 'income') monthlyMap[txKey].pemasukan += tx.amount;
+        else monthlyMap[txKey].pengeluaran += tx.amount;
+      }
+    });
+
+    return Object.values(monthlyMap);
+  };
+
+  const chartData = getChartData();
+
   // Calculate unpaid members this week
-  const recentWeekKey = 'M4';
-  const paidCount = members.filter(m => m.weeklyStatus[recentWeekKey]).length;
+  const recentWeekKey = 'W4'; // Mocking recent week for display
+  const paidCount = members.filter(m => {
+    // Check if any week in current month is paid
+    const currentMonthPrefix = new Date().toISOString().substring(0, 7).replace('-', '_');
+    return Object.keys(m.weeklyStatus).some(k => k.startsWith(currentMonthPrefix) && m.weeklyStatus[k]);
+  }).length;
   const unpaidCount = members.length - paidCount;
 
   const formatRupiah = (val: number) => {
@@ -78,7 +126,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {canEditKas && (
               <button
                 onClick={() => {
@@ -91,27 +139,17 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
                 <span>+ Catat Transaksi</span>
               </button>
             )}
-            <button
-              onClick={() => {
-                sfx.playClick();
-                onNavigateTab('bukukas');
-              }}
-              className="btn-doodle px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold rounded-md flex items-center gap-2 text-sm"
-            >
-              <FileText className="w-4 h-4 text-slate-700" />
-              <span>Buka Buku Kas</span>
-            </button>
-
+            
             {onOpenPrintModal && (
               <button
                 onClick={() => {
                   sfx.playPaperRustle();
                   onOpenPrintModal();
                 }}
-                className="btn-doodle px-3.5 py-2.5 bg-amber-200 hover:bg-amber-300 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
+                className="btn-doodle px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
               >
                 <Printer className="w-4 h-4 text-slate-800" />
-                <span>Cetak / PDF Binder</span>
+                <span>Cetak / PDF</span>
               </button>
             )}
 
@@ -124,78 +162,63 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
                 className="btn-doodle px-3.5 py-2.5 bg-emerald-100 hover:bg-emerald-200 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
               >
                 <MessageSquare className="w-4 h-4 text-emerald-800" />
-                <span>Bagikan WA</span>
+                <span>Share WA</span>
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Primary KPI Grid (Paper Cutout cards) */}
+      {/* Primary KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {/* Total Saldo Card */}
         <div className="relative card-doodle p-5 rounded-lg bg-white">
           <div className="absolute top-3 right-3">
             <DoodleCoin className="w-7 h-7" />
           </div>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Saldo Kas Bersih
-          </p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Saldo Kas Bersih</p>
           <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">
             {formatRupiah(currentBalance)}
           </p>
           <div className="mt-3 pt-3 border-t-2 border-dashed border-slate-200 flex items-center justify-between text-xs font-bold text-slate-600">
-            <span>Kas Tersedia di Bendahara</span>
-            <span className="text-emerald-700">Aman</span>
+            <span>Tersimpan di Bendahara</span>
+            <span className="text-emerald-700">Aman ✓</span>
           </div>
         </div>
 
-        {/* Total Pemasukan Card */}
         <div className="relative card-doodle-mint p-5 rounded-lg">
           <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-emerald-200 border-2 border-slate-900 flex items-center justify-center">
             <ArrowDownRight className="w-5 h-5 text-emerald-800" />
           </div>
-          <p className="text-xs font-bold text-emerald-900 uppercase tracking-wider">
-            Total Pemasukan
-          </p>
+          <p className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Total Pemasukan</p>
           <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">
             {formatRupiah(totalIncome)}
           </p>
           <div className="mt-3 pt-3 border-t-2 border-dashed border-slate-300 flex items-center justify-between text-xs font-bold text-emerald-950">
             <span>Iuran & Dana Masuk</span>
-            <span>+ Masuk</span>
+            <span>+ Debit</span>
           </div>
         </div>
 
-        {/* Total Pengeluaran Card */}
         <div className="relative card-doodle-rose p-5 rounded-lg">
           <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-rose-200 border-2 border-slate-900 flex items-center justify-center">
             <ArrowUpRight className="w-5 h-5 text-rose-800" />
           </div>
-          <p className="text-xs font-bold text-rose-900 uppercase tracking-wider">
-            Total Pengeluaran
-          </p>
+          <p className="text-xs font-bold text-rose-900 uppercase tracking-wider">Total Pengeluaran</p>
           <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">
             {formatRupiah(totalExpense)}
           </p>
           <div className="mt-3 pt-3 border-t-2 border-dashed border-slate-300 flex items-center justify-between text-xs font-bold text-rose-950">
-            <span>Fotokopi, ATK & Acara</span>
-            <span>- Keluar</span>
+            <span>Operational & Acara</span>
+            <span>- Kredit</span>
           </div>
         </div>
 
-        {/* Target Kas Semester Card */}
         <div className="relative card-doodle-blue p-5 rounded-lg">
           <div className="absolute top-3 right-3">
             <PushPin className="w-6 h-6 text-sky-700" />
           </div>
-          <p className="text-xs font-bold text-sky-900 uppercase tracking-wider">
-            Target Kas Semester
-          </p>
-          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">
-            {targetProgress}%
-          </p>
-          {/* Hand-drawn progress meter */}
+          <p className="text-xs font-bold text-sky-900 uppercase tracking-wider">Target Kas Semester</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">{targetProgress}%</p>
           <div className="mt-3">
             <div className="w-full h-3.5 bg-white border-2 border-slate-900 rounded-sm overflow-hidden p-0.5">
               <div
@@ -203,110 +226,141 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
                 style={{ width: `${targetProgress}%` }}
               />
             </div>
-            <div className="mt-1.5 flex justify-between text-[11px] font-bold text-sky-900 font-mono">
-              <span>{formatRupiah(currentBalance)}</span>
-              <span>{formatRupiah(settings.kasTargetAmount)}</span>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Middle Row: Recent Transactions Notepad & Category Distribution */}
+      {/* Advanced Stats Chart Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Transactions Binder Notepad (2 cols) */}
-        <div className="lg:col-span-2 relative card-doodle p-5 sm:p-6 rounded-lg bg-[#FFFDF9]">
-          <ScotchTape className="absolute -top-3 right-12 rotate-3" />
-          
-          <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
+        <div className="lg:col-span-2 relative card-doodle p-5 sm:p-6 rounded-lg bg-white">
+          <ScotchTape className="absolute -top-3 left-10 rotate-1" />
+          <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-6">
             <div className="flex items-center gap-2">
-              <DoodleReceipt className="w-5 h-5 text-slate-900" />
-              <h3 className="text-lg font-black text-slate-900">
-                Mutasi Kas Terbaru
-              </h3>
+              <TrendingUp className="w-5 h-5 text-indigo-600" />
+              <h3 className="text-lg font-black text-slate-900">Tren Kas Bulanan (v3.2)</h3>
             </div>
-            <button
-              onClick={() => {
-                sfx.playClick();
-                onNavigateTab('bukukas');
-              }}
-              className="text-xs font-bold text-indigo-700 hover:underline"
-            >
-              Lihat Semua ({transactions.length}) →
-            </button>
+            <div className="flex items-center gap-3 text-[10px] font-bold uppercase">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-400 border border-slate-900 rounded-xs"></span> Pemasukan</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-rose-400 border border-slate-900 rounded-xs"></span> Pengeluaran</span>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {transactions.slice(0, 5).map((tx) => (
-              <div
-                key={tx.id}
-                className="p-3 border-2 border-slate-800 rounded-md bg-white hover:bg-amber-50/40 transition-colors flex items-center justify-between gap-3 shadow-[2px_2px_0px_#1E293B]"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-md border-2 border-slate-900 flex items-center justify-center font-bold text-xs shrink-0 ${
-                    tx.type === 'income' ? 'bg-emerald-300 text-slate-900' : 'bg-rose-300 text-slate-900'
-                  }`}>
-                    {tx.type === 'income' ? '+' : '-'}
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-slate-900 line-clamp-1">{tx.title}</p>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
-                      <span>{tx.date}</span>
-                      <span>·</span>
-                      <span className="font-sans text-[11px] bg-slate-100 border border-slate-300 px-1.5 py-0.2 rounded-xs font-semibold text-slate-700">
-                        {tx.category}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <span className={`text-sm sm:text-base font-black font-mono tabular-nums ${
-                    tx.type === 'income' ? 'text-emerald-700' : 'text-rose-700'
-                  }`}>
-                    {tx.type === 'income' ? '+' : '-'} {formatRupiah(tx.amount)}
-                  </span>
-                  <p className="text-[10px] text-slate-400 font-medium">Oleh: {tx.recordedBy.split(' ')[0]}</p>
-                </div>
-              </div>
-            ))}
+          <div className="h-[280px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis 
+                  dataKey="month" 
+                  axisLine={{ stroke: '#1e293b', strokeWidth: 2 }}
+                  tick={{ fill: '#475569', fontSize: 11, fontWeight: 'bold' }}
+                />
+                <YAxis 
+                  axisLine={{ stroke: '#1e293b', strokeWidth: 2 }}
+                  tick={{ fill: '#475569', fontSize: 10, fontWeight: 'bold' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#fff', 
+                    border: '2px solid #1e293b', 
+                    borderRadius: '8px',
+                    boxShadow: '4px 4px 0px #1e293b',
+                    fontWeight: 'bold'
+                  }} 
+                />
+                <Bar dataKey="pemasukan" fill="#34d399" stroke="#1e293b" strokeWidth={1} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="pengeluaran" fill="#f87171" stroke="#1e293b" strokeWidth={1} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Quick Iuran Summary & Checklist Card (1 col) */}
-        <div className="relative card-doodle p-5 sm:p-6 rounded-lg bg-amber-50/60">
-          <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
-            <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+        {/* Quick Summary Sidebar */}
+        <div className="space-y-6">
+          <div className="relative card-doodle p-5 rounded-lg bg-amber-50/60">
+            <h3 className="text-base font-black text-slate-900 flex items-center gap-2 border-b-2 border-slate-900 pb-2 mb-4">
               <CheckCircle2 className="w-5 h-5 text-emerald-700" />
-              <span>Status Iuran ({recentWeekKey})</span>
+              <span>Status Iuran</span>
             </h3>
-            <span className="text-xs font-bold text-amber-900 bg-amber-200 border border-slate-900 px-2 py-0.5 rounded-xs">
-              Rp {settings.weeklyDuesAmount.toLocaleString('id-ID')}/mgg
-            </span>
+            <div className="p-4 bg-white border-2 border-slate-900 rounded-md shadow-[2px_2px_0px_#1E293B] mb-4 text-center">
+              <p className="text-xs text-slate-500 font-bold uppercase">Kepatuhan Bulan Ini</p>
+              <p className="text-3xl font-black text-slate-900 mt-1 font-mono">
+                {paidCount} <span className="text-sm font-normal text-slate-500">/ {members.length} Lunas</span>
+              </p>
+              <div className="mt-3 w-full bg-slate-100 h-2 rounded-full border border-slate-900 overflow-hidden">
+                <div 
+                  className="h-full bg-emerald-400 border-r border-slate-900" 
+                  style={{ width: `${(paidCount / (members.length || 1)) * 100}%` }}
+                />
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigateTab('checklist')}
+              className="w-full btn-doodle py-2.5 bg-amber-300 hover:bg-amber-400 text-slate-900 font-black rounded-md text-xs text-center"
+            >
+              Tagih Iuran Sekarang →
+            </button>
           </div>
 
-          <div className="p-4 bg-white border-2 border-slate-900 rounded-md shadow-[2px_2px_0px_#1E293B] mb-4 text-center">
-            <p className="text-xs text-slate-500 font-bold uppercase">Tingkat Kepatuhan Kelas</p>
-            <p className="text-3xl font-black text-slate-900 mt-1 font-mono">
-              {paidCount} <span className="text-sm font-normal text-slate-500">/ {members.length} Orang Lunas</span>
-            </p>
-            <p className="text-xs text-rose-600 font-bold mt-1">
-              {unpaidCount} anggota belum melunasi minggu ini
-            </p>
+          <div className="relative card-doodle p-5 rounded-lg bg-white">
+            <h3 className="text-base font-black text-slate-900 flex items-center gap-2 border-b-2 border-slate-900 pb-2 mb-4">
+              <BarChart3 className="w-5 h-5 text-sky-600" />
+              <span>Data Real-Sync</span>
+            </h3>
+            <ul className="space-y-2">
+              <li className="flex justify-between text-xs font-bold">
+                <span className="text-slate-500">Total Transaksi</span>
+                <span className="text-slate-900 font-mono">{transactions.length}</span>
+              </li>
+              <li className="flex justify-between text-xs font-bold">
+                <span className="text-slate-500">Anggota Terdaftar</span>
+                <span className="text-slate-900 font-mono">{members.length}</span>
+              </li>
+              <li className="flex justify-between text-xs font-bold">
+                <span className="text-slate-500">Versi Aplikasi</span>
+                <span className="text-emerald-700">v3.2.0-stable</span>
+              </li>
+            </ul>
           </div>
+        </div>
+      </div>
 
-          <p className="text-xs text-slate-600 mb-3 font-medium">
-            Bendahara dapat langsung mencentang bukti pembayaran iuran di tab Checklist Iuran.
-          </p>
-
-          <button
-            onClick={() => {
-              sfx.playClick();
-              onNavigateTab('checklist');
-            }}
-            className="w-full btn-doodle py-2.5 px-4 bg-amber-300 hover:bg-amber-400 text-slate-900 font-black rounded-md text-xs sm:text-sm text-center"
-          >
-            Buka Checklist Iuran Siswa →
+      {/* Recent Activity Notepad */}
+      <div className="relative card-doodle p-5 sm:p-6 rounded-lg bg-[#FFFDF9]">
+        <ScotchTape className="absolute -top-3 right-12 rotate-3" />
+        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
+          <div className="flex items-center gap-2">
+            <DoodleReceipt className="w-5 h-5 text-slate-900" />
+            <h3 className="text-lg font-black text-slate-900">Aktivitas Terkini</h3>
+          </div>
+          <button onClick={() => onNavigateTab('bukukas')} className="text-xs font-bold text-indigo-700 hover:underline">
+            Lihat Buku Kas →
           </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {transactions.slice(0, 4).map((tx) => (
+            <div
+              key={tx.id}
+              className="p-3 border-2 border-slate-800 rounded-md bg-white hover:bg-amber-50/40 transition-colors flex items-center justify-between gap-3 shadow-[2px_2px_0px_#1E293B]"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-md border-2 border-slate-900 flex items-center justify-center font-bold text-xs shrink-0 ${
+                  tx.type === 'income' ? 'bg-emerald-300 text-slate-900' : 'bg-rose-300 text-slate-900'
+                }`}>
+                  {tx.type === 'income' ? '+' : '-'}
+                </div>
+                <div>
+                  <p className="text-sm font-black text-slate-900 truncate max-w-[150px]">{tx.title}</p>
+                  <p className="text-[10px] text-slate-500 font-mono">{tx.date}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className={`text-sm font-black font-mono ${tx.type === 'income' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {formatRupiah(tx.amount)}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

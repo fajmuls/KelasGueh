@@ -8,8 +8,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Kelas Gue" />
-    <link rel="apple-touch-icon" href="/logo/Kelas_Gueh_Logo_Static.svg" />
-    <link rel="icon" type="image/svg+xml" href="/logo/Kelas_Gueh_Logo_Static.svg" />
+    <link rel="apple-touch-icon" href="/src/assets/images/kelas_gue_new_logo_1792764353979.jpg" />
+    <link rel="icon" type="image/jpeg" href="/src/assets/images/kelas_gue_new_logo_1792764353979.jpg" />
     <script>
       // Suppress benign WebSocket / Vite dev server HMR disconnection notices
       (function () {
@@ -39,16 +39,28 @@
         };
       })();
     </script>
-    <title>Kelas Gue</title>
-    <meta name="description" content="Kelas Gue - Sistem transparansi kas kelas doodle art & paper cut-out terintegrasi Supabase." />
+    <title>Kelas Gue - Transparansi Kas Kelas v3.2</title>
+    <meta name="description" content="Kelas Gue v3.2 - Sistem transparansi kas kelas doodle art & paper cut-out terintegrasi Supabase Realtime Sync." />
     <meta property="og:title" content="Kelas Gue" />
     <meta property="og:description" content="Kelas Gue - Sistem transparansi kas kelas doodle art & paper cut-out terintegrasi Supabase." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body class="overflow-x-hidden max-w-full">
-    <div id="root"></div>
+    <div id="root" class="max-w-[100vw] overflow-x-hidden"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <style>
+      html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+        position: relative;
+        touch-action: manipulation;
+      }
+      #root {
+        width: 100%;
+        min-height: 100vh;
+      }
+    </style>
   </body>
 </html>
 
