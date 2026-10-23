@@ -91,7 +91,9 @@ const AppContent: React.FC = () => {
   // Autoplay BGM automatically on first user gesture (Click / Touch / Keypress)
   useEffect(() => {
     const handleFirstGesture = () => {
-      if (!sfx.getIsBgmPlaying()) {
+      // Check both sfx state and localStorage to be absolutely sure
+      const savedBgm = localStorage.getItem('kelasgue_bgm');
+      if (!sfx.getIsBgmPlaying() && savedBgm !== 'false') {
         sfx.startBgm();
       }
       window.removeEventListener('click', handleFirstGesture);
@@ -183,10 +185,22 @@ const AppContent: React.FC = () => {
       action: 'IMPORT ANGGOTA',
       details: `Impor massal ${created.length} siswa baru`,
       performedBy: user?.name || 'Unknown',
-      userRole: role,
+      userRole: user?.role || 'anggota',
     });
     setAuditLogs(LocalKasRepository.getAuditLogs());
     setMembers(prev => [...prev, ...created]);
+  };
+
+  const handleToggleAllWeek = (weekKey: string, shouldPay: boolean) => {
+    LocalKasRepository.toggleAllMembersWeek(weekKey, shouldPay);
+    LocalKasRepository.addAuditLog({
+      action: 'IURAN MASSAL',
+      details: `${shouldPay ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Seluruh Siswa untuk ${weekKey}`,
+      performedBy: user?.name || 'Unknown',
+      userRole: user?.role || 'bendahara',
+    });
+    setAuditLogs(LocalKasRepository.getAuditLogs());
+    LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };
 
 
@@ -258,6 +272,7 @@ const AppContent: React.FC = () => {
             members={members}
             settings={settings}
             onToggleWeek={handleToggleWeek}
+            onToggleAllWeek={handleToggleAllWeek}
             onAddMember={handleAddMember}
             onAddMembers={handleAddMembers}
           />

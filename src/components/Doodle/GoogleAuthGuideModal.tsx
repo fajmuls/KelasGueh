@@ -143,13 +143,13 @@ export const GoogleAuthGuideModal: React.FC<GoogleAuthGuideModalProps> = ({
           <button
             onClick={() => {
               sfx.playCoinChime();
-              loginAs('superadmin', 'M. Rachman (Super Admin)', 'mrachmanfm@gmail.com');
+              loginAs('superadmin');
               onClose();
             }}
             className="btn-doodle px-4 py-2 bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black rounded-md text-xs sm:text-sm flex items-center justify-center gap-1.5"
           >
             <DoodleCrown className="w-4 h-4" />
-            <span>Masuk Langsung Sebagai Super Admin (Identitas Tersembunyi)</span>
+            <span>Masuk Langsung Sebagai Super Admin</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

@@ -195,7 +195,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE kas_transactions, kas_members, aud
           <div>
             <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-amber-600" />
-              <span>Pusat Kendali & Versi v3.2.0</span>
+              <span>Pusat Kendali & Versi v{CURRENT_APP_VERSION.version}</span>
             </h2>
             <p className="text-sm text-slate-700 mt-1">
               Kelola database Supabase, izin akses bendahara, dan pantau catatan pembaruan aplikasi.

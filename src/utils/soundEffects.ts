@@ -28,15 +28,7 @@ class SoundEngine {
           this.bgmAudio.volume = 0.28;
         };
 
-        if (shouldPlayBgm) {
-          const playOnGesture = () => {
-            if (this.soundEnabled && !this.isBgmPlaying) {
-              this.startBgm();
-            }
-            window.removeEventListener('click', playOnGesture);
-          };
-          window.addEventListener('click', playOnGesture);
-        }
+        /* Removed click listener to prevent double playback with App.tsx gesture handler */
       } catch {
         // Audio element not supported
       }

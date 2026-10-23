@@ -359,14 +359,34 @@ export class LocalKasRepository {
       return m;
     });
     this.saveMembers(updated);
-
     if (targetMember) {
       const client = getSupabaseClient();
       if (client) {
         client.from('kas_members').update({
-          weekly_status: targetMember.weeklyStatus
+          weekly_status: (targetMember as KasMember).weeklyStatus
         }).eq('id', memberId).then();
       }
+    }
+  }
+
+  public static toggleAllMembersWeek(weekKey: string, shouldPay: boolean): void {
+    const members = this.getMembers();
+    const updated = members.map(m => ({
+      ...m,
+      weeklyStatus: {
+        ...m.weeklyStatus,
+        [weekKey]: shouldPay
+      }
+    }));
+    this.saveMembers(updated);
+
+    const client = getSupabaseClient();
+    if (client) {
+      updated.forEach(m => {
+        client.from('kas_members').update({
+          weekly_status: m.weeklyStatus
+        }).eq('id', m.id).then();
+      });
     }
   }
 

@@ -209,7 +209,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
           </p>
           <div className="mt-3 pt-3 border-t-2 border-dashed border-slate-300 flex items-center justify-between text-xs font-bold text-rose-950">
             <span>Operational & Acara</span>
-            <span>- Kredit</span>
+            <span>- Pengeluaran</span>
           </div>
         </div>
 

@@ -24,6 +24,7 @@ interface KasChecklistProps {
   members: KasMember[];
   settings: ClassSettings;
   onToggleWeek: (memberId: string, weekKey: string) => void;
+  onToggleAllWeek?: (weekKey: string, shouldPay: boolean) => void;
   onAddMember: (name: string, studentId: string, phone?: string) => void;
   onAddMembers?: (newMembersList: { name: string; studentId: string; phone?: string }[]) => void;
 }
@@ -39,6 +40,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   members,
   settings,
   onToggleWeek,
+  onToggleAllWeek,
   onAddMember,
   onAddMembers,
 }) => {
@@ -435,18 +437,36 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
       </div>
 
       {/* Checklist Table */}
-      <div className="card-doodle rounded-lg bg-white overflow-hidden overflow-x-auto">
-        <div className="min-w-[800px]">
-          <table className="w-full text-left text-sm border-collapse">
+      <div className="card-doodle rounded-lg bg-white overflow-hidden overflow-x-auto shadow-sm border-2 border-slate-900">
+        <div className="min-w-fit md:min-w-full">
+          <table className="w-full text-left text-xs border-collapse table-fixed">
             <thead className="bg-[#FAF7F2] border-b-2 border-slate-900 text-xs font-black uppercase text-slate-700">
               <tr>
-                <th className="py-3 px-3 w-10 text-center">No</th>
-                <th className="py-3 px-4 min-w-[200px]">Nama Siswa / Mahasiswa</th>
-                <th className="py-3 px-3 font-mono">NIM</th>
+                <th className="py-2 px-2 w-8 text-center">#</th>
+                <th className="py-2 px-3 w-[150px] sm:w-[220px]">Nama</th>
+                <th className="py-2 px-2 w-[80px] font-mono hidden sm:table-cell">NIM</th>
                 {WEEKS_LABELS.map((label, idx) => (
-                  <th key={idx} className="py-3 px-2 text-center font-mono w-24">
-                    <div className="text-[10px] opacity-70 mb-0.5">{getWeekRangeLabel(idx)}</div>
-                    <div>{label}</div>
+                  <th key={idx} className="py-2 px-1 text-center font-mono w-16 sm:w-20">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="text-[9px] opacity-70 leading-tight">{getWeekRangeLabel(idx)}</div>
+                      <div className="leading-tight">{label}</div>
+                      {canEditKas && (
+                        <button
+                          onClick={() => {
+                            const wKey = getWeekKey(idx);
+                            const allPaid = filteredMembers.every(m => !!m.weeklyStatus[wKey]);
+                            if (onToggleAllWeek) {
+                              onToggleAllWeek(wKey, !allPaid);
+                              sfx.playLevelUp();
+                            }
+                          }}
+                          className="mt-1 px-1.5 py-0.5 bg-slate-900 text-white text-[8px] font-black rounded hover:bg-slate-700 transition-colors uppercase tracking-tighter"
+                          title="Centang/Hapus Semua untuk minggu ini"
+                        >
+                          All
+                        </button>
+                      )}
+                    </div>
                   </th>
                 ))}
                 <th className="py-3 px-3 text-right font-mono">Total Bayar</th>
@@ -497,15 +517,15 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 
                   return (
                     <tr key={member.id} className="hover:bg-amber-50/30 transition-colors">
-                      <td className="py-3 px-3 text-center font-mono text-xs text-slate-500">
+                      <td className="py-2 px-2 text-center font-mono text-[10px] text-slate-500">
                         {index + 1}
                       </td>
-                      <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
-                        <div className="flex items-center gap-2 text-sm sm:text-base">
-                          <span>{member.name}</span>
+                      <td className="py-1.5 px-1 font-bold text-slate-900">
+                        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs">
+                          <span className="truncate">{member.name}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-3 font-mono text-xs text-slate-500 whitespace-nowrap">
+                      <td className="py-1.5 px-2 font-mono text-[9px] text-slate-500 whitespace-nowrap hidden sm:table-cell">
                         {member.studentId}
                       </td>
 
@@ -513,7 +533,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                       {monthWeekKeys.map((wKey, idx) => {
                         const isPaid = !!member.weeklyStatus[wKey];
                         return (
-                          <td key={idx} className="py-3 px-2 text-center">
+                          <td key={idx} className="py-1.5 px-0.5 text-center">
                             {canEditKas ? (
                               <button
                                 type="button"
@@ -522,33 +542,33 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                                   onToggleWeek(member.id, wKey);
                                 }}
                                 title={`${member.name} - ${WEEKS_LABELS[idx]}: ${isPaid ? 'Sudah Lunas' : 'Belum Bayar'}`}
-                                className={`w-8 h-8 mx-auto rounded border-2 border-slate-900 flex items-center justify-center transition-all ${
+                                className={`w-6 h-6 mx-auto rounded border border-slate-900 flex items-center justify-center transition-all ${
                                   isPaid
                                     ? 'bg-emerald-400 text-slate-900 shadow-[1px_1px_0px_#1E293B]'
                                     : 'bg-white hover:bg-slate-100 text-transparent'
                                 }`}
                               >
-                                {isPaid ? <Check className="w-4 h-4 stroke-[3]" /> : <span className="text-[10px] text-slate-300">-</span>}
+                                {isPaid ? <Check className="w-3 h-3 stroke-[4]" /> : <span className="text-[8px] text-slate-200">·</span>}
                               </button>
                             ) : (
                               <div
-                                className={`w-8 h-8 mx-auto rounded border-2 border-slate-900 flex items-center justify-center ${
-                                  isPaid ? 'bg-emerald-400 text-slate-900' : 'bg-slate-100 text-slate-400'
+                                className={`w-6 h-6 mx-auto rounded border border-slate-900 flex items-center justify-center ${
+                                  isPaid ? 'bg-emerald-400 text-slate-900' : 'bg-slate-50 text-slate-300'
                                 }`}
                               >
-                                {isPaid ? <Check className="w-4 h-4 stroke-[3]" /> : <X className="w-3.5 h-3.5 text-rose-400" />}
+                                {isPaid ? <Check className="w-3 h-3 stroke-[4]" /> : <X className="w-2.5 h-2.5" />}
                               </div>
                             )}
                           </td>
                         );
                       })}
 
-                      <td className="py-3 px-3 text-right font-mono font-bold whitespace-nowrap tabular-nums text-slate-900 text-sm sm:text-base">
+                      <td className="py-1.5 px-2 text-right font-mono font-black whitespace-nowrap tabular-nums text-slate-900 text-[10px] sm:text-xs">
                         {formatRupiah(totalPaid)}
                       </td>
 
                       {/* WhatsApp Reminder Button or Status Text */}
-                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                      <td className="py-1.5 px-2 text-center whitespace-nowrap">
                         {canEditKas ? (
                           hasArrears ? (
                             <button
@@ -557,24 +577,24 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                                 sfx.playClick();
                                 setReminderMember(member);
                               }}
-                              className="btn-doodle px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-md text-xs font-bold inline-flex items-center gap-1"
+                              className="btn-doodle px-1.5 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded text-[9px] font-black inline-flex items-center gap-1"
                             >
-                              <MessageCircle className="w-3.5 h-3.5 text-emerald-700" />
+                              <MessageCircle className="w-2.5 h-2.5 text-emerald-700" />
                               <span>WA</span>
                             </button>
                           ) : (
-                            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
-                              ✓ Lunas
+                            <span className="text-[8px] text-emerald-700 font-black bg-emerald-50 px-1 py-0.5 rounded border border-emerald-300 uppercase">
+                              Lunas
                             </span>
                           )
                         ) : (
                           hasArrears ? (
-                            <span className="text-[10px] text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                              {4 - paidWeeksInMonth} mgg
+                            <span className="text-[8px] text-rose-700 font-black bg-rose-50 px-1 py-0.5 rounded border border-rose-200 uppercase">
+                              -{4 - paidWeeksInMonth}
                             </span>
                           ) : (
-                            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
-                              ✓ Lunas
+                            <span className="text-[8px] text-emerald-700 font-black bg-emerald-50 px-1 py-0.5 rounded border border-emerald-300 uppercase">
+                              Lunas
                             </span>
                           )
                         )}

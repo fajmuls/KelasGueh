@@ -8,8 +8,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Kelas Gue" />
-    <link rel="apple-touch-icon" href="/src/assets/images/kelas_gue_new_logo_1792764353979.jpg" />
-    <link rel="icon" type="image/jpeg" href="/src/assets/images/kelas_gue_new_logo_1792764353979.jpg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <script>
       // Suppress benign WebSocket / Vite dev server HMR disconnection notices
       (function () {
@@ -39,8 +42,8 @@
         };
       })();
     </script>
-    <title>Kelas Gue - Transparansi Kas Kelas v3.2</title>
-    <meta name="description" content="Kelas Gue v3.2 - Sistem transparansi kas kelas doodle art & paper cut-out terintegrasi Supabase Realtime Sync." />
+    <title>Kelas Gue - Transparansi Kas Kelas v3.3.1</title>
+    <meta name="description" content="Kelas Gue v3.3.1 - Sistem transparansi kas kelas doodle art & paper cut-out terintegrasi Supabase Realtime Sync & PWA Ultra-Smooth." />
     <meta property="og:title" content="Kelas Gue" />
     <meta property="og:description" content="Kelas Gue - Sistem transparansi kas kelas doodle art & paper cut-out terintegrasi Supabase." />
     <meta property="og:type" content="website" />
@@ -50,15 +53,30 @@
     <div id="root" class="max-w-[100vw] overflow-x-hidden"></div>
     <script type="module" src="/src/main.tsx"></script>
     <style>
+      :root {
+        --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+      }
       html, body {
         max-width: 100%;
         overflow-x: hidden;
         position: relative;
         touch-action: manipulation;
+        font-family: 'Inter', system-ui, sans-serif;
+      }
+      h1, h2, h3, h4, .font-display {
+        font-family: var(--font-display) !important;
+        letter-spacing: -0.02em;
       }
       #root {
         width: 100%;
         min-height: 100vh;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
       }
     </style>
   </body>

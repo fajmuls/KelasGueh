@@ -261,7 +261,7 @@ export const PrintableBinderModal: React.FC<PrintableBinderModalProps> = ({
                   <th className="py-2.5 px-2">Uraian / Keterangan</th>
                   <th className="py-2.5 px-2 w-28">Kategori</th>
                   <th className="py-2.5 px-2 text-right w-24">Debit (Masuk)</th>
-                  <th className="py-2.5 px-2 text-right w-24">Kredit (Keluar)</th>
+                  <th className="py-2.5 px-2 text-right w-24 text-rose-700">Pengeluaran (-)</th>
                   <th className="py-2.5 px-2 text-right w-28">Saldo</th>
                 </tr>
               </thead>
