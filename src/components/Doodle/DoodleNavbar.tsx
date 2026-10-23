@@ -59,14 +59,12 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
         
         {/* Zone 1: Brand Wordmark with Updated SVG Logo */}
         <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] overflow-hidden p-1.5 flex items-center justify-center shrink-0">
-            <svg viewBox="0 0 24 24" className="w-full h-full text-slate-900" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-              <path d="M8 7h8" />
-              <path d="M8 11h8" />
-              <path d="M8 15h5" />
-            </svg>
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] overflow-hidden p-1 flex items-center justify-center shrink-0">
+            <img 
+              src="/logo/Kelas_Gueh_Logo_Static.svg" 
+              alt="Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
           <div className="min-w-0 truncate">
             <h1 className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5 truncate">

@@ -90,23 +90,28 @@ const AppContent: React.FC = () => {
 
   // Autoplay BGM automatically on first user gesture (Click / Touch / Keypress)
   useEffect(() => {
+    let initialized = false;
     const handleFirstGesture = () => {
+      if (initialized) return;
+      
       // Check both sfx state and localStorage to be absolutely sure
       const savedBgm = localStorage.getItem('kelasgue_bgm');
       if (!sfx.getIsBgmPlaying() && savedBgm !== 'false') {
         sfx.startBgm();
       }
-      window.removeEventListener('click', handleFirstGesture);
+      
+      initialized = true;
+      window.removeEventListener('mousedown', handleFirstGesture);
       window.removeEventListener('touchstart', handleFirstGesture);
       window.removeEventListener('keydown', handleFirstGesture);
     };
 
-    window.addEventListener('click', handleFirstGesture);
+    window.addEventListener('mousedown', handleFirstGesture);
     window.addEventListener('touchstart', handleFirstGesture);
     window.addEventListener('keydown', handleFirstGesture);
 
     return () => {
-      window.removeEventListener('click', handleFirstGesture);
+      window.removeEventListener('mousedown', handleFirstGesture);
       window.removeEventListener('touchstart', handleFirstGesture);
       window.removeEventListener('keydown', handleFirstGesture);
     };
@@ -185,7 +190,7 @@ const AppContent: React.FC = () => {
       action: 'IMPORT ANGGOTA',
       details: `Impor massal ${created.length} siswa baru`,
       performedBy: user?.name || 'Unknown',
-      userRole: user?.role || 'anggota',
+      userRole: role,
     });
     setAuditLogs(LocalKasRepository.getAuditLogs());
     setMembers(prev => [...prev, ...created]);
@@ -197,7 +202,7 @@ const AppContent: React.FC = () => {
       action: 'IURAN MASSAL',
       details: `${shouldPay ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Seluruh Siswa untuk ${weekKey}`,
       performedBy: user?.name || 'Unknown',
-      userRole: user?.role || 'bendahara',
+      userRole: role,
     });
     setAuditLogs(LocalKasRepository.getAuditLogs());
     LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
@@ -230,13 +235,15 @@ const AppContent: React.FC = () => {
         <AnimatedIntroScreen onFinish={() => setShowIntro(false)} />
       )}
 
-      {/* Doodle Navbar with User SVG Logo & SFX/BGM controls */}
-      <DoodleNavbar
-        currentTab={currentTab}
-        onSelectTab={setCurrentTab}
-        classNameTitle={settings.className}
-        onReplayIntro={() => setShowIntro(true)}
-      />
+      {/* Doodle Navbar with User SVG Logo & SFX/BGM controls - Only show after intro */}
+      {isLoggedIn && !showIntro && (
+        <DoodleNavbar
+          currentTab={currentTab}
+          onSelectTab={setCurrentTab}
+          classNameTitle={settings.className}
+          onReplayIntro={() => setShowIntro(true)}
+        />
+      )}
 
       {/* Main Content Viewport */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">

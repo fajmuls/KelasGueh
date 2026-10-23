@@ -237,7 +237,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
           <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-6">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-indigo-600" />
-              <h3 className="text-lg font-black text-slate-900">Tren Kas Bulanan (v3.2)</h3>
+              <h3 className="text-lg font-black text-slate-900">Tren Kas Bulanan</h3>
             </div>
             <div className="flex items-center gap-3 text-[10px] font-bold uppercase">
               <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-400 border border-slate-900 rounded-xs"></span> Pemasukan</span>
@@ -316,8 +316,8 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
                 <span className="text-slate-900 font-mono">{members.length}</span>
               </li>
               <li className="flex justify-between text-xs font-bold">
-                <span className="text-slate-500">Versi Aplikasi</span>
-                <span className="text-emerald-700">v3.2.0-stable</span>
+                <span className="text-slate-500">Koneksi Database</span>
+                <span className="text-emerald-700">Online & Sinkron</span>
               </li>
             </ul>
           </div>

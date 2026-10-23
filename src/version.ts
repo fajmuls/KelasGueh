@@ -11,18 +11,17 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.3.1',
-  codename: 'Doodle Ultra-Smooth & Data Shield Edition',
-  releaseDate: '2026-10-25',
+  version: '3.3.2',
+  codename: 'Doodle Pure-Polish & Audio Fix Edition',
+  releaseDate: '2026-10-26',
   changes: [
-    'Enkripsi PIN Transaksi (Bcrypt): Keamanan berlapis untuk verifikasi pengeluaran besar (>500rb) menggunakan algoritma hashing standar industri.',
-    'Fix ReferenceError PWA Button: Memperbaiki bug kritis import yang menyebabkan aplikasi crash saat memuat bilah navigasi.',
-    'Fitur "Centang Semua Mingguan": Kemudahan massal bagi Bendahara untuk melunasi iuran seluruh kelas hanya dengan satu klik (Khusus Bendahara).',
-    'Restorasi Logo SVG Vektor: Mengembalikan identitas visual logo "Kelas Gue" ke format SVG yang tajam, ringan, dan profesional.',
-    'Optimasi Tipografi & Layout: Ukuran font tabel diperkecil dan padding dikurangi agar muat lebih banyak data tanpa scroll horizontal.',
-    'Fix Double BGM Playback: Menghilangkan bug suara musik latar yang terputar ganda saat aplikasi pertama kali dimuat.',
-    'Integrasi Font "Bricolage Grotesque": Memperkuat karakter visual doodle pada semua judul dan heading aplikasi.',
-    'Audit Log Accuracy: Memperbaiki bug label role pada log aktivitas impor massal anggota.'
+    'Fix Sound Playback: Memperbaiki bug suara SFX/BGM yang terputar ganda atau tiga kali saat aplikasi dimuat.',
+    'Fix Navbar Visibility: Bilah navigasi kini hanya muncul setelah intro selesai, mencegah UI bertumpuk.',
+    'Restorasi Logo Brand: Mengganti ikon placeholder dengan logo resmi "Kelas Gue" SVG di bilah navigasi.',
+    'Cleanup Versi UI: Menghapus teks versi yang berlebihan di Tren Kas dan Data Real-Sync agar tampilan lebih bersih.',
+    'Sinkronisasi Tipografi: Memastikan font "Bricolage Grotesque" diterapkan secara konsisten di seluruh elemen teks aplikasi.',
+    'Optimasi Scroll Layout: Menghilangkan overflow horizontal di mobile dan PC untuk pengalaman navigasi yang lebih nyaman.',
+    'PWA Compliance: Memastikan fitur instalasi PWA aktif dan terdeteksi dengan benar di berbagai browser.'
   ],
   suggestedUpdates: [
     {

@@ -231,18 +231,29 @@ class SoundEngine {
     this.playAudio('/audio/32_sync_complete.mp3', 0.45);
   }
 
+  private isIntroPlaying: boolean = false;
   /**
    * Kelas_Gueh_Animated_Intro_SFX.mp3 - Audio opening intro
    */
   public playIntro(): Promise<void> {
+    if (this.isIntroPlaying) return Promise.resolve();
+    this.isIntroPlaying = true;
+
     return new Promise((resolve) => {
       try {
         const audio = new Audio('/audio/Kelas_Gueh_Animated_Intro_SFX.mp3');
         audio.volume = 0.55;
         audio.play().then(() => {
-          audio.onended = () => resolve();
-        }).catch(() => resolve());
+          audio.onended = () => {
+            this.isIntroPlaying = false;
+            resolve();
+          };
+        }).catch(() => {
+          this.isIntroPlaying = false;
+          resolve();
+        });
       } catch {
+        this.isIntroPlaying = false;
         resolve();
       }
     });

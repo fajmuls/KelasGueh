@@ -14,6 +14,7 @@ body {
   overflow-x: hidden;
   touch-action: manipulation;
   box-sizing: border-box;
+  font-family: var(--font-display);
 }
 
 *, ::before, ::after {

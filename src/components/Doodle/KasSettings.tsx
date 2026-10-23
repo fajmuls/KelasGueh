@@ -131,7 +131,7 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
       sendLocalNotification('Kelas Gue v3.2', {
         body: 'Notifikasi PWA berhasil diaktifkan! Pengingat iuran akan muncul di sini.',
         vibrate: [200, 100, 200]
-      });
+      } as any);
     } else {
       alert('Izin notifikasi ditolak. Silakan aktifkan di pengaturan browser Anda.');
     }
