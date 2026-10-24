@@ -11,30 +11,30 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.6.0',
-  codename: 'Custom Domain Share & Overview Enhancement Edition',
+  version: '3.6.1',
+  codename: 'Dues Auto-Cash Balance & Supabase Persistence Fix Edition',
   releaseDate: '2026-10-29',
   changes: [
-    'Fitur Bagikan Link Portal Kelas (Custom Domain): Menambahkan tombol "Bagikan Link" di Navbar dan Ringkasan Kas (Overview) untuk menyalin tautan domain kustom aktif (misal https://kelasgue.vercel.app) secara 1-klik.',
-    'Pratinjau Kartu Berbagi Interaktif: Dialog khusus berbagi dengan simulasi kartu WhatsApp (Logo HD 43KB, judul aplikasi, deskripsi serbaguna, dan tombol kirim pesan ke WhatsApp).',
-    'Panduan Wildcard Redirect URL Supabase: Menambahkan instruksi pendaftaran https://*.vercel.app/** dan https://kelasgue.vercel.app/** di Supabase Redirect URLs agar login Google OAuth selalu berjalan mulus di semua domain Vercel.',
-    'Optimasi Tampilan Overview: Penataan tombol aksi di Ringkasan Kas agar lebih rapi, modern, dan informatif saat dibagikan ke anggota kelas.'
+    'Otomatisasi Kaitan Checklist Iuran ke Kas Overview: Setiap kali bendahara mencentang/membatalkan checklist iuran mingguan anggota, nominal iuran (pilihan minggu x iuran mingguan) langsung otomatis menambah Total Debit (Masuk) dan Saldo Kas Bersih.',
+    'Rincian Transparansi Sumber Kas: Kartu Ringkasan Kas (Overview) kini menampilkan rincian terpisah antara Iuran Siswa dan Transaksi Kas Lainnya.',
+    'Sinkronisasi Realtime Supabase Multi-Perangkat: Perbaikan penyimpanan dan broadcast realtime untuk checklist iuran, transaksi baru, foto nota, dan audit log sehingga langsung terupdate di HP anggota lain tanpa refresh.',
+    'Pembaruan Tren Grafik Kas Bulanan: Grafik tren bulanan kini secara otomatis menghitung akumulasi penerimaan iuran checklist mingguan.'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
-      title: 'Auto Generated QR Code Kelas',
-      description: 'Fitur membuat kode QR gambar portal yang bisa dicetak dan ditempel di mading/papan tulis kelas untuk scan cepat lewat kamera HP siswa.'
-    },
-    {
-      category: 'keamanan',
-      title: 'Supabase Storage Bucket Lock',
-      description: 'Membatasi hak upload foto nota di Supabase Storage khusus untuk akun bendahara/superadmin terdaftar.'
+      title: 'Kuitansi Digital PDF Per-Siswa',
+      description: 'Fitur cetak atau kirim PDF bukti bayar individual per-siswa yang menampilkan rincian minggu mana saja yang sudah lunas beserta total rupiah yang disetorkan ke bendahara.'
     },
     {
       category: 'optimasi',
-      title: 'PWA Share Target Native',
-      description: 'Dukungan menerima foto struk belanja langsung dari galeri HP atau grup WhatsApp ke aplikasi Kelas Gue via Android/iOS Share Sheet.'
+      title: 'UI UX Swipe Checklist / Fast Tap',
+      description: 'Mode centang cepat untuk bendahara saat menagih iuran di kelas, memudahkan sapu centang beberapa siswa sekaligus dengan umpan balik suara koin yang memuaskan.'
+    },
+    {
+      category: 'keamanan',
+      title: 'Antrean Offline & Sync Queue Retry',
+      description: 'Jika koneksi internet terputus saat menagih iuran di kelas, checklist disimpan di antrean lokal HP dan otomatis disinkronkan ke Supabase begitu kembali ada sinyal.'
     }
   ]
 };

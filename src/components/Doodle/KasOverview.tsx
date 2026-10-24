@@ -52,9 +52,17 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
   const { canEditKas, isSuperAdmin } = useAuth();
 
   // Financial calculations
-  const totalIncome = transactions
+  const totalTransactionIncome = transactions
     .filter(t => t.type === 'income')
     .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const totalDuesIncome = members.reduce((acc, member) => {
+    if (!member.weeklyStatus) return acc;
+    const paidWeeksCount = Object.values(member.weeklyStatus).filter(Boolean).length;
+    return acc + (paidWeeksCount * (settings.weeklyDuesAmount || 0));
+  }, 0);
+
+  const totalIncome = totalTransactionIncome + totalDuesIncome;
 
   const totalExpense = transactions
     .filter(t => t.type === 'expense')
@@ -63,7 +71,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
   const currentBalance = totalIncome - totalExpense;
   const targetProgress = Math.min(100, Math.round((currentBalance / (settings.kasTargetAmount || 1)) * 100));
 
-  // Chart Data: Group transactions by date (monthly trend)
+  // Chart Data: Group transactions & member dues by date (monthly trend)
   const getChartData = () => {
     const monthlyMap: Record<string, { month: string; pemasukan: number; pengeluaran: number }> = {};
     
@@ -80,12 +88,27 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
       monthlyMap[m.key] = { month: m.label, pemasukan: 0, pengeluaran: 0 };
     });
 
+    // 1. Transaction Income & Expense
     transactions.forEach(tx => {
       const txKey = tx.date.substring(0, 7); // YYYY-MM
       if (monthlyMap[txKey]) {
         if (tx.type === 'income') monthlyMap[txKey].pemasukan += tx.amount;
         else monthlyMap[txKey].pengeluaran += tx.amount;
       }
+    });
+
+    // 2. Member Dues Checklist Income
+    members.forEach(m => {
+      if (!m.weeklyStatus) return;
+      Object.entries(m.weeklyStatus).forEach(([wKey, isPaid]) => {
+        if (isPaid) {
+          // wKey format: YYYY_MM_W# -> convert to YYYY-MM
+          const monthKey = wKey.substring(0, 7).replace('_', '-');
+          if (monthlyMap[monthKey]) {
+            monthlyMap[monthKey].pemasukan += (settings.weeklyDuesAmount || 0);
+          }
+        }
+      });
     });
 
     return Object.values(monthlyMap);
@@ -210,9 +233,15 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
           <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">
             {formatRupiah(totalIncome)}
           </p>
-          <div className="mt-3 pt-3 border-t-2 border-dashed border-slate-300 flex items-center justify-between text-xs font-bold text-emerald-950">
-            <span>Iuran & Dana Masuk</span>
-            <span>+ Debit</span>
+          <div className="mt-3 pt-3 border-t-2 border-dashed border-slate-300 flex flex-col gap-0.5 text-[10px] sm:text-xs font-bold text-emerald-950">
+            <div className="flex justify-between items-center">
+              <span>Iuran Siswa:</span>
+              <span>{formatRupiah(totalDuesIncome)}</span>
+            </div>
+            <div className="flex justify-between items-center text-slate-700">
+              <span>Transaksi Lain:</span>
+              <span>{formatRupiah(totalTransactionIncome)}</span>
+            </div>
           </div>
         </div>
 

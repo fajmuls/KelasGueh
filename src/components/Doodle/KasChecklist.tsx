@@ -291,7 +291,10 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   };
 
   const txs = LocalKasRepository.getTransactions();
-  const currentBalance = txs.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+  const totalTxIncome = txs.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+  const totalDuesIncome = members.reduce((acc, m) => acc + (m.weeklyStatus ? Object.values(m.weeklyStatus).filter(Boolean).length : 0) * (settings.weeklyDuesAmount || 0), 0);
+  const totalTxExpense = txs.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+  const currentBalance = (totalTxIncome + totalDuesIncome) - totalTxExpense;
   const currentMonthPrefix = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
   const monthExpenses = txs
     .filter(t => t.type === 'expense' && t.date.startsWith(currentMonthPrefix))
