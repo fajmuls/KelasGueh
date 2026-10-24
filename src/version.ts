@@ -11,30 +11,30 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.5.2',
-  codename: 'Strict Google RLS & WhatsApp Crawler Fix Edition',
+  version: '3.5.3',
+  codename: 'OAuth Custom Domain Preservation Edition',
   releaseDate: '2026-10-29',
   changes: [
-    'Ultra-Light WhatsApp Preview (43KB JPEG): Menghasilkan whatsapp-preview.jpg (400x400 piksel, kanvas putih solid, 43KB) serta menautkan link rel="image_src" dan itemprop="image" agar bot WhatsApp tidak timeout dan pasti menampilkan logo aplikasi.',
-    'Skrip SQL Mode Ketat Supabase RLS (Anti-Hack): Menambahkan opsi Skrip SQL Mode Ketat di Pengaturan yang menolak penulisan data jika email pengguna Google tidak cocok dengan Super Admin (mrachmanfm@gmail.com) atau bendahara whitelist.',
-    'Dual Mode SQL Switcher: Super Admin dapat memilih antara Mode Ketat (Anti-Hack Google Auth) atau Mode Terbuka (Quick Start) dengan 1-klik salin.',
-    'Proteksi Data Publik Transparan: Seluruh siswa dan anggota kelas tetap dapat membaca (SELECT) laporan kas dan checklist iuran tanpa perlu login atau terhalang izin.'
+    'OAuth Redirect Clean URL: Menjamin parameter redirectTo pada Supabase OAuth menyertakan origin dan path persis tempat pengguna berada (misal kelasgue.vercel.app).',
+    'Panduan URL Configuration Supabase: Menyediakan solusi pengaturan Site URL & Additional Redirect URLs di Supabase Dashboard agar hasil login Google tidak terlempar ke domain otomatis Vercel lama.',
+    'Ultra-Light WhatsApp Preview (43KB JPEG): Penggunaan whatsapp-preview.jpg (400x400 piksel, kanvas putih solid, 43KB) dengan rel="image_src" agar logo aplikasi pasti dirender oleh WhatsApp.',
+    'Strict Google RLS Security Script: Pilihan skrip SQL Mode Ketat Anti-Hack di Pengaturan untuk mengunci database Supabase khusus untuk Super Admin (mrachmanfm@gmail.com) dan Bendahara terdaftar.'
   ],
   suggestedUpdates: [
     {
+      category: 'optimasi',
+      title: 'Auto Wildcard Redirect URL',
+      description: 'Menambahkan pendaftaran https://*.vercel.app/** di Supabase Redirect URLs agar semua subdomain preview Vercel otomatis didukung.'
+    },
+    {
       category: 'keamanan',
-      title: 'Supabase Storage Bucket Policy',
-      description: 'Mengunci upload bucket nota-kas di Supabase Storage hanya untuk akun bendahara/superadmin yang login dengan Google.'
+      title: 'Supabase Storage Policy',
+      description: 'Membatasi upload nota di Supabase Storage khusus untuk pengguna terautentikasi.'
     },
     {
       category: 'fitur',
-      title: 'Buku Catatan & Agenda Kelas',
-      description: 'Menambahkan tab khusus untuk jadwal piket, tugas/PR mingguan, dan pengumuman kelas selain catatan kas.'
-    },
-    {
-      category: 'optimasi',
-      title: 'Auto Domain Mirroring',
-      description: 'Dukungan otomatis sinkronisasi Open Graph URL saat beralih ke custom domain Vercel baru.'
+      title: 'Buku Agenda & Piket Kelas',
+      description: 'Menambahkan fitur jadwal piket kebersihan dan pengingat PR kelas.'
     }
   ]
 };

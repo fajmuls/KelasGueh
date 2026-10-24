@@ -225,10 +225,11 @@ export const signInWithGoogleSupabase = async (): Promise<{ success: boolean; er
   }
 
   try {
+    const redirectUrl = window.location.origin + window.location.pathname;
     const { error } = await client.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: redirectUrl
       }
     });
 
