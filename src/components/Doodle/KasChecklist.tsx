@@ -55,33 +55,9 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
 
-  // Fast-Tap / Swipe Mode State
+  // Card View Mode State (Mode Kartu Per-Siswa)
   const [isFastTapMode, setIsFastTapMode] = useState(false);
   const [selectedFastTapWeek, setSelectedFastTapWeek] = useState(0); // 0..3
-  const [isPointerSwiping, setIsPointerSwiping] = useState(false);
-  const lastSwipedMemberId = useRef<string | null>(null);
-
-  const handlePointerDownStudent = (memberId: string) => {
-    if (!canEditKas) return;
-    setIsPointerSwiping(true);
-    lastSwipedMemberId.current = memberId;
-    sfx.playCoinChime();
-    const wKey = getWeekKey(selectedFastTapWeek);
-    onToggleWeek(memberId, wKey);
-  };
-
-  const handlePointerEnterStudent = (memberId: string) => {
-    if (!canEditKas || !isPointerSwiping || lastSwipedMemberId.current === memberId) return;
-    lastSwipedMemberId.current = memberId;
-    sfx.playCoinChime();
-    const wKey = getWeekKey(selectedFastTapWeek);
-    onToggleWeek(memberId, wKey);
-  };
-
-  const handlePointerUp = () => {
-    setIsPointerSwiping(false);
-    lastSwipedMemberId.current = null;
-  };
   
   // Helpers for month-week logic
   const getWeekKey = (weekIndex: number) => {
@@ -388,10 +364,10 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                     ? 'bg-amber-300 text-slate-900 border-2 border-slate-900 shadow-[1px_1px_0px_#000]'
                     : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-900 border border-indigo-300'
                 }`}
-                title="Mode Centang Cepat Usap HP saat Menagih Iuran di Kelas"
+                title="Tampilan Mode Kartu Per-Siswa saat Menagih Iuran di Kelas"
               >
-                <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-400" />
-                <span>{isFastTapMode ? '⚡ Fast-Tap Mode (Aktif)' : '⚡ Centang Cepat HP'}</span>
+                <Hand className="w-3.5 h-3.5 text-amber-600" />
+                <span>{isFastTapMode ? '🎴 Mode Kartu Per-Siswa (Aktif)' : '🎴 Mode Kartu Per-Siswa'}</span>
               </button>
             )}
             {canEditKas && membersWithArrears.length > 0 && (
@@ -477,18 +453,18 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
         </div>
       </div>
 
-      {/* FAST-TAP SWIPE MODE VIEW FOR CLASSROOM COLLECTION */}
+      {/* CARD VIEW MODE FOR CLASSROOM COLLECTION */}
       {isFastTapMode ? (
         <div className="card-doodle p-4 rounded-lg bg-amber-50/50 border-2 border-slate-900 space-y-4">
           {/* Week Selector Bar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3 border-2 border-slate-900 rounded-md">
             <div>
               <p className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                <Hand className="w-4 h-4 text-amber-600 animate-bounce" />
-                <span>Mode Centang Cepat HP (Menagih di Kelas)</span>
+                <Hand className="w-4 h-4 text-amber-600" />
+                <span>Mode Kartu Per-Siswa (Pilih Minggu & Ketuk Kartu)</span>
               </p>
               <p className="text-[10px] text-slate-600">
-                Pilih minggu di bawah, lalu usap atau ketuk kartu siswa untuk centang lunas secara instan.
+                Pilih minggu di atas, lalu ketuk kartu siswa untuk mengubah status lunas iuran minggu tersebut.
               </p>
             </div>
 
@@ -547,11 +523,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
           })()}
 
           {/* Student Tap Cards Grid */}
-          <div
-            onPointerLeave={handlePointerUp}
-            onPointerUp={handlePointerUp}
-            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-[55vh] overflow-y-auto p-1 select-none"
-          >
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-[55vh] overflow-y-auto p-1 select-none">
             {filteredMembers.map((member) => {
               const currentWKey = getWeekKey(selectedFastTapWeek);
               const isPaid = !!member.weeklyStatus?.[currentWKey];
@@ -559,9 +531,13 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
               return (
                 <div
                   key={member.id}
-                  onPointerDown={() => handlePointerDownStudent(member.id)}
-                  onPointerEnter={() => handlePointerEnterStudent(member.id)}
-                  className={`p-3 rounded-lg border-2 border-slate-900 transition-all cursor-pointer flex flex-col justify-between select-none touch-none ${
+                  onClick={() => {
+                    if (canEditKas) {
+                      sfx.playCoinChime();
+                      onToggleWeek(member.id, currentWKey);
+                    }
+                  }}
+                  className={`p-3 rounded-lg border-2 border-slate-900 transition-all cursor-pointer flex flex-col justify-between select-none ${
                     isPaid
                       ? 'bg-emerald-300 shadow-[2px_2px_0px_#1E293B] scale-[1.01]'
                       : 'bg-white hover:bg-amber-50 shadow-[1px_1px_0px_#1E293B]'

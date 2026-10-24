@@ -11,30 +11,30 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.7.1',
-  codename: 'Fast-Tap Swipe Checklist & Topbar Share Button Restoration Edition',
+  version: '3.7.2',
+  codename: 'Supabase Transactions & Target Kas Sync + Single-Tap Card Mode Edition',
   releaseDate: '2026-10-29',
   changes: [
-    'Restorasi Tombol Bagikan Link di Topbar: Menampilkan kembali tombol "Bagikan Link" portal kelas di bilah navigasi atas (topbar) dan laporan kas overview.',
-    'Mode Centang Cepat HP (Fast-Tap Swipe Checklist): Mode khusus bendahara untuk menagih iuran di kelas secara praktis dengan sentuhan/usapan jari pada kartu siswa disertai suara koin interaktif.',
-    'Pemisah Ribuan Titik pada Angka & Nominal Uang: Seluruh tampilan angka, saldo, grafik tren kas bulanan (Y-Axis & Tooltip), serta tabel kini wajib menggunakan pemisah titik (misal Rp 50.000, 1.500.000).',
-    'Lencana Pratinjau Terbaca & Tombol Pintas Nominal Input: Menambahkan lencana pratinjau nominal terformat secara live saat mengisi catatan transaksi beserta tombol pintas (+5rb, +10rb, +50rb, +100rb, +500rb) agar bendahara tidak keliru membedakan jumlah angka nol.'
+    'Sinkronisasi Database Supabase & Target Kas: Menambahkan handler fetchSettingsFromSupabase() serta listener realtime untuk class_settings & kas_transactions agar nominal Target Kas, Tarif Iuran, dan Catatan Transaksi (Pemasukan/Pengeluaran) otomatis tersimpan dan sinkron antar-perangkat via Supabase cloud.',
+    'Pembaruan Mode Kartu Per-Siswa (Single-Tap): Menghapus gestur usap/swipe (drag hover) agar checklist tidak berubah tanpa sengaja saat mengusap layar HP, serta mempertahankan tampilan Mode Kartu Per-Siswa yang praktis dengan sekali ketuk (single tap).',
+    'Penataan Kebijakan RLS SQL Supabase: Memperbarui panduan skrip SQL di tab Pengaturan agar tabel kas_transactions dan class_settings mengizinkan penulisan/pembaruan data.',
+    'Restorasi Tombol Bagikan Link: Tombol "Bagikan Link" portal kelas dipertahankan di Topbar Navigasi dan dihapus dari Banner Ringkasan Kas agar tampilan lebih bersih.'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
+      title: 'Auto-Reconcile Iuran dengan Catatan Pemasukan',
+      description: 'Fitur otomatisasi yang mencatat transaksi pemasukan kas setiap kali bendahara mencentang iuran siswa, lengkap dengan nama siswa dan minggu iuran yang dibayar.'
+    },
+    {
+      category: 'optimasi',
       title: 'Kuitansi Digital PDF Per-Siswa',
       description: 'Fitur cetak atau kirim PDF bukti bayar individual per-siswa yang menampilkan rincian minggu mana saja yang sudah lunas beserta total rupiah yang disetorkan ke bendahara.'
     },
     {
-      category: 'optimasi',
-      title: 'Offline Queue & Retry Sync',
-      description: 'Menahan perubahan checklist di antrean lokal jika sinyal internet di kelas terputus dan otomatis mengirimkannya ke Supabase begitu terhubung kembali.'
-    },
-    {
       category: 'keamanan',
-      title: 'Pencegahan Duplikasi Realtime Broadcast Guard',
-      description: 'Pengamanan guard otomatis untuk mencegah duplikasi notifikasi saat jaringan HP berganti seluler/Wi-Fi secara simultan.'
+      title: 'Audit Log Rollback Transaksi',
+      description: 'Kemampuan Super Admin untuk melakukan undo/rollback transaksi atau perubahan status iuran langsung dari tabel Audit Log.'
     }
   ]
 };

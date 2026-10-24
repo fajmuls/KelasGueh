@@ -183,7 +183,8 @@ export interface AuditLogEntry {
 export const subscribeToRealtimeKas = (
   onTransactionChange: (payload: any) => void,
   onMemberChange: (payload: any) => void,
-  onAuditLogChange?: (payload: any) => void
+  onAuditLogChange?: (payload: any) => void,
+  onSettingsChange?: (payload: any) => void
 ) => {
   const client = getSupabaseClient();
   if (!client) return () => {};
@@ -205,6 +206,13 @@ export const subscribeToRealtimeKas = (
       { event: '*', schema: 'public', table: 'audit_logs' },
       (payload) => {
         if (onAuditLogChange) onAuditLogChange(payload);
+      }
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'class_settings' },
+      (payload) => {
+        if (onSettingsChange) onSettingsChange(payload);
       }
     )
     .subscribe();
@@ -624,6 +632,55 @@ export class LocalKasRepository {
     return data ? { ...DEFAULT_SETTINGS, ...JSON.parse(data) } : DEFAULT_SETTINGS;
   }
 
+  public static async fetchSettingsFromSupabase(): Promise<ClassSettings> {
+    const client = getSupabaseClient();
+    const local = this.getSettings();
+    if (!client) return local;
+
+    try {
+      const { data, error } = await client
+        .from('class_settings')
+        .select('*')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Fetch settings from Supabase warning:', error.message);
+        return local;
+      }
+
+      if (data) {
+        const mapped: ClassSettings = {
+          ...local,
+          className: data.class_name || local.className,
+          weeklyDuesAmount: Number(data.weekly_dues_amount ?? local.weeklyDuesAmount),
+          kasTargetAmount: Number(data.kas_target_amount ?? local.kasTargetAmount),
+          currencyPrefix: data.currency_prefix || local.currencyPrefix,
+          academicYear: data.academic_year || local.academicYear
+        };
+        localStorage.setItem(this.STORAGE_KEY_SETTINGS, JSON.stringify(mapped));
+        return mapped;
+      } else {
+        // Auto-upsert default local settings to empty Supabase table
+        client.from('class_settings').upsert([{
+          id: 1,
+          class_name: local.className,
+          weekly_dues_amount: local.weeklyDuesAmount,
+          kas_target_amount: local.kasTargetAmount,
+          currency_prefix: local.currencyPrefix,
+          academic_year: local.academicYear
+        }]).then(({ error: upErr }) => {
+          if (upErr) console.warn('Auto-sync settings to Supabase error:', upErr.message);
+        });
+      }
+
+      return local;
+    } catch (err: any) {
+      console.warn('Supabase fetchSettings error:', err);
+      return local;
+    }
+  }
+
   public static saveSettings(settings: ClassSettings): void {
     localStorage.setItem(this.STORAGE_KEY_SETTINGS, JSON.stringify(settings));
     if (settings.supabaseUrl) localStorage.setItem('kelasgue_supabase_url', settings.supabaseUrl);
@@ -633,6 +690,7 @@ export class LocalKasRepository {
 
     const client = getSupabaseClient();
     if (client) {
+      setCloudSyncStatus('syncing');
       client.from('class_settings').upsert([{
         id: 1,
         class_name: settings.className,
@@ -640,7 +698,14 @@ export class LocalKasRepository {
         kas_target_amount: settings.kasTargetAmount,
         currency_prefix: settings.currencyPrefix,
         academic_year: settings.academicYear
-      }]).then();
+      }]).then(({ error }) => {
+        if (error) {
+          console.error('Gagal simpan class_settings ke Supabase (Cek Policy SQL RLS):', error.message, error);
+        } else {
+          console.log('✓ Class settings berhasil tersimpan di Supabase.');
+        }
+        setTimeout(() => setCloudSyncStatus('synced'), 600);
+      });
     }
   }
 

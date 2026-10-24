@@ -48,12 +48,14 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [txs, ms] = await Promise.all([
+        const [txs, ms, st] = await Promise.all([
           LocalKasRepository.fetchTransactionsFromSupabase(),
-          LocalKasRepository.fetchMembersFromSupabase()
+          LocalKasRepository.fetchMembersFromSupabase(),
+          LocalKasRepository.fetchSettingsFromSupabase()
         ]);
         setTransactions(txs);
         setMembers(ms);
+        if (st) setSettings(st);
       } catch (err) {
         console.warn('Initial fetch error:', err);
       }
@@ -82,6 +84,9 @@ const AppContent: React.FC = () => {
       },
       (_payload) => {
         setAuditLogs(LocalKasRepository.getAuditLogs());
+      },
+      (_payload) => {
+        LocalKasRepository.fetchSettingsFromSupabase().then(setSettings);
       }
     );
 
