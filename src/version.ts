@@ -11,34 +11,30 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.5.0',
-  codename: 'Quality of Life & Mobile Refinement Edition',
+  version: '3.5.1',
+  codename: 'WhatsApp Social Share & Security Audit Edition',
   releaseDate: '2026-10-29',
   changes: [
-    'Doodle Button Unification: Menyeragamkan seluruh tombol di seluruh aplikasi (navbar, buku kas, pengaturan, dan modal) dengan gaya btn-doodle yang konsisten dan interaktif.',
-    'Mobile Pixel Compaction: Mengoptimalkan ukuran padding, font, dan elemen tombol pada layar HP agar lebih padat, ringkas, dan tidak memerlukan scrolling berlebih.',
-    'Super Admin Member Binding: Super Admin kini dapat menghubungkan akun Google pengguna ke nama siswa di tabel iuran secara langsung dengan dropdown interaktif dan 2 badge status (Role & Nama Siswa).',
-    'Live Cloud Sync Badge: Indikator status sinkronisasi Supabase realtime di navbar (🟢 Sinkron / 🟡 Menyimpan... / ⚪ Lokal) untuk kepastian data tersimpan ke server.',
-    'Filter Cepat Siswa Menunggak: Tombol filter instan [Semua Siswa] vs [Hanya Belum Lunas] di tabel Checklist Iuran beserta counter siswa menunggak.',
-    'WhatsApp Reminder & Recap Remake: Format pesan WhatsApp disederhanakan menjadi laporan resmi ringkas tanpa emoji berlebih, menampilkan saldo kas dan daftar tunggakan, serta dibatasi khusus bendahara/super admin.',
-    'Audio Preference Relocation: Memindahkan toggle efek suara (SFX) dari navbar ke menu Pengaturan Kelas (Preferensi Suara & Tampilan) untuk menghemat ruang navbar mobile.',
-    'Printable Binder & Google Sheets Revamp: Pratinjau lembaran binder resmi dengan aksen lubang ring buku, kop resmi bergaris ganda, serta ekspor CSV Google Sheets yang lengkap dengan data anggota.'
+    'WhatsApp & Social Share Logo Preview: Menambahkan Open Graph metadata (og:image, og:image:secure_url, og:image:width: 512, og:image:height: 512, og:image:type) dan Twitter Cards sehingga link Vercel saat dibagikan ke WhatsApp menampilkan logo resmi aplikasi dengan tajam.',
+    'Pembaruan Deskripsi Aplikasi: Menyelaraskan deskripsi web dan kartu berbagi menjadi "Aplikasi kelas serbaguna untuk kelola kegiatan, buku kas, checklist iuran, dan catatan kelas", tidak melulu terpaku pada istilah transparansi kas.',
+    'Asset Og-Image Standar Tinggi: Menyediakan file /og-image.png (512x512 PNG) di root publik server agar crawler WhatsApp / Facebook / Twitter dapat mengambil gambar preview tanpa kendala format SVG.',
+    'Security Hardening: Verifikasi keamanan menyeluruh arsitektur Supabase (Anon Key aman di browser, perlindungan PIN 6-digit terenkripsi untuk mutasi besar, sanitasi payload, dan isolasi role Super Admin / Bendahara).'
   ],
   suggestedUpdates: [
     {
+      category: 'keamanan',
+      title: 'Restricted RLS Policies Supabase',
+      description: 'Penguatan kebijakan RLS Supabase berbasis Google OAuth UID jika ingin membatasi penulisan tabel di level database hanya untuk UID Google akun bendahara terdaftar.'
+    },
+    {
       category: 'fitur',
-      title: 'Download Arsip Foto Nota ZIP',
-      description: 'Fitur 1-klik untuk mengunduh seluruh berkas foto kuitansi/nota belanja kas yang tersimpan di Supabase Storage dalam satu file ZIP terkompresi.'
+      title: 'PWA Share Target API',
+      description: 'Memungkinkan siswa membagikan foto struk belanja langsung dari galeri HP atau WhatsApp ke aplikasi Kelas Gue via native Android/iOS share sheet.'
     },
     {
       category: 'optimasi',
-      title: 'Grafik Tren Arus Kas Mingguan',
-      description: 'Visualisasi grafik doodle interaktif untuk memantau perbandingan pemasukan iuran vs pengeluaran kas kelas dari minggu ke minggu.'
-    },
-    {
-      category: 'keamanan',
-      title: 'Auto-Lock Session Bendahara',
-      description: 'Kunci otomatis sesi otorisasi bendahara setelah 15 menit tidak aktif untuk mencegah modifikasi tidak sengaja pada perangkat bersama.'
+      title: 'Custom Domain Auto-Redirect',
+      description: 'Konfigurasi canonical URL dan otomatisasi perpindahan link dari URL lama Vercel ke domain baru kelasgue.vercel.app.'
     }
   ]
 };
