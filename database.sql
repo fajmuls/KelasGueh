@@ -16,8 +16,19 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     CONSTRAINT one_row CHECK (id = 1)
 );
 
--- Migrasi: Jika kolom lama 'target_amount' masih ada, kita rename (opsional jika clean setup)
--- ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
+-- Migrasi: Menangani transisi kolom target_amount ke kas_target_amount
+DO $$ 
+BEGIN 
+  -- Kasus 1: Hanya kolom lama yang ada -> Rename
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='target_amount') 
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='kas_target_amount') THEN
+    ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
+  -- Kasus 2: Kedua kolom ada -> Hapus yang lama (cleanup)
+  ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='target_amount') 
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='kas_target_amount') THEN
+    ALTER TABLE public.class_settings DROP COLUMN target_amount;
+  END IF;
+END $$;
 
 -- Masukkan data awal jika belum ada
 INSERT INTO public.class_settings (id, class_name) 

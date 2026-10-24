@@ -13,8 +13,8 @@ export const DEFAULT_SETTINGS: ClassSettings = {
   kasTargetAmount: 2500000,
   currencyPrefix: 'Rp',
   academicYear: 'Semester Ganjil 2026/2027',
-  supabaseUrl: (import.meta as any).env?.VITE_SUPABASE_URL || 'https://ireqpxgmlrsmcgidfthg.supabase.co',
-  supabaseAnonKey: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_L9mfK1ZtYWMV23uY3egcTg_H325a-UV',
+  supabaseUrl: (import.meta as any).env?.VITE_SUPABASE_URL || 'https://husymjsimolzvidunkur.supabase.co',
+  supabaseAnonKey: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1c3ltanNpbW9senZpZHVua3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4NTMyMDgsImV4cCI6MjEwODQyOTIwOH0.aDla7rhA2J1QNC_EXivKX2rzpuEVKuuMdTQ09XUNlkc',
   siteUrl: 'https://kelasgueh.vercel.app/'
 };
 

@@ -11,31 +11,31 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.9.0',
-  codename: 'Database Overhaul & Cloud-First Architecture',
+  version: '3.10.0',
+  codename: 'Fresh Infrastructure Reset',
   releaseDate: '2026-10-24',
   changes: [
-    'Rombak Total Arsitektur Database: Seluruh logika database kini menggunakan DbService yang baru dan lebih stabil.',
-    'Fix Not-Null Constraint: Perbaikan pada skrip SQL dan kode aplikasi untuk kolom kas_target_amount.',
-    'Full Cloud Audit Logs: Semua log aktivitas kini tersimpan langsung di Supabase, tidak hanya di lokal.',
-    'Optimasi Iuran Real-time: Perbaikan pada sinkronisasi checklist iuran agar langsung terupdate di dashboard anggota.',
-    'Pembersihan API Lokal: Menghapus fragmentasi konfigurasi API lokal yang sering menyebabkan ketidaksinkronan data.'
+    'Infrastruktur Baru: Berhasil migrasi ke project Supabase baru yang lebih bersih dan stabil.',
+    'Reset Database Total: Menghapus residu data lama yang menyebabkan konflik sinkronisasi.',
+    'Optimasi Konektivitas: Default URL dan Anon Key telah diperbarui langsung di dalam inti sistem.',
+    'Realtime v2: Peningkatan stabilitas pada kanal publikasi realtime untuk sinkronisasi antar perangkat.',
+    'Fix Local Conflict: Menghapus mekanisme fallback yang terkadang membingungkan data lokal dan cloud.'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
-      title: 'Sistem Role Claims Terintegrasi',
-      description: 'Fitur permohonan role (Ketua/Bendahara) yang tersimpan di database dan menunggu persetujuan Super Admin.'
+      title: 'Bulk Add Members',
+      description: 'Fitur untuk menambah banyak anggota sekaligus lewat copy-paste daftar nama untuk mempercepat setup.'
     },
     {
       category: 'optimasi',
-      title: 'Peningkatan Kecepatan Load',
-      description: 'Implementasi caching layer yang lebih cerdas untuk mengurangi penggunaan kuota database.'
+      title: 'Sync Status Indicator',
+      description: 'Menambahkan indikator visual di Navbar saat data sedang dikirim ke cloud.'
     },
     {
       category: 'keamanan',
-      title: 'RLS Hardening',
-      description: 'Pengetatan Row Level Security di Supabase untuk memastikan data iuran hanya bisa diubah oleh pengurus.'
+      title: 'Storage Policies',
+      description: 'Mengatur keamanan folder nota di Supabase Storage agar hanya bendahara yang bisa menghapus foto.'
     }
   ]
 };

@@ -181,11 +181,15 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     CONSTRAINT one_row CHECK (id = 1)
 );
 
--- Migrasi jika kolom lama 'target_amount' ada
+-- Migrasi: Menangani transisi kolom target_amount ke kas_target_amount
 DO $$ 
 BEGIN 
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') THEN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='target_amount') 
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='kas_target_amount') THEN
     ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
+  ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='target_amount') 
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='kas_target_amount') THEN
+    ALTER TABLE public.class_settings DROP COLUMN target_amount;
   END IF;
 END $$;
 
@@ -285,11 +289,15 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     CONSTRAINT one_row CHECK (id = 1)
 );
 
--- Migrasi jika kolom lama 'target_amount' ada
+-- Migrasi: Menangani transisi kolom target_amount ke kas_target_amount
 DO $$ 
 BEGIN 
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') THEN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='target_amount') 
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='kas_target_amount') THEN
     ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
+  ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='target_amount') 
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='kas_target_amount') THEN
+    ALTER TABLE public.class_settings DROP COLUMN target_amount;
   END IF;
 END $$;
 
