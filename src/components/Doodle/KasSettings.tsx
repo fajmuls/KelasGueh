@@ -49,6 +49,7 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
   });
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => sfx.isEnabled());
+  const [sqlMode, setSqlMode] = useState<'strict' | 'standard'>('strict');
 
   // User Role Management state for Super Admin
   const [userList, setUserList] = useState<RegisteredUser[]>(() => getRegisteredUsers());
@@ -150,8 +151,163 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
     }
   };
 
-  const sqlScript = `-- ========================================================
--- KELAS GUE v3.4.3 - SKRIP SETUP SUPABASE LENGKAP & AMAN
+  // 1. STRICT MODE RLS (Anti-Hack Google UID/Email Whitelist)
+  const strictSqlScript = `-- ========================================================
+-- KELAS GUE v3.5.2 - SKRIP SUPABASE STRICT RLS (ANTI-HACK)
+-- ========================================================
+-- Hanya Super Admin & Bendahara Terdaftar yang bisa Menulis/Mengubah.
+-- Seluruh Siswa/Publik tetap bisa Melihat (SELECT) secara transparan.
+
+-- 1. Membuat Tabel Transaksi Kas
+CREATE TABLE IF NOT EXISTS public.kas_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    title TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    category TEXT NOT NULL,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    recorded_by TEXT NOT NULL,
+    receipt_url TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 2. Membuat Tabel Anggota & Checklist Iuran
+CREATE TABLE IF NOT EXISTS public.kas_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    student_id TEXT NOT NULL UNIQUE,
+    phone TEXT,
+    weekly_status JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 3. Membuat Tabel Audit Log
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    action TEXT NOT NULL,
+    details TEXT,
+    performed_by TEXT NOT NULL,
+    user_role TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 4. Membuat Tabel Pengaturan Kelas
+CREATE TABLE IF NOT EXISTS public.class_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    class_name TEXT NOT NULL DEFAULT 'Kelas Gue',
+    weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000,
+    kas_target_amount NUMERIC NOT NULL DEFAULT 1000000,
+    currency_prefix TEXT NOT NULL DEFAULT 'Rp',
+    academic_year TEXT NOT NULL DEFAULT '2023/2024',
+    CONSTRAINT one_row CHECK (id = 1)
+);
+
+-- 5. Membuat Tabel Whitelist Akses Editor (Super Admin & Bendahara)
+CREATE TABLE IF NOT EXISTS public.authorized_whitelist (
+    email TEXT PRIMARY KEY,
+    role TEXT NOT NULL CHECK (role IN ('superadmin', 'bendahara')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Masukkan Email Super Admin Anda ke Whitelist
+INSERT INTO public.authorized_whitelist (email, role)
+VALUES ('mrachmanfm@gmail.com', 'superadmin')
+ON CONFLICT (email) DO NOTHING;
+
+-- 6. Fungsi Helper Cek Otorisasi Google Auth
+CREATE OR REPLACE FUNCTION public.is_authorized_editor()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+AS $$
+DECLARE
+    current_user_email TEXT;
+BEGIN
+    current_user_email := auth.jwt() ->> 'email';
+    IF current_user_email IS NULL THEN
+        RETURN FALSE;
+    END IF;
+    RETURN EXISTS (
+        SELECT 1 FROM public.authorized_whitelist
+        WHERE LOWER(email) = LOWER(current_user_email)
+    ) OR LOWER(current_user_email) = 'mrachmanfm@gmail.com';
+END;
+$$;
+
+-- 7. Konfigurasi Row Level Security (RLS) Anti-Hack
+ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kas_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.class_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.authorized_whitelist ENABLE ROW LEVEL SECURITY;
+
+-- Policy kas_transactions
+DROP POLICY IF EXISTS "Publik BACA kas_transactions" ON public.kas_transactions;
+CREATE POLICY "Publik BACA kas_transactions" ON public.kas_transactions FOR SELECT TO public USING (true);
+
+DROP POLICY IF EXISTS "Whitelist TULIS kas_transactions" ON public.kas_transactions;
+CREATE POLICY "Whitelist TULIS kas_transactions" ON public.kas_transactions FOR ALL TO authenticated
+USING (public.is_authorized_editor()) WITH CHECK (public.is_authorized_editor());
+
+-- Policy kas_members
+DROP POLICY IF EXISTS "Publik BACA kas_members" ON public.kas_members;
+CREATE POLICY "Publik BACA kas_members" ON public.kas_members FOR SELECT TO public USING (true);
+
+DROP POLICY IF EXISTS "Whitelist TULIS kas_members" ON public.kas_members;
+CREATE POLICY "Whitelist TULIS kas_members" ON public.kas_members FOR ALL TO authenticated
+USING (public.is_authorized_editor()) WITH CHECK (public.is_authorized_editor());
+
+-- Policy audit_logs
+DROP POLICY IF EXISTS "Publik BACA audit_logs" ON public.audit_logs;
+CREATE POLICY "Publik BACA audit_logs" ON public.audit_logs FOR SELECT TO public USING (true);
+
+DROP POLICY IF EXISTS "Catat audit_logs" ON public.audit_logs;
+CREATE POLICY "Catat audit_logs" ON public.audit_logs FOR INSERT TO public WITH CHECK (true);
+
+-- Policy class_settings
+DROP POLICY IF EXISTS "Publik BACA class_settings" ON public.class_settings;
+CREATE POLICY "Publik BACA class_settings" ON public.class_settings FOR SELECT TO public USING (true);
+
+DROP POLICY IF EXISTS "Super Admin UBAH class_settings" ON public.class_settings;
+CREATE POLICY "Super Admin UBAH class_settings" ON public.class_settings FOR ALL TO authenticated
+USING (LOWER(auth.jwt() ->> 'email') = 'mrachmanfm@gmail.com')
+WITH CHECK (LOWER(auth.jwt() ->> 'email') = 'mrachmanfm@gmail.com');
+
+-- Policy authorized_whitelist
+DROP POLICY IF EXISTS "Publik BACA authorized_whitelist" ON public.authorized_whitelist;
+CREATE POLICY "Publik BACA authorized_whitelist" ON public.authorized_whitelist FOR SELECT TO public USING (true);
+
+DROP POLICY IF EXISTS "Super Admin KELOLA authorized_whitelist" ON public.authorized_whitelist;
+CREATE POLICY "Super Admin KELOLA authorized_whitelist" ON public.authorized_whitelist FOR ALL TO authenticated
+USING (LOWER(auth.jwt() ->> 'email') = 'mrachmanfm@gmail.com')
+WITH CHECK (LOWER(auth.jwt() ->> 'email') = 'mrachmanfm@gmail.com');
+
+-- 8. Daftarkan Realtime Publikasi
+DO $$
+BEGIN
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.kas_transactions;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.kas_members;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.class_settings;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+END $$;`;
+
+  // 2. STANDARD MODE RLS (Open Public)
+  const standardSqlScript = `-- ========================================================
+-- KELAS GUE v3.5.2 - SKRIP SUPABASE STANDARD PUBLIC
 -- ========================================================
 
 -- 1. Membuat Tabel Transaksi Kas
@@ -199,7 +355,7 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     CONSTRAINT one_row CHECK (id = 1)
 );
 
--- 5. Konfigurasi Row Level Security (RLS) & Kebijakan Akses Penuh (Public / Anon)
+-- 5. Konfigurasi Row Level Security (RLS) & Kebijakan Akses Penuh
 ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.kas_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
@@ -217,7 +373,7 @@ CREATE POLICY "Akses Penuh audit_logs" ON public.audit_logs FOR ALL TO public US
 DROP POLICY IF EXISTS "Akses Penuh class_settings" ON public.class_settings;
 CREATE POLICY "Akses Penuh class_settings" ON public.class_settings FOR ALL TO public USING (true) WITH CHECK (true);
 
--- 6. Daftarkan Realtime Aman (Bebas dari Error 42710 jika sudah terdaftar)
+-- 6. Daftarkan Realtime Aman
 DO $$
 BEGIN
     BEGIN
@@ -237,6 +393,8 @@ BEGIN
     EXCEPTION WHEN duplicate_object THEN NULL;
     END;
 END $$;`;
+
+  const activeSqlScript = sqlMode === 'strict' ? strictSqlScript : standardSqlScript;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-12">
@@ -363,31 +521,83 @@ END $$;`;
         </form>
       </div>
 
-      {/* 4. SQL Script Section */}
-      <div className="card-doodle p-6 rounded-lg bg-slate-900 relative border-2 border-slate-900">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-black text-emerald-400 flex items-center gap-2 uppercase tracking-tight">
-            <Terminal className="w-4 h-4" />
-            <span>Script SQL Setup Tabel (Salin & Jalankan)</span>
-          </h3>
-          <button
-            onClick={() => {
-              sfx.playClick();
-              navigator.clipboard.writeText(sqlScript);
-              alert('SQL Script berhasil disalin!');
-            }}
-            className="btn-doodle flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 text-[10px] font-black rounded border-2 border-slate-900"
-          >
-            <Copy className="w-3 h-3" />
-            <span>Salin SQL</span>
-          </button>
+      {/* 4. SQL Script Section (Dual Security Modes) */}
+      <div className="card-doodle p-4 sm:p-6 rounded-lg bg-slate-900 relative border-2 border-slate-900 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 border-b border-slate-800 pb-3">
+          <div>
+            <h3 className="text-sm font-black text-emerald-400 flex items-center gap-2 uppercase tracking-tight">
+              <Terminal className="w-4 h-4" />
+              <span>Script SQL Supabase ({sqlMode === 'strict' ? 'Mode Ketat Anti-Hack' : 'Mode Terbuka'})</span>
+            </h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {sqlMode === 'strict'
+                ? '🔒 Hanya Super Admin (mrachmanfm@gmail.com) & Bendahara Whitelist yang bisa mengubah data.'
+                : '⚡ Semua pengguna dapat membaca dan mencatat data tanpa login Google.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Mode Switcher */}
+            <div className="flex p-0.5 bg-slate-800 border border-slate-700 rounded-md">
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.playToggle();
+                  setSqlMode('strict');
+                }}
+                className={`px-2.5 py-1 text-[10px] font-black rounded transition-all ${
+                  sqlMode === 'strict'
+                    ? 'bg-emerald-400 text-slate-900 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                🛡️ Ketat (Anti-Hack)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.playToggle();
+                  setSqlMode('standard');
+                }}
+                className={`px-2.5 py-1 text-[10px] font-black rounded transition-all ${
+                  sqlMode === 'standard'
+                    ? 'bg-amber-300 text-slate-900 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                ⚡ Terbuka
+              </button>
+            </div>
+
+            <button
+              onClick={() => {
+                sfx.playClick();
+                navigator.clipboard.writeText(activeSqlScript);
+                alert(`✓ Script SQL (${sqlMode === 'strict' ? 'Mode Ketat Anti-Hack' : 'Mode Terbuka'}) berhasil disalin!`);
+              }}
+              className="btn-doodle flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-900 text-xs font-black rounded border-2 border-slate-900"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>Salin SQL</span>
+            </button>
+          </div>
         </div>
-        <pre className="text-[10px] text-slate-300 font-mono overflow-x-auto max-h-48 p-2 bg-slate-800 rounded border border-slate-700 leading-relaxed">
-          {sqlScript}
+
+        <pre className="text-[10px] text-emerald-300 font-mono overflow-x-auto max-h-56 p-3 bg-slate-950 rounded border border-slate-800 leading-relaxed selection:bg-emerald-800">
+          {activeSqlScript}
         </pre>
-        <p className="text-[10px] text-slate-500 mt-2 italic flex items-center gap-1">
-          <Info className="w-3 h-3" /> Jalankan ini di Supabase SQL Editor agar database "Kelas Gue" berfungsi penuh.
-        </p>
+        
+        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between text-[10px] text-slate-400 gap-2">
+          <p className="flex items-center gap-1">
+            <Info className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span>Jalankan di Supabase <strong>SQL Editor &gt; New Query &gt; Run</strong>. Realtime sudah terproteksi aman.</span>
+          </p>
+          {sqlMode === 'strict' && (
+            <span className="text-amber-400 font-mono font-bold">
+              * Terhubung otomatis ke Google Auth UID
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 5. User Settings & Audio Preferences (QoL) */}
