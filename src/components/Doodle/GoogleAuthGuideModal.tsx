@@ -40,10 +40,10 @@ export const GoogleAuthGuideModal: React.FC<GoogleAuthGuideModalProps> = ({
             </div>
             <div>
               <h3 className="text-xl font-black text-slate-900">
-                Solusi Error 400 Google OAuth Supabase
+                Solusi Error 400 / 403 Google Login
               </h3>
               <p className="text-xs text-slate-500">
-                Penyebab: <code>validation failed unsupported provider</code>
+                Penyebab: <code>unsupported provider</code> atau <code>403 access_denied</code>
               </p>
             </div>
           </div>
@@ -60,7 +60,7 @@ export const GoogleAuthGuideModal: React.FC<GoogleAuthGuideModalProps> = ({
 
         {/* Explanation Card */}
         <div className="p-3 bg-amber-50 border-2 border-slate-900 rounded-md mb-4 text-xs text-slate-700 leading-relaxed">
-          <strong>Mengapa error ini muncul?</strong> Di proyek Supabase Anda, provider Google secara *default* berstatus <em>nonaktif</em> hingga Anda mengaktifkannya dan memasukkan <strong>Client ID & Client Secret</strong> dari Google Cloud Console.
+          <strong>Mengapa error 403 muncul?</strong> Biasanya karena domain website ini (AI Studio Preview) belum didaftarkan di <strong>Google Cloud Console</strong> &gt; APIs & Services &gt; Credentials &gt; OAuth 2.0 Client IDs.
         </div>
 
         {/* Step by step guide */}
@@ -69,41 +69,14 @@ export const GoogleAuthGuideModal: React.FC<GoogleAuthGuideModalProps> = ({
             <div className="flex items-start gap-2">
               <span className="w-5 h-5 rounded-full bg-amber-300 border border-slate-900 flex items-center justify-center font-bold shrink-0">1</span>
               <div>
-                <strong className="text-slate-900">Buka Dashboard Supabase</strong>
+                <strong className="text-slate-900">Konfigurasi Authorized Redirect URIs</strong>
                 <p className="text-slate-600 mt-0.5">
-                  Masuk ke menu <code className="bg-white px-1 border border-slate-300 rounded">Authentication</code> → <code className="bg-white px-1 border border-slate-300 rounded">Providers</code> → Cari <code className="bg-white px-1 border border-slate-300 rounded">Google</code>.
+                  Buka <strong>Google Cloud Console</strong>. Pilih project Anda, masuk ke <strong>APIs & Services</strong> &gt; <strong>Credentials</strong>. Edit OAuth 2.0 Client ID.
                 </p>
-                <a
-                  href="https://supabase.com/dashboard/project/ireqpxgmlrsmcgidfthg/auth/providers"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-indigo-700 font-bold hover:underline mt-1"
-                >
-                  <span>Buka Supabase Providers Project Anda</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3 bg-slate-50 border-2 border-slate-800 rounded-md">
-            <div className="flex items-start gap-2">
-              <span className="w-5 h-5 rounded-full bg-amber-300 border border-slate-900 flex items-center justify-center font-bold shrink-0">2</span>
-              <div className="w-full">
-                <strong className="text-slate-900">Aktifkan Toggle "Enable Google provider"</strong>
-                <p className="text-slate-600 mt-0.5">
-                  Centang opsi <strong>Enable Google provider</strong>. Anda akan melihat <em>Callback URL</em> berikut:
-                </p>
-                <div className="mt-1.5 flex items-center gap-2 bg-white border-2 border-slate-900 rounded px-2.5 py-1.5 font-mono text-[11px]">
-                  <span className="truncate flex-1 text-slate-800">{callbackUrl}</span>
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    className="btn-doodle px-2 py-0.5 bg-amber-200 text-slate-900 text-[10px] font-bold rounded flex items-center gap-1 shrink-0"
-                  >
-                    {copied ? <Check className="w-3 h-3 text-emerald-700" /> : <Copy className="w-3 h-3" />}
-                    <span>{copied ? 'Tersalin!' : 'Salin URL'}</span>
-                  </button>
+                <p className="text-slate-600 mt-1 font-bold">Tambahkan Callback URL ini ke Authorized redirect URIs:</p>
+                <div className="mt-1 flex items-center gap-2 bg-white border-2 border-slate-900 rounded px-2.5 py-1.5 font-mono text-[10px]">
+                  <span className="truncate flex-1">{callbackUrl}</span>
+                  <button onClick={handleCopy} className="btn-doodle px-2 py-0.5 bg-amber-100 rounded text-[9px] font-bold">Copy</button>
                 </div>
               </div>
             </div>
@@ -111,23 +84,26 @@ export const GoogleAuthGuideModal: React.FC<GoogleAuthGuideModalProps> = ({
 
           <div className="p-3 bg-slate-50 border-2 border-slate-800 rounded-md">
             <div className="flex items-start gap-2">
-              <span className="w-5 h-5 rounded-full bg-amber-300 border border-slate-900 flex items-center justify-center font-bold shrink-0">3</span>
+              <span className="w-5 h-5 rounded-full bg-amber-300 border border-slate-900 flex items-center justify-center font-bold shrink-0">2</span>
               <div>
-                <strong className="text-slate-900">Daftarkan Callback URL di Google Cloud Console</strong>
-                <p className="text-slate-600 mt-0.5">
-                  Buka Google Cloud Console → <strong>APIs & Services</strong> → <strong>Credentials</strong> → Edit OAuth 2.0 Client ID Anda → Pada bagian <strong>"Authorized redirect URIs"</strong>, tempelkan Callback URL di atas.
+                <strong className="text-slate-900">Tambahkan Authorized JavaScript Origins</strong>
+                <p className="text-slate-600 mt-0.5 leading-relaxed">
+                  Pada halaman yang sama di Google Cloud, cari bagian <strong>"Authorized JavaScript origins"</strong>. Tambahkan URL website ini:
                 </p>
+                <code className="block mt-1 bg-white p-1 border-2 border-slate-900 rounded font-mono text-[9px] truncate">
+                  {window.location.origin}
+                </code>
               </div>
             </div>
           </div>
 
           <div className="p-3 bg-slate-50 border-2 border-slate-800 rounded-md">
             <div className="flex items-start gap-2">
-              <span className="w-5 h-5 rounded-full bg-amber-300 border border-slate-900 flex items-center justify-center font-bold shrink-0">4</span>
-              <div>
-                <strong className="text-slate-900">Masukkan Client ID & Client Secret ke Supabase</strong>
+              <span className="w-5 h-5 rounded-full bg-amber-300 border border-slate-900 flex items-center justify-center font-bold shrink-0">3</span>
+              <div className="w-full">
+                <strong className="text-slate-900">Aktifkan Google Provider di Supabase</strong>
                 <p className="text-slate-600 mt-0.5">
-                  Salin <strong>Client ID</strong> dan <strong>Client Secret</strong> dari Google Cloud, lalu masukkan ke form Google Provider di Supabase dan klik <strong>Save</strong>.
+                  Masuk ke Dashboard Supabase → Authentication → Providers → Google. Pastikan sudah <strong>Enabled</strong> dan Client ID/Secret sudah benar.
                 </p>
               </div>
             </div>

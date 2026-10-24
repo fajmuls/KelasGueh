@@ -123,7 +123,7 @@ export const WelcomeScreen: React.FC = () => {
             </button>
           </div>
 
-          {/* Guide link for error 400 */}
+          {/* Guide link for errors */}
           <div className="mt-4 p-2.5 bg-amber-50/80 border border-slate-300 rounded text-center">
             <button
               type="button"
@@ -134,7 +134,7 @@ export const WelcomeScreen: React.FC = () => {
               className="text-xs font-bold text-amber-900 hover:text-indigo-800 inline-flex items-center gap-1.5"
             >
               <HelpCircle className="w-4 h-4 text-amber-700" />
-              <span>Panduan Konfigurasi Supabase Google OAuth (Error 400)</span>
+              <span>Solusi Login Error 400 / 403 (Access Denied)</span>
             </button>
           </div>
 

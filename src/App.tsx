@@ -125,21 +125,29 @@ const AppContent: React.FC = () => {
   }, []);
 
   // Handlers
-  const handleAddTransaction = (newTxData: Omit<KasTransaction, 'id' | 'createdAt'>) => {
-    const saved = LocalKasRepository.addTransaction(newTxData);
-    LocalKasRepository.addAuditLog({
-      action: `CATAT ${newTxData.type === 'income' ? 'PEMASUKAN' : 'PENGELUARAN'}`,
-      details: `${newTxData.title}: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(newTxData.amount)}`,
-      performedBy: user?.name || 'Unknown',
-      userRole: role,
-    });
-    setTransactions(prev => [saved, ...prev]);
-    setAuditLogs(LocalKasRepository.getAuditLogs());
+  const handleAddTransaction = async (newTxData: Omit<KasTransaction, 'id' | 'createdAt'>) => {
+    try {
+      const saved = await LocalKasRepository.addTransaction(newTxData);
+      LocalKasRepository.addAuditLog({
+        action: `CATAT ${newTxData.type === 'income' ? 'PEMASUKAN' : 'PENGELUARAN'}`,
+        details: `${newTxData.title}: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(newTxData.amount)}`,
+        performedBy: user?.name || 'Unknown',
+        userRole: role,
+      });
+      // Update local state for immediate feedback
+      setTransactions(prev => [saved, ...prev]);
+      setAuditLogs(LocalKasRepository.getAuditLogs());
+      
+      // Full resync to ensure database consistency
+      LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
+    } catch (err) {
+      console.error('Add transaction handler error:', err);
+    }
   };
 
-  const handleDeleteTransaction = (id: string) => {
+  const handleDeleteTransaction = async (id: string) => {
     const tx = transactions.find(t => t.id === id);
-    LocalKasRepository.deleteTransaction(id);
+    await LocalKasRepository.deleteTransaction(id);
     if (tx) {
       LocalKasRepository.addAuditLog({
         action: 'HAPUS TRANSAKSI',
@@ -150,10 +158,11 @@ const AppContent: React.FC = () => {
     }
     setTransactions(prev => prev.filter(t => t.id !== id));
     setAuditLogs(LocalKasRepository.getAuditLogs());
+    LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
   };
 
-  const handleToggleWeek = (memberId: string, weekKey: string) => {
-    LocalKasRepository.toggleMemberWeek(memberId, weekKey);
+  const handleToggleWeek = async (memberId: string, weekKey: string) => {
+    await LocalKasRepository.toggleMemberWeek(memberId, weekKey);
     const targetMember = members.find(m => m.id === memberId);
     if (targetMember) {
       const isNowPaid = !targetMember.weeklyStatus?.[weekKey];
@@ -165,6 +174,7 @@ const AppContent: React.FC = () => {
       });
       setAuditLogs(LocalKasRepository.getAuditLogs());
     }
+    // Optimistic update followed by re-fetch
     setMembers(prev => prev.map(m => {
       if (m.id === memberId) {
         return {
@@ -177,10 +187,11 @@ const AppContent: React.FC = () => {
       }
       return m;
     }));
+    LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };
 
-  const handleAddMember = (name: string, studentId: string, phone?: string) => {
-    const newM = LocalKasRepository.addMember(name, studentId, phone);
+  const handleAddMember = async (name: string, studentId: string, phone?: string) => {
+    const newM = await LocalKasRepository.addMember(name, studentId, phone);
     LocalKasRepository.addAuditLog({
       action: 'TAMBAH ANGGOTA',
       details: `Menambahkan siswa baru: ${name} (NIM: ${studentId})`,
@@ -189,9 +200,10 @@ const AppContent: React.FC = () => {
     });
     setAuditLogs(LocalKasRepository.getAuditLogs());
     setMembers(prev => [...prev, newM]);
+    LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };
 
-  const handleAddMembers = (newMembersList: { name: string; studentId: string; phone?: string }[]) => {
+  const handleAddMembers = async (newMembersList: { name: string; studentId: string; phone?: string }[]) => {
     const created = LocalKasRepository.addMembers(newMembersList);
     LocalKasRepository.addAuditLog({
       action: 'IMPORT ANGGOTA',
@@ -201,10 +213,11 @@ const AppContent: React.FC = () => {
     });
     setAuditLogs(LocalKasRepository.getAuditLogs());
     setMembers(prev => [...prev, ...created]);
+    LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };
 
-  const handleToggleAllWeek = (weekKey: string, shouldPay: boolean) => {
-    // 1. Optimistic instant React state update
+  const handleToggleAllWeek = async (weekKey: string, shouldPay: boolean) => {
+    // Optimistic
     setMembers(prev => prev.map(m => ({
       ...m,
       weeklyStatus: {
@@ -213,10 +226,8 @@ const AppContent: React.FC = () => {
       }
     })));
 
-    // 2. Persist to storage and Supabase batch upsert
-    LocalKasRepository.toggleAllMembersWeek(weekKey, shouldPay);
+    await LocalKasRepository.toggleAllMembersWeek(weekKey, shouldPay);
 
-    // 3. Record audit log
     LocalKasRepository.addAuditLog({
       action: 'IURAN MASSAL',
       details: `${shouldPay ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Seluruh Siswa untuk ${weekKey}`,
@@ -224,10 +235,11 @@ const AppContent: React.FC = () => {
       userRole: role,
     });
     setAuditLogs(LocalKasRepository.getAuditLogs());
+    LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };
 
 
-  const handleUpdateMember = (memberId: string, updates: Partial<KasMember>) => {
+  const handleUpdateMember = async (memberId: string, updates: Partial<KasMember>) => {
     LocalKasRepository.updateMember(memberId, updates);
     const oldM = members.find(m => m.id === memberId);
     if (oldM) {
@@ -240,11 +252,13 @@ const AppContent: React.FC = () => {
       setAuditLogs(LocalKasRepository.getAuditLogs());
     }
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, ...updates } : m));
+    LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };
 
-  const handleSaveSettings = (newSettings: ClassSettings) => {
-    LocalKasRepository.saveSettings(newSettings);
+  const handleSaveSettings = async (newSettings: ClassSettings) => {
+    await LocalKasRepository.saveSettings(newSettings);
     setSettings(newSettings);
+    LocalKasRepository.fetchSettingsFromSupabase().then(setSettings);
   };
 
   const handleResetData = () => {

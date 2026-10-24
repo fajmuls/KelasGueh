@@ -423,11 +423,11 @@ END $$;`;
         </div>
       </div>
 
-      {/* 2. Supabase Connection Guide (NEW) */}
+      {/* 2. Supabase Connection Guide */}
       <div className="card-doodle p-6 rounded-lg bg-white relative">
         <div className="flex items-center gap-2 mb-4 border-b-2 border-slate-900 pb-3">
           <Info className="w-5 h-5 text-sky-600" />
-          <h3 className="text-lg font-black text-slate-900">Panduan Koneksi Supabase (Nol ke Pro)</h3>
+          <h3 className="text-lg font-black text-slate-900">Panduan Koneksi Supabase & Solusi Error</h3>
         </div>
         
         <div className="space-y-4">
@@ -435,25 +435,25 @@ END $$;`;
             <div className="p-3 bg-slate-50 border-2 border-slate-900 rounded-md">
               <p className="text-xs font-black text-slate-900 mb-2">Langkah 1: Buat Project</p>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                Buka <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-sky-600 underline">Supabase Dashboard</a>, buat project baru (Gratis). Pilih region <strong>Singapore</strong> untuk kecepatan terbaik di Indonesia.
+                Buka <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-sky-600 underline">Supabase Dashboard</a>, buat project baru (Gratis). Pilih region <strong>Singapore</strong>.
               </p>
             </div>
             <div className="p-3 bg-slate-50 border-2 border-slate-900 rounded-md">
               <p className="text-xs font-black text-slate-900 mb-2">Langkah 2: Ambil API Keys</p>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                Pergi ke <strong>Project Settings &gt; API</strong>. Salin <code>Project URL</code> dan <code>anon public</code> key, lalu tempel di form konfigurasi di bawah.
+                Pergi ke <strong>Project Settings &gt; API</strong>. Salin <code>Project URL</code> dan <code>anon public</code> key ke form di bawah.
+              </p>
+            </div>
+            <div className="p-3 bg-amber-50 border-2 border-amber-600 rounded-md">
+              <p className="text-xs font-black text-amber-900 mb-2">⚠️ Solusi Login 403 / Error Google</p>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Jika muncul <strong>403 Terjadi Error</strong> saat login: Masuk ke <strong>Google Cloud Console</strong> &gt; API & Services &gt; Credentials. Tambahkan link website ini ke <strong>Authorized Redirect URIs</strong> dan <strong>Authorized JavaScript Origins</strong>.
               </p>
             </div>
             <div className="p-3 bg-slate-50 border-2 border-slate-900 rounded-md">
               <p className="text-xs font-black text-slate-900 mb-2">Langkah 3: Jalankan SQL</p>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                Penting! Klik <strong>SQL Editor</strong> di Supabase, pilih <strong>New Query</strong>, salin script SQL di bawah dan klik <strong>Run</strong>. Ini akan membuat tabel otomatis.
-              </p>
-            </div>
-            <div className="p-3 bg-slate-50 border-2 border-slate-900 rounded-md">
-              <p className="text-xs font-black text-slate-900 mb-2">Langkah 4: Setup Storage</p>
-              <p className="text-[11px] text-slate-600 leading-relaxed">
-                Klik menu <strong>Storage</strong>, buat bucket baru bernama <code>nota-kas</code>. Pastikan centang <strong>Public Bucket</strong> agar foto nota bisa dilihat semua orang.
+                Penting! Klik <strong>SQL Editor</strong> di Supabase, pilih <strong>New Query</strong>, salin script SQL (Mode Terbuka) di bawah dan klik <strong>Run</strong>.
               </p>
             </div>
           </div>
