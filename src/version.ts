@@ -11,12 +11,12 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.7.0',
-  codename: 'Fast-Tap Swipe Checklist & Visual Currency Formatting Edition',
+  version: '3.7.1',
+  codename: 'Fast-Tap Swipe Checklist & Topbar Share Button Restoration Edition',
   releaseDate: '2026-10-29',
   changes: [
+    'Restorasi Tombol Bagikan Link di Topbar: Menampilkan kembali tombol "Bagikan Link" portal kelas di bilah navigasi atas (topbar) dan laporan kas overview.',
     'Mode Centang Cepat HP (Fast-Tap Swipe Checklist): Mode khusus bendahara untuk menagih iuran di kelas secara praktis dengan sentuhan/usapan jari pada kartu siswa disertai suara koin interaktif.',
-    'Pembersihan UI Navbar & Banner Overview: Menghapus tombol "Bagikan Link" di topbar dan boks semester ganjil sesuai instruksi agar tampilan aplikasi lebih bersih.',
     'Pemisah Ribuan Titik pada Angka & Nominal Uang: Seluruh tampilan angka, saldo, grafik tren kas bulanan (Y-Axis & Tooltip), serta tabel kini wajib menggunakan pemisah titik (misal Rp 50.000, 1.500.000).',
     'Lencana Pratinjau Terbaca & Tombol Pintas Nominal Input: Menambahkan lencana pratinjau nominal terformat secara live saat mengisi catatan transaksi beserta tombol pintas (+5rb, +10rb, +50rb, +100rb, +500rb) agar bendahara tidak keliru membedakan jumlah angka nol.'
   ],
