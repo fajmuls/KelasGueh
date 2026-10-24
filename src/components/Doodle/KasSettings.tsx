@@ -204,9 +204,21 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     CONSTRAINT one_row CHECK (id = 1)
 );
 
--- SELF-HEALING: Tambahkan kolom jika belum ada (untuk user lama)
+-- SELF-HEALING: Tambahkan kolom jika belum ada (untuk perbaikan skema otomatis)
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS class_name TEXT NOT NULL DEFAULT 'Kelas Gue';
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000;
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS kas_target_amount NUMERIC NOT NULL DEFAULT 1000000;
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS currency_prefix TEXT NOT NULL DEFAULT 'Rp';
 ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS academic_year TEXT NOT NULL DEFAULT '2026/2027';
 ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS site_url TEXT;
+
+-- Perbaikan Skema Transaksi
+ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS receipt_url TEXT;
+ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS notes TEXT;
+
+-- Perbaikan Skema Anggota
+ALTER TABLE public.kas_members ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.kas_members ADD COLUMN IF NOT EXISTS weekly_status JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- 5. Membuat Tabel Whitelist Akses Editor (Super Admin & Bendahara)
 CREATE TABLE IF NOT EXISTS public.authorized_whitelist (
@@ -361,9 +373,21 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     CONSTRAINT one_row CHECK (id = 1)
 );
 
--- SELF-HEALING: Tambahkan kolom jika belum ada (untuk user lama)
+-- SELF-HEALING: Tambahkan kolom jika belum ada (untuk perbaikan skema otomatis)
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS class_name TEXT NOT NULL DEFAULT 'Kelas Gue';
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000;
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS kas_target_amount NUMERIC NOT NULL DEFAULT 1000000;
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS currency_prefix TEXT NOT NULL DEFAULT 'Rp';
 ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS academic_year TEXT NOT NULL DEFAULT '2026/2027';
 ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS site_url TEXT;
+
+-- Perbaikan Skema Transaksi
+ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS receipt_url TEXT;
+ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS notes TEXT;
+
+-- Perbaikan Skema Anggota
+ALTER TABLE public.kas_members ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.kas_members ADD COLUMN IF NOT EXISTS weekly_status JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- 5. Konfigurasi Row Level Security (RLS) & Kebijakan Akses Penuh
 ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;

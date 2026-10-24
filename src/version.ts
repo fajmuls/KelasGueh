@@ -11,15 +11,14 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.7.6',
-  codename: 'Database Schema Self-Healing & Singleton Auth Edition',
+  version: '3.8.0',
+  codename: 'Auto-Link Iuran & Transaksi Edition',
   releaseDate: '2026-10-24',
   changes: [
-    'Self-Healing Schema Database: Skrip SQL Supabase kini dilengkapi perintah "ALTER TABLE" otomatis untuk memastikan kolom "academic_year" dan "site_url" tersedia tanpa menghapus data lama.',
-    'Penyempurnaan Auth Singleton: Memperbaiki peringatan "Multiple GoTrueClient instances" untuk stabilitas sesi login Google yang lebih baik.',
-    'Validasi Sinkronisasi Ketat: Fitur "Paksa Upload" kini mendeteksi kegagalan spesifik per tabel dan memberikan instruksi perbaikan yang jelas jika struktur database belum sesuai.',
-    'Pembaruan Tahun Akademik Default: Mengatur tahun akademik default ke 2026/2027 pada skrip database baru.',
-    'Peningkatan UI Feedback: Menampilkan status sinkronisasi yang lebih akurat dan informatif saat proses upload data ke cloud.'
+    'Fitur Auto-Link Iuran: Mencentang iuran di Checklist kini otomatis mencatat transaksi pemasukan di Buku Kas, lengkap dengan nama siswa dan periode minggu.',
+    'Sinkronisasi Dua Arah: Menghapus transaksi iuran di Buku Kas akan otomatis membatalkan status lunas (uncheck) di Checklist Iuran.',
+    'Audit Log Pintar: Setiap aksi iuran (tunggal maupun massal) kini terekam dengan detail yang lebih informatif di log aktivitas.',
+    'Pembaruan Engine Sinkronisasi: Memastikan konsistensi data antara checklist dan buku besar kas saat terjadi perubahan di perangkat berbeda.'
   ],
   suggestedUpdates: [
     {

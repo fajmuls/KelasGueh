@@ -145,43 +145,96 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleDeleteTransaction = async (id: string) => {
+  const handleDeleteTransaction = async (id: string, skipLinkedSync: boolean = false) => {
     const tx = transactions.find(t => t.id === id);
-    await LocalKasRepository.deleteTransaction(id);
-    if (tx) {
-      LocalKasRepository.addAuditLog({
-        action: 'HAPUS TRANSAKSI',
-        details: `Menghapus ${tx.title} (${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(tx.amount)})`,
-        performedBy: user?.name || 'Unknown',
-        userRole: role,
-      });
+    if (!tx) return;
+
+    // Check if it's a linked iuran transaction and update checklist status
+    if (!skipLinkedSync && tx.notes?.startsWith('LINKED_IURAN:')) {
+      const parts = tx.notes.split(':');
+      if (parts.length >= 3) {
+        const memberId = parts[1];
+        const weekKey = parts[2];
+        await LocalKasRepository.setMemberWeekStatus(memberId, weekKey, false);
+        setMembers(prev => prev.map(m => {
+          if (m.id === memberId) {
+            return {
+              ...m,
+              weeklyStatus: { ...(m.weeklyStatus || {}), [weekKey]: false }
+            };
+          }
+          return m;
+        }));
+      }
     }
+
+    await LocalKasRepository.deleteTransaction(id);
+    
+    LocalKasRepository.addAuditLog({
+      action: 'HAPUS TRANSAKSI',
+      details: `Menghapus ${tx.title} (${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(tx.amount)})`,
+      performedBy: user?.name || 'Unknown',
+      userRole: role,
+    });
+    
     setTransactions(prev => prev.filter(t => t.id !== id));
     setAuditLogs(LocalKasRepository.getAuditLogs());
     LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
   };
 
   const handleToggleWeek = async (memberId: string, weekKey: string) => {
-    await LocalKasRepository.toggleMemberWeek(memberId, weekKey);
     const targetMember = members.find(m => m.id === memberId);
-    if (targetMember) {
-      const isNowPaid = !targetMember.weeklyStatus?.[weekKey];
-      LocalKasRepository.addAuditLog({
-        action: 'IURAN MINGGUAN',
-        details: `${isNowPaid ? 'Mencatat LUNAS' : 'Membatalkan Status Lunas'} Iuran ${weekKey} untuk ${targetMember.name}`,
-        performedBy: user?.name || 'Unknown',
-        userRole: role,
-      });
-      setAuditLogs(LocalKasRepository.getAuditLogs());
+    if (!targetMember) return;
+
+    const isNowPaid = !targetMember.weeklyStatus?.[weekKey];
+    const linkedTag = `LINKED_IURAN:${memberId}:${weekKey}`;
+
+    // Perform the checklist toggle first
+    await LocalKasRepository.toggleMemberWeek(memberId, weekKey);
+
+    // Auto-Link Logic
+    if (isNowPaid) {
+      // Create transaction record automatically
+      const year = weekKey.split('_')[0];
+      const month = weekKey.split('_')[1];
+      const weekNum = weekKey.split('_W')[1];
+      const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][parseInt(month) - 1];
+      const weekLabel = `Mgg ${weekNum} ${monthName} ${year}`;
+      
+      const newTx: Omit<KasTransaction, 'id' | 'createdAt'> = {
+        type: 'income',
+        title: `Iuran: ${targetMember.name} (${weekLabel})`,
+        amount: settings.weeklyDuesAmount,
+        category: 'Iuran Kas',
+        date: new Date().toISOString().split('T')[0],
+        recordedBy: user?.name || 'Sistem',
+        notes: linkedTag
+      };
+      await handleAddTransaction(newTx);
+    } else {
+      // Find and delete linked transaction record automatically
+      const txToDelete = transactions.find(t => t.notes === linkedTag);
+      if (txToDelete) {
+        await handleDeleteTransaction(txToDelete.id, true); // true to skip re-syncing checklist
+      }
     }
-    // Optimistic update followed by re-fetch
+
+    LocalKasRepository.addAuditLog({
+      action: 'IURAN MINGGUAN',
+      details: `${isNowPaid ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Iuran ${weekKey} untuk ${targetMember.name}`,
+      performedBy: user?.name || 'Unknown',
+      userRole: role,
+    });
+    setAuditLogs(LocalKasRepository.getAuditLogs());
+
+    // Optimistic update
     setMembers(prev => prev.map(m => {
       if (m.id === memberId) {
         return {
           ...m,
           weeklyStatus: {
             ...(m.weeklyStatus || {}),
-            [weekKey]: !m.weeklyStatus?.[weekKey]
+            [weekKey]: isNowPaid
           }
         };
       }
@@ -217,16 +270,42 @@ const AppContent: React.FC = () => {
   };
 
   const handleToggleAllWeek = async (weekKey: string, shouldPay: boolean) => {
-    // Optimistic
-    setMembers(prev => prev.map(m => ({
-      ...m,
-      weeklyStatus: {
-        ...(m.weeklyStatus || {}),
-        [weekKey]: shouldPay
-      }
-    })));
-
+    // Perform bulk checklist update
     await LocalKasRepository.toggleAllMembersWeek(weekKey, shouldPay);
+
+    // Auto-Link Logic for Bulk
+    if (shouldPay) {
+      const year = weekKey.split('_')[0];
+      const month = weekKey.split('_')[1];
+      const weekNum = weekKey.split('_W')[1];
+      const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][parseInt(month) - 1];
+      const weekLabel = `Mgg ${weekNum} ${monthName} ${year}`;
+
+      // Create transactions for all members who weren't paid yet
+      for (const m of members) {
+        if (!m.weeklyStatus?.[weekKey]) {
+          const linkedTag = `LINKED_IURAN:${m.id}:${weekKey}`;
+          const newTx: Omit<KasTransaction, 'id' | 'createdAt'> = {
+            type: 'income',
+            title: `Iuran: ${m.name} (${weekLabel})`,
+            amount: settings.weeklyDuesAmount,
+            category: 'Iuran Kas',
+            date: new Date().toISOString().split('T')[0],
+            recordedBy: user?.name || 'Sistem',
+            notes: linkedTag
+          };
+          await LocalKasRepository.addTransaction(newTx);
+        }
+      }
+    } else {
+      // Delete all linked transactions for this week
+      const prefix = `LINKED_IURAN:`;
+      const suffix = `:${weekKey}`;
+      const txsToDelete = transactions.filter(t => t.notes?.startsWith(prefix) && t.notes?.endsWith(suffix));
+      for (const tx of txsToDelete) {
+        await LocalKasRepository.deleteTransaction(tx.id);
+      }
+    }
 
     LocalKasRepository.addAuditLog({
       action: 'IURAN MASSAL',
@@ -235,7 +314,14 @@ const AppContent: React.FC = () => {
       userRole: role,
     });
     setAuditLogs(LocalKasRepository.getAuditLogs());
-    LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
+
+    // Refresh state
+    const [freshTxs, freshMembers] = await Promise.all([
+      LocalKasRepository.fetchTransactionsFromSupabase(),
+      LocalKasRepository.fetchMembersFromSupabase()
+    ]);
+    setTransactions(freshTxs);
+    setMembers(freshMembers);
   };
 
 

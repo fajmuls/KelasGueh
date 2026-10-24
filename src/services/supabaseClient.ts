@@ -534,6 +534,38 @@ export class LocalKasRepository {
     }
   }
 
+  public static async setMemberWeekStatus(memberId: string, weekKey: string, isPaid: boolean): Promise<void> {
+    const members = this.getMembers();
+    let targetMember: KasMember | null = null;
+    const updated = members.map(m => {
+      if (m.id === memberId) {
+        targetMember = {
+          ...m,
+          weeklyStatus: {
+            ...(m.weeklyStatus || {}),
+            [weekKey]: isPaid
+          }
+        };
+        return targetMember;
+      }
+      return m;
+    });
+    this.saveMembers(updated);
+
+    if (targetMember) {
+      const client = getSupabaseClient();
+      if (client) {
+        setCloudSyncStatus('syncing');
+        const { error } = await client.from('kas_members').update({
+          weekly_status: (targetMember as KasMember).weeklyStatus
+        }).eq('id', memberId);
+        
+        if (error) setCloudSyncStatus('offline');
+        else setCloudSyncStatus('synced');
+      }
+    }
+  }
+
   public static async toggleAllMembersWeek(weekKey: string, shouldPay: boolean): Promise<KasMember[]> {
     const members = this.getMembers();
     const updated = members.map(m => ({
