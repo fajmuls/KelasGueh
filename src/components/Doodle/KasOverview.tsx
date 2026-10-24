@@ -179,19 +179,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
               </button>
             )}
 
-            {onOpenShareModal && (
-              <button
-                onClick={() => {
-                  sfx.playClick();
-                  onOpenShareModal();
-                }}
-                className="btn-doodle px-3.5 py-2.5 bg-amber-200 hover:bg-amber-300 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
-                title="Bagikan Tautan Web Portal Kelas"
-              >
-                <Share2 className="w-4 h-4 text-slate-900" />
-                <span>Bagikan Link</span>
-              </button>
-            )}
+
 
             {canEditKas && onOpenWhatsAppModal && (
               <button
