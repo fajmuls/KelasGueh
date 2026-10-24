@@ -42,4 +42,5 @@ export interface ClassSettings {
   academicYear: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
+  siteUrl?: string;
 }

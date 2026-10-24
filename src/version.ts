@@ -11,14 +11,14 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.7.4',
-  codename: 'Cloud-First Authority & OAuth Troubleshooting Edition',
+  version: '3.7.5',
+  codename: 'Custom Redirect Authority & Schema Sync Edition',
   releaseDate: '2026-10-29',
   changes: [
-    'Arsitektur Cloud-First (Source of Truth): Repositori aplikasi kini diprioritaskan sepenuhnya pada database Supabase Cloud. LocalStorage hanya digunakan sebagai cache sementara & buffer respons instan UI. Data antar-HP dipastikan sinkron lebih akurat.',
-    'Penanganan Error 403 Google Login: Menambahkan panduan solusi error 403 (access_denied) pada tab Pengaturan untuk Bendahara agar dapat menambahkan Redirect URI yang tepat di Google Cloud Console.',
-    'Auto-Resync Transaksi Tertunda: Jika penulisan ke Supabase sempat gagal (offline/RLS block), aplikasi akan mencoba mengunggah ulang data tersebut secara otomatis setiap kali daftar transaksi dimuat ulang.',
-    'Peningkatan Stabilitas Realtime: Optimalisasi listener realtime untuk mencegah duplikasi data saat sinkronisasi data dari berbagai perangkat secara bersamaan.'
+    'Dukungan Production Redirect URL: Menambahkan opsi "Production Site URL" di tab Pengaturan agar Bendahara dapat mengunci domain utama sebagai target redirect login Google, mencegah masalah URL otomatis yang berubah-ubah.',
+    'Pembaruan Schema Database: Menambahkan kolom site_url pada tabel class_settings di skrip SQL Supabase untuk sinkronisasi konfigurasi domain antar-HP.',
+    'Logika Redirect Cerdas: Aplikasi kini memprioritaskan domain produksi yang dikonfigurasi saat login, namun tetap mendukung domain preview AI Studio secara otomatis.',
+    'Perbaikan Arsitektur Cloud-First: Sinkronisasi pengaturan kelas kini mencakup konfigurasi domain untuk menjamin konsistensi akses login.'
   ],
   suggestedUpdates: [
     {
@@ -28,8 +28,8 @@ export const CURRENT_APP_VERSION: AppVersionInfo = {
     },
     {
       category: 'optimasi',
-      title: 'Kuitansi Digital PDF Per-Siswa',
-      description: 'Fitur cetak atau kirim PDF bukti bayar individual per-siswa.'
+      title: 'Export Laporan Excel Per-Semester',
+      description: 'Fitur untuk mengunduh rekapitulasi seluruh transaksi dan checklist iuran dalam format Excel yang rapi.'
     },
     {
       category: 'keamanan',

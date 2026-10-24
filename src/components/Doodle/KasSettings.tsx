@@ -200,6 +200,7 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     kas_target_amount NUMERIC NOT NULL DEFAULT 1000000,
     currency_prefix TEXT NOT NULL DEFAULT 'Rp',
     academic_year TEXT NOT NULL DEFAULT '2023/2024',
+    site_url TEXT,
     CONSTRAINT one_row CHECK (id = 1)
 );
 
@@ -352,6 +353,7 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     kas_target_amount NUMERIC NOT NULL DEFAULT 1000000,
     currency_prefix TEXT NOT NULL DEFAULT 'Rp',
     academic_year TEXT NOT NULL DEFAULT '2023/2024',
+    site_url TEXT,
     CONSTRAINT one_row CHECK (id = 1)
 );
 
@@ -499,6 +501,19 @@ END $$;`;
                 onChange={(e) => setForm({ ...form, supabaseAnonKey: e.target.value })}
                 className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:bg-amber-50/30 outline-none"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Production Site URL (Redirect Target)</label>
+              <input
+                type="url"
+                placeholder="https://your-site.vercel.app/"
+                value={form.siteUrl || ''}
+                onChange={(e) => setForm({ ...form, siteUrl: e.target.value })}
+                className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:bg-amber-50/30 outline-none"
+              />
+              <p className="text-[10px] text-slate-500 mt-1 italic">
+                * Digunakan sebagai tujuan redirect setelah login Google. Biarkan kosong untuk menggunakan domain saat ini secara otomatis.
+              </p>
             </div>
           </div>
 

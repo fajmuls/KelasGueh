@@ -9,7 +9,8 @@ export const DEFAULT_SETTINGS: ClassSettings = {
   currencyPrefix: 'Rp',
   academicYear: 'Semester Ganjil 2026/2027',
   supabaseUrl: (import.meta as any).env?.VITE_SUPABASE_URL || 'https://ireqpxgmlrsmcgidfthg.supabase.co',
-  supabaseAnonKey: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_L9mfK1ZtYWMV23uY3egcTg_H325a-UV'
+  supabaseAnonKey: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_L9mfK1ZtYWMV23uY3egcTg_H325a-UV',
+  siteUrl: 'https://kelasgueh.vercel.app/'
 };
 
 // Initial empty class members (user will input manually)
@@ -233,7 +234,17 @@ export const signInWithGoogleSupabase = async (): Promise<{ success: boolean; er
   }
 
   try {
-    const redirectUrl = window.location.origin + window.location.pathname;
+    const settings = LocalKasRepository.getSettings();
+    const currentOrigin = window.location.origin + window.location.pathname;
+    
+    // Logic: If we are in the production environment or the user has a preferred siteUrl, 
+    // we use that. Otherwise, we use the current origin (especially useful for preview/dev).
+    let redirectUrl = currentOrigin;
+    
+    if (settings.siteUrl && !window.location.hostname.includes('asia-southeast1.run.app')) {
+      redirectUrl = settings.siteUrl;
+    }
+
     const { error } = await client.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -603,7 +614,8 @@ export class LocalKasRepository {
           weeklyDuesAmount: Number(data.weekly_dues_amount ?? local.weeklyDuesAmount),
           kasTargetAmount: Number(data.kas_target_amount ?? local.kasTargetAmount),
           currencyPrefix: data.currency_prefix || local.currencyPrefix,
-          academicYear: data.academic_year || local.academicYear
+          academicYear: data.academic_year || local.academicYear,
+          siteUrl: data.site_url || local.siteUrl
         };
         localStorage.setItem(this.STORAGE_KEY_SETTINGS, JSON.stringify(mapped));
         setCloudSyncStatus('synced');
@@ -633,7 +645,8 @@ export class LocalKasRepository {
         weekly_dues_amount: settings.weeklyDuesAmount,
         kas_target_amount: settings.kasTargetAmount,
         currency_prefix: settings.currencyPrefix,
-        academic_year: settings.academicYear
+        academic_year: settings.academicYear,
+        site_url: settings.siteUrl
       }]);
 
       if (error) {
@@ -669,7 +682,8 @@ export class LocalKasRepository {
           weekly_dues_amount: settings.weeklyDuesAmount,
           kas_target_amount: settings.kasTargetAmount,
           currency_prefix: settings.currencyPrefix,
-          academic_year: settings.academicYear
+          academic_year: settings.academicYear,
+          site_url: settings.siteUrl
         }]),
         members.length > 0 ? client.from('kas_members').upsert(members.map(m => ({
           id: fixId(m.id),
