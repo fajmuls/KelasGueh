@@ -11,14 +11,14 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.7.2',
-  codename: 'Supabase Transactions & Target Kas Sync + Single-Tap Card Mode Edition',
+  version: '3.7.3',
+  codename: 'Supabase Smart Merge & Force Cloud Resync Edition',
   releaseDate: '2026-10-29',
   changes: [
-    'Sinkronisasi Database Supabase & Target Kas: Menambahkan handler fetchSettingsFromSupabase() serta listener realtime untuk class_settings & kas_transactions agar nominal Target Kas, Tarif Iuran, dan Catatan Transaksi (Pemasukan/Pengeluaran) otomatis tersimpan dan sinkron antar-perangkat via Supabase cloud.',
-    'Pembaruan Mode Kartu Per-Siswa (Single-Tap): Menghapus gestur usap/swipe (drag hover) agar checklist tidak berubah tanpa sengaja saat mengusap layar HP, serta mempertahankan tampilan Mode Kartu Per-Siswa yang praktis dengan sekali ketuk (single tap).',
-    'Penataan Kebijakan RLS SQL Supabase: Memperbarui panduan skrip SQL di tab Pengaturan agar tabel kas_transactions dan class_settings mengizinkan penulisan/pembaruan data.',
-    'Restorasi Tombol Bagikan Link: Tombol "Bagikan Link" portal kelas dipertahankan di Topbar Navigasi dan dihapus dari Banner Ringkasan Kas agar tampilan lebih bersih.'
+    'Auto-Merge Transaksi Lokal ke Supabase: Aplikasi kini otomatis menggabungkan (merge) data transaksi lokal dengan Supabase Cloud. Jika ada transaksi yang sempat gagal terkirim karena RLS Policy, aplikasi akan otomatis memicu pengunggahan ulang (resync) begitu terhubung ke Supabase.',
+    'Fitur Tombol 1-Click "Paksa Upload Transaksi ke Cloud": Menambahkan tombol di tab Pengaturan untuk Bendahara/SuperAdmin agar bisa mengunggah ulang seluruh transaksi, data siswa, dan pengaturan kas ke Supabase Cloud dengan sekali klik.',
+    'Sinkronisasi Realtime Pemasukan & Pengeluaran: Listener Realtime Broadcast kini aktif mendeteksi entri baru pada tabel kas_transactions sehingga HP anggota lain langsung terupdate otomatis saat Bendahara mencatat transaksi.',
+    'Pembaruan Mode Kartu Per-Siswa (Single-Tap): Menghapus gestur usap/swipe (drag hover) agar checklist tidak berubah tanpa sengaja saat mengusap layar HP.'
   ],
   suggestedUpdates: [
     {

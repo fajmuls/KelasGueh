@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { CURRENT_APP_VERSION } from '../../version.ts';
 import { ScotchTape, DoodleCrown } from './DoodleDecorations.tsx';
-import { getSupabaseClient, signInWithGoogleSupabase } from '../../services/supabaseClient.ts';
+import { getSupabaseClient, signInWithGoogleSupabase, LocalKasRepository } from '../../services/supabaseClient.ts';
 import { getRegisteredUsers, updateUserRole, updateUserLinkedMember, RegisteredUser } from '../../utils/userManagement.ts';
 import { 
   Database, 
@@ -502,13 +502,31 @@ END $$;`;
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={handleTestSupabase}
               className="btn-doodle px-4 py-2 bg-sky-100 hover:bg-sky-200 text-slate-900 text-xs font-bold rounded-md"
             >
               Cek Tabel & Koneksi
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                sfx.playClick();
+                const res = await LocalKasRepository.forceSyncAllToCloud();
+                if (res.success) {
+                  sfx.playSuccess();
+                  alert(res.message);
+                } else {
+                  sfx.playWarning();
+                  alert(res.message);
+                }
+              }}
+              className="btn-doodle px-4 py-2 bg-amber-300 hover:bg-amber-400 text-slate-900 text-xs font-black rounded-md flex items-center gap-1.5"
+            >
+              <Database className="w-3.5 h-3.5 text-amber-800" />
+              <span>Paksa Upload Transaksi ke Cloud</span>
             </button>
             <button
               type="submit"

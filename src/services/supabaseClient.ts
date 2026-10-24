@@ -310,7 +310,7 @@ export class LocalKasRepository {
       }
 
       if (data && data.length > 0) {
-        const mapped: KasTransaction[] = data.map(t => ({
+        const mappedFromCloud: KasTransaction[] = data.map(t => ({
           id: t.id,
           type: t.type,
           title: t.title,
@@ -323,8 +323,47 @@ export class LocalKasRepository {
           createdAt: t.created_at
         }));
 
-        this.saveTransactions(mapped);
-        return mapped;
+        // Smart merge: Combine cloud transactions with any local transactions not yet pushed to cloud
+        const cloudMap = new Map(mappedFromCloud.map(t => [t.id, t]));
+        const missingLocalToPush: KasTransaction[] = [];
+
+        for (const lTx of local) {
+          if (!cloudMap.has(lTx.id)) {
+            cloudMap.set(lTx.id, lTx);
+            missingLocalToPush.push(lTx);
+          }
+        }
+
+        const merged = Array.from(cloudMap.values()).sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+
+        this.saveTransactions(merged);
+
+        // Auto-push any local transactions that were missing from Supabase (e.g. created while offline or RLS failed)
+        if (missingLocalToPush.length > 0) {
+          console.log(`Auto-pushing ${missingLocalToPush.length} pending local transactions to Supabase...`);
+          setCloudSyncStatus('syncing');
+          const payload = missingLocalToPush.map(t => ({
+            id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t.id) ? t.id : generateUUID(),
+            type: t.type,
+            title: t.title,
+            amount: t.amount,
+            category: t.category,
+            date: t.date,
+            recorded_by: t.recordedBy,
+            receipt_url: t.receiptUrl || null,
+            notes: t.notes || null
+          }));
+
+          client.from('kas_transactions').upsert(payload).then(({ error: upErr }) => {
+            if (upErr) console.warn('Resync missing local transactions error:', upErr.message);
+            else console.log(`✓ Resynced ${missingLocalToPush.length} local transactions to Supabase Cloud.`);
+            setTimeout(() => setCloudSyncStatus('synced'), 600);
+          });
+        }
+
+        return merged;
       } else if (local.length > 0) {
         // Auto-sync local transactions to empty Supabase table
         const payload = local.map(t => ({
@@ -343,6 +382,7 @@ export class LocalKasRepository {
 
         client.from('kas_transactions').upsert(payload).then(({ error: upErr }) => {
           if (upErr) console.warn('Auto-sync transactions error:', upErr.message);
+          else console.log('✓ Uploaded all local transactions to empty Supabase table.');
         });
         return normalizedLocal;
       }
@@ -381,12 +421,80 @@ export class LocalKasRepository {
         receipt_url: tx.receiptUrl || null,
         notes: tx.notes || null
       }]).then(({ error }) => {
-        if (error) console.warn('Sync transaction fail:', error.message);
+        if (error) {
+          console.error('❌ Gagal simpan transaksi ke Supabase:', error.message, error);
+        } else {
+          console.log('✓ Transaksi berhasil dikirim & disimpan di database Supabase Cloud.');
+        }
         setTimeout(() => setCloudSyncStatus('synced'), 600);
       });
     }
 
     return newTx;
+  }
+
+  public static async forceSyncAllToCloud(): Promise<{ success: boolean; message: string }> {
+    const client = getSupabaseClient();
+    if (!client) {
+      return { success: false, message: 'Supabase URL atau Anon Key belum dikonfigurasi.' };
+    }
+
+    setCloudSyncStatus('syncing');
+    try {
+      const txs = this.getTransactions();
+      const members = this.getMembers();
+      const settings = this.getSettings();
+
+      // 1. Sync Settings
+      await client.from('class_settings').upsert([{
+        id: 1,
+        class_name: settings.className,
+        weekly_dues_amount: settings.weeklyDuesAmount,
+        kas_target_amount: settings.kasTargetAmount,
+        currency_prefix: settings.currencyPrefix,
+        academic_year: settings.academicYear
+      }]);
+
+      // 2. Sync Members
+      if (members.length > 0) {
+        const memberPayload = members.map(m => ({
+          id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.id) ? m.id : generateUUID(),
+          name: m.name,
+          student_id: m.studentId,
+          phone: m.phone || null,
+          weekly_status: m.weeklyStatus || {}
+        }));
+        await client.from('kas_members').upsert(memberPayload);
+      }
+
+      // 3. Sync Transactions
+      if (txs.length > 0) {
+        const txPayload = txs.map(t => ({
+          id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t.id) ? t.id : generateUUID(),
+          type: t.type,
+          title: t.title,
+          amount: t.amount,
+          category: t.category,
+          date: t.date,
+          recorded_by: t.recordedBy,
+          receipt_url: t.receiptUrl || null,
+          notes: t.notes || null
+        }));
+        await client.from('kas_transactions').upsert(txPayload);
+      }
+
+      setTimeout(() => setCloudSyncStatus('synced'), 600);
+      return {
+        success: true,
+        message: `✓ Berhasil sinkronisasi total ${txs.length} transaksi, ${members.length} siswa, & pengaturan ke Supabase Cloud!`
+      };
+    } catch (err: any) {
+      setCloudSyncStatus('offline');
+      return {
+        success: false,
+        message: `Gagal sinkronisasi ke Supabase: ${err?.message || 'Unknown error'}`
+      };
+    }
   }
 
   public static deleteTransaction(id: string): void {
