@@ -11,30 +11,30 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.5.3',
-  codename: 'OAuth Custom Domain Preservation Edition',
+  version: '3.6.0',
+  codename: 'Custom Domain Share & Overview Enhancement Edition',
   releaseDate: '2026-10-29',
   changes: [
-    'OAuth Redirect Clean URL: Menjamin parameter redirectTo pada Supabase OAuth menyertakan origin dan path persis tempat pengguna berada (misal kelasgue.vercel.app).',
-    'Panduan URL Configuration Supabase: Menyediakan solusi pengaturan Site URL & Additional Redirect URLs di Supabase Dashboard agar hasil login Google tidak terlempar ke domain otomatis Vercel lama.',
-    'Ultra-Light WhatsApp Preview (43KB JPEG): Penggunaan whatsapp-preview.jpg (400x400 piksel, kanvas putih solid, 43KB) dengan rel="image_src" agar logo aplikasi pasti dirender oleh WhatsApp.',
-    'Strict Google RLS Security Script: Pilihan skrip SQL Mode Ketat Anti-Hack di Pengaturan untuk mengunci database Supabase khusus untuk Super Admin (mrachmanfm@gmail.com) dan Bendahara terdaftar.'
+    'Fitur Bagikan Link Portal Kelas (Custom Domain): Menambahkan tombol "Bagikan Link" di Navbar dan Ringkasan Kas (Overview) untuk menyalin tautan domain kustom aktif (misal https://kelasgue.vercel.app) secara 1-klik.',
+    'Pratinjau Kartu Berbagi Interaktif: Dialog khusus berbagi dengan simulasi kartu WhatsApp (Logo HD 43KB, judul aplikasi, deskripsi serbaguna, dan tombol kirim pesan ke WhatsApp).',
+    'Panduan Wildcard Redirect URL Supabase: Menambahkan instruksi pendaftaran https://*.vercel.app/** dan https://kelasgue.vercel.app/** di Supabase Redirect URLs agar login Google OAuth selalu berjalan mulus di semua domain Vercel.',
+    'Optimasi Tampilan Overview: Penataan tombol aksi di Ringkasan Kas agar lebih rapi, modern, dan informatif saat dibagikan ke anggota kelas.'
   ],
   suggestedUpdates: [
     {
-      category: 'optimasi',
-      title: 'Auto Wildcard Redirect URL',
-      description: 'Menambahkan pendaftaran https://*.vercel.app/** di Supabase Redirect URLs agar semua subdomain preview Vercel otomatis didukung.'
+      category: 'fitur',
+      title: 'Auto Generated QR Code Kelas',
+      description: 'Fitur membuat kode QR gambar portal yang bisa dicetak dan ditempel di mading/papan tulis kelas untuk scan cepat lewat kamera HP siswa.'
     },
     {
       category: 'keamanan',
-      title: 'Supabase Storage Policy',
-      description: 'Membatasi upload nota di Supabase Storage khusus untuk pengguna terautentikasi.'
+      title: 'Supabase Storage Bucket Lock',
+      description: 'Membatasi hak upload foto nota di Supabase Storage khusus untuk akun bendahara/superadmin terdaftar.'
     },
     {
-      category: 'fitur',
-      title: 'Buku Agenda & Piket Kelas',
-      description: 'Menambahkan fitur jadwal piket kebersihan dan pengingat PR kelas.'
+      category: 'optimasi',
+      title: 'PWA Share Target Native',
+      description: 'Dukungan menerima foto struk belanja langsung dari galeri HP atau grup WhatsApp ke aplikasi Kelas Gue via Android/iOS Share Sheet.'
     }
   ]
 };

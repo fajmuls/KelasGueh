@@ -9,6 +9,7 @@ import { KasSettings } from './components/Doodle/KasSettings.tsx';
 import { KasAuditLog } from './components/Doodle/KasAuditLog.tsx';
 import { PrintableBinderModal } from './components/Doodle/PrintableBinderModal.tsx';
 import { WhatsAppShareModal } from './components/Doodle/WhatsAppShareModal.tsx';
+import { ClassShareModal } from './components/Doodle/ClassShareModal.tsx';
 import { AnimatedIntroScreen } from './components/Doodle/AnimatedIntroScreen.tsx';
 import {
   LocalKasRepository,
@@ -28,6 +29,7 @@ const AppContent: React.FC = () => {
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Auto redirect from settings tab if user is read-only Anggota
   useEffect(() => {
@@ -267,6 +269,7 @@ const AppContent: React.FC = () => {
           currentTab={currentTab}
           onSelectTab={setCurrentTab}
           classNameTitle={settings.className}
+          onOpenShareModal={() => setIsShareModalOpen(true)}
         />
       )}
 
@@ -281,6 +284,7 @@ const AppContent: React.FC = () => {
             onOpenNewTxModal={() => setIsAddTxModalOpen(true)}
             onOpenPrintModal={() => setIsPrintModalOpen(true)}
             onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
+            onOpenShareModal={() => setIsShareModalOpen(true)}
           />
         )}
 
@@ -343,6 +347,13 @@ const AppContent: React.FC = () => {
         onClose={() => setIsWhatsAppModalOpen(false)}
         transactions={transactions}
         settings={settings}
+      />
+
+      {/* Custom Domain Class Portal Share Modal */}
+      <ClassShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        classNameTitle={settings.className}
       />
 
       {/* Clean Footer */}

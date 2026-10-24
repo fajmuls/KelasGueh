@@ -12,7 +12,8 @@ import {
   Printer, 
   MessageSquare,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  Share2
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -35,6 +36,7 @@ interface KasOverviewProps {
   onOpenNewTxModal: () => void;
   onOpenPrintModal?: () => void;
   onOpenWhatsAppModal?: () => void;
+  onOpenShareModal?: () => void;
 }
 
 export const KasOverview: React.FC<KasOverviewProps> = ({
@@ -45,6 +47,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
   onOpenNewTxModal,
   onOpenPrintModal,
   onOpenWhatsAppModal,
+  onOpenShareModal,
 }) => {
   const { canEditKas, isSuperAdmin } = useAuth();
 
@@ -153,6 +156,20 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
               </button>
             )}
 
+            {onOpenShareModal && (
+              <button
+                onClick={() => {
+                  sfx.playClick();
+                  onOpenShareModal();
+                }}
+                className="btn-doodle px-3.5 py-2.5 bg-amber-200 hover:bg-amber-300 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
+                title="Bagikan Tautan Web Portal Kelas"
+              >
+                <Share2 className="w-4 h-4 text-slate-900" />
+                <span>Bagikan Link</span>
+              </button>
+            )}
+
             {canEditKas && onOpenWhatsAppModal && (
               <button
                 onClick={() => {
@@ -162,7 +179,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
                 className="btn-doodle px-3.5 py-2.5 bg-emerald-100 hover:bg-emerald-200 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
               >
                 <MessageSquare className="w-4 h-4 text-emerald-800" />
-                <span>Share WA</span>
+                <span>Rekap WA</span>
               </button>
             )}
           </div>

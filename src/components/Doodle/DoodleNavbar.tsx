@@ -11,7 +11,8 @@ import {
   Music,
   Sparkles,
   Menu,
-  X
+  X,
+  Share2
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWA/PWAInstallButton.tsx';
 import { subscribeCloudSync, getCloudSyncStatus, CloudSyncStatus } from '../../services/supabaseClient.ts';
@@ -21,12 +22,14 @@ interface DoodleNavbarProps {
   currentTab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog';
   onSelectTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog') => void;
   classNameTitle: string;
+  onOpenShareModal?: () => void;
 }
 
 export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   currentTab,
   onSelectTab,
-  classNameTitle
+  classNameTitle,
+  onOpenShareModal
 }) => {
   const { user, role, isSuperAdmin, isBendahara, canEditKas, logout, switchRole, loginWithGooglePrompt } = useAuth();
   const [bgmPlaying, setBgmPlaying] = useState(() => sfx.getIsBgmPlaying());
@@ -147,7 +150,19 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             <Music className="w-3.5 h-3.5" />
           </button>
 
-          {/* Role Status Pill & Floating Dropdown */}
+          {/* Custom Domain Share Button (Bagikan Link Kelas) */}
+          {onOpenShareModal && (
+            <button
+              onClick={() => {
+                sfx.playClick();
+                onOpenShareModal();
+              }}
+              title="Bagikan Link Portal Kelas (Custom Domain)"
+              className="w-7 h-7 sm:w-8 sm:h-8 btn-doodle rounded-md bg-amber-300 hover:bg-amber-400 text-slate-900 border-2 border-slate-900 flex items-center justify-center transition-all"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+            </button>
+          )}
           <div className="relative">
             <button
               onClick={() => {
