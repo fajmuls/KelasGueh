@@ -1,127 +1,151 @@
-# Implementation Plan: Supabase Realtime Integration, bcryptjs PIN Security, Monthly Checklist & Responsive UI
+# Rencana Pembaruan v3.5.0: Quality of Life & Mobile Refinement Edition
 
-Comprehensive overhaul to establish a true, 100% active Supabase PostgreSQL integration with Realtime broadcast, implement standard `bcryptjs` PIN hashing for high-value transactions, convert the Checklist view to a Month-based 4-Week structure with date ranges, fix the Audit Log user attribution bug, and enforce zero-horizontal-overflow responsive UI across mobile and desktop.
+Pembaruan komprehensif untuk meningkatkan kerapian visual, keterbacaan di layar ponsel (mobile-first pixel density), konsistensi desain doodle di setiap tombol, kendali identitas siswa oleh Super Admin, serta penyempurnaan format laporan kas dan ekspor dokumen.
 
 ---
 
-## User Review & Critical Decisions
+### User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following architectural choices have been confirmed based on user feedback:
+> Keputusan desain berikut telah dikonfirmasi dan diselaraskan melalui sesi klarifikasi sebelum penyusunan arsitektur:
 
-- **Confirmed Decision 1 (Database & Persistence)**: Supabase PostgreSQL as primary database with live URL & Anon Key integration, automated DDL table initializations (`kas_transactions`, `kas_members`, `class_settings`, `audit_logs`), and Supabase Realtime broadcast.
-- **Confirmed Decision 2 (PIN Security)**: `bcryptjs` cryptographic library for transaction PIN hashing and verification before saving transactions >= Rp 500,000.
-- **Confirmed Decision 3 (Checklist Structure)**: Monthly Mode (4 Weeks per month) with Month Picker (e.g., Oktober 2026, November 2026) and specific date ranges per week.
-
----
-
-## 1. Overview & Core Concept
-
-1. **True Supabase Integration & DDL Verification**:
-   - Verify and activate Supabase client initialization in `src/services/supabaseClient.ts`.
-   - Provide real connection diagnostic checks in `KasSettings.tsx` that actually query and create missing tables if needed.
-2. **bcryptjs PIN Verification for High-Value Transactions**:
-   - Install `bcryptjs` and `@types/bcryptjs`.
-   - Hash PINs with standard `bcryptjs.hashSync` (salt factor 10) and verify via `bcryptjs.compareSync` before saving transactions >= Rp 500,000.
-3. **Monthly Checklist Iuran (4 Weeks per Month)**:
-   - Transition from 8 arbitrary weeks (`M1`..`M8`) to a monthly selector layout (`Bulan Oktober 2026`, etc.).
-   - Each month has 4 clean weeks (`Minggu 1: 1-7 Oct`, `Minggu 2: 8-14 Oct`, `Minggu 3: 15-21 Oct`, `Minggu 4: 22-28 Oct`).
-4. **Audit Log Attribution Bug Fix**:
-   - Dynamically pass actual logged-in user credentials (`user.name`, `user.email`, `role`) into `LocalKasRepository.addAuditLog` across all actions (member import, transaction add/delete, dues check) so Super Admin actions are attributed to Super Admin, not hardcoded as "Bendahara".
-5. **Zero-Horizontal-Overflow Responsive UI**:
-   - Apply `max-w-full overflow-x-hidden` on global layout containers.
-   - Ensure all tables wrap cleanly or scroll inside isolated containers without overflowing the window width on mobile or desktop.
-   - Adjust icon sizes and touch target padding for mobile devices.
+- **Gaya Visual Cetak & Ekspor**: Menggunakan format lembar binder kas doodle bergaris dengan kop resmi sekolah/kelas, stempel transparansi, dan garis buku tulis rapi untuk arsip fisik wali kelas atau ketua kelas.
+- **Pemetaan Identitas Akun Google oleh Super Admin**: Dropdown langsung di dalam tabel Whitelist Pengguna di dashboard Pengaturan, memungkinkan Super Admin memilih nama siswa dari daftar kas untuk ditautkan ke akun Google yang terdaftar.
+- **Format Pesan WhatsApp Pengingat Kas**: Format laporan resmi ringkas yang menonjolkan saldo kas terkini, pengeluaran minggu/bulan berjalan, dan rincian nominal tunggakan siswa secara langsung dan profesional tanpa tumpukan ikon berlebih.
+- **Pembersihan Kontrol Navbar**: Menghapus tombol "Putar Ulang Intro Logo" dan memindahkan toggle suara SFX ke menu Pengaturan Pengguna agar bilah atas tetap ringkas dan tidak meluber di smartphone.
+- **Peningkatan Nomor Versi**: Versi aplikasi dinaikkan menjadi **v3.5.0** sesuai pedoman penomoran (angka kedua dinaikkan karena terdapat penambahan fitur-fitur baru dan perubahan signifikan).
 
 ---
 
-## 2. User Experience & Visual Design
+### 1. Overview & Core Concept
 
-- **Viewport & Responsive Layout**:
-  - Main container uses `w-full max-w-7xl mx-auto px-3 sm:px-6 overflow-x-hidden`.
-  - Navbar, Topbar, and Footer adjust touch targets ($\ge 44\text{px}$) and icon scales (`w-4 h-4` on mobile).
-- **Checklist Month Picker & Calendar Context**:
-  - Month Selector dropdown / tab strip at the top of Checklist view (e.g., `Januari 2026` ... `Desember 2026`).
-  - 4 weekly check columns with specific dates displayed in column headers.
-  - Clear summary of monthly dues lunas vs arrears.
-- **PIN Verification Modal**:
-  - Displays high-value transaction details (amount, description, date).
-  - 6-digit numeric input field with bcrypt comparison feedback.
+- **Tujuan Utama**: Mengoptimalkan pengalaman pengguna ponsel pintar agar informasi kas dan checklist iuran tampil padat tanpa banyak scrolling, menyatukan seluruh elemen tombol dengan identitas visual doodle art yang konsisten, serta memberikan transparansi data yang lebih matang antara akun login dan nama siswa.
+- **Target Pengguna**: Bendahara kelas, Super Admin/Ketua Kelas, Wali Kelas, serta seluruh anggota kelas yang mengakses buku kas secara mandiri dari smartphone masing-masing.
+- **Nilai Tambah (Key Value)**:
+  - Kemudahan navigasi satu layar pada handphone dengan pengurangan padding dan margin yang berlebih.
+  - Rasa tenang bagi bendahara melalui indikator status sinkronisasi cloud (Hijau = Tersinkron, Kuning = Mengirim ke Cloud).
+  - Kecepatan penagihan kas dengan filter 1-klik `[Hanya Belum Lunas]` di Checklist Iuran.
 
 ---
 
-## 3. Key Product Decisions & Trade-Offs
+### 2. User Experience & Visual Design
 
-- **Decision 1: Install `bcryptjs` for Standard Cryptographic Hashing**:
-  - *Chosen Approach*: Use `bcryptjs` for standard bcrypt hashing and verification.
-  - *Why*: User explicitly requested standard bcrypt hashing for PIN security.
-- **Decision 2: Month-Based Dues Data Model**:
-  - *Chosen Approach*: Store weekly dues status keyed by `year_month_week` (e.g. `2026_10_W1`, `2026_10_W2`).
-  - *Why*: Provides clean historical tracking month-by-month without infinite horizontal week scrolling.
-- **Decision 3: Dynamic Auth User Context in Audit Logs**:
-  - *Chosen Approach*: Retrieve active user identity from `AuthContext` on every action.
-  - *Why*: Eliminates false attribution in multi-user audit logs.
+#### A. Mobile-First Pixel Density & Button Compaction
+- **Pengurangan Skala Komponen Mobile**:
+  - Mengurangi padding kontainer dari `p-6` menjadi `p-3.5` atau `p-4` pada layar mobile `<640px`.
+  - Memperkecil tinggi tombol aksi dari `py-2.5` menjadi `py-1.5` dengan ukuran teks `text-xs` (11-12px) font tebal sans-serif.
+  - Memangkas jarak antar kartu (`gap-6` menjadi `gap-3`) sehingga ringkasan kas dan tabel dapat terlihat dalam sekali pandang tanpa scrolling panjang.
+- **Harmonisasi Gaya Tombol Doodle**:
+  - Semua tombol aksi di Pengaturan, Buku Kas, Nota Transaksi, dan Modal dialog distandarisasi menggunakan kelas `btn-doodle`:
+    - Border solid 2px hitam (`border-slate-900`)
+    - Bayangan doodle datar khas (`shadow-[2px_2px_0px_#1E293B]`)
+    - Sudut melengkung tegas (`rounded-md` atau `rounded-lg`)
+    - Efek tekan realistis saat diklik (`active:translate-y-0.5 active:shadow-none`)
+  - Menghilangkan tombol-tombol bergaya datar polos atau abu-abu standar yang sebelumnya tampak berbeda dari estetika doodle.
+
+#### B. Indikator Status Cloud Sync di Navbar
+- **Lokasi**: Di samping judul versi atau informasi kelas pada bilah navigasi utama.
+- **Visual State**:
+  - 🟢 **Hijau Berkedip Halus (Live Sync)**: Menandakan koneksi Supabase Realtime aktif dan seluruh data lokal telah identik dengan server cloud.
+  - 🟡 **Kuning Denyut Cepat (Menyimpan...)**: Menandakan aplikasi sedang mengirim perubahan checklist atau transaksi ke server Supabase.
+  - ⚪ **Abu-abu (Lokal/Offline)**: Menandakan mode offline ketika koneksi internet terputus atau API key belum disetel.
+
+#### C. Filter Cepat Siswa Menunggak di Checklist Iuran
+- Tab filter instan di atas tabel checklist iuran:
+  - `[Semua Siswa]` (menampilkan seluruh siswa kelas).
+  - `[Hanya Belum Lunas]` (secara dinamis menyaring hanya siswa yang memiliki tunggakan iuran pada bulan terpilih).
+- Dilengkapi badge hitungan siswa menunggak secara real-time.
+
+#### D. Desain Ekspor Binder Kas & Format Excel
+- **Cetak / PDF Lembar Binder**:
+  - Format kertas binder A4 dengan lubang binder di sisi kiri, aksen selotip doodle kuning di sudut kop, serta garis-garis buku kas klasik (notebook lines) berwarna biru lembut.
+  - Tabel berisi Nomor, Nama Siswa, NIM, Status 4 Minggu, Total Bayar, dan kolom paraf tanda tangan bendahara.
+- **Ekspor Excel / Spreadsheet**:
+  - Format tabel bersih dengan header tebal berlatar warna amber lembut, pemisah ribuan Rupiah standar, dan kalkulasi otomatis total penerimaan.
+
+#### E. WhatsApp Reminder Profesional
+- **Hak Akses**: Tombol pengiriman pesan WhatsApp hanya dapat diakses dan ditekan oleh bendahara atau super admin.
+- **Format Teks Baru**:
+  ```text
+  Yth. Orang Tua / Siswa [Nama Siswa]
+  Laporan Kas [Nama Kelas] - [Bulan] [Tahun]
+
+  • Saldo Kas Kelas: Rp [Total Saldo]
+  • Iuran per Minggu: Rp [Nominal]
+  • Status Iuran: Belum Lunas ([Jumlah Minggu] Minggu)
+  • Total Tagihan: Rp [Nominal Tunggakan]
+
+  Mohon dapat menyelesaikan iuran kas melalui Bendahara Kelas.
+  Terima kasih atas kerja samanya.
+  — Bendahara [Nama Kelas]
+  ```
 
 ---
 
-## 4. Technical Architecture & Data Strategy
+### 3. Key Product Decisions & Trade-Offs
+
+- **Pemisahan Pengaturan Audio**:
+  - *Keputusan*: Memindahkan toggle suara SFX ke menu Pengaturan di tab Pengaturan Kelas, dan menghilangkan tombol putar intro logo dari navbar.
+  - *Alasan*: Bilah navigasi atas di smartphone harus bebas dari tombol dekoratif agar tidak bertumpuk dengan judul kelas dan tombol menu akun.
+- **Penyimpanan Pemetaan Siswa ke Akun Google**:
+  - *Keputusan*: Menambahkan properti `linkedMemberId` pada objek pengguna terdaftar di penyimpanan data dan tabel user management.
+  - *Alasan*: Memungkinkan sistem mendeteksi secara otomatis apakah seorang pengguna yang login adalah siswa tertentu tanpa mengubah struktur dasar Supabase Auth.
+- **Otorisasi Tombol Tagih WhatsApp**:
+  - *Keputusan*: Menyembunyikan tombol WA jika akun yang login hanya bertindak sebagai anggota biasa (read-only).
+  - *Alasan*: Menghindari siswa saling mengirimkan pesan tagihan palsu atau spam antar anggota kelas.
+
+---
+
+### 4. Technical Architecture & Data Strategy
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                             React UI App                               │
-│  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐  ┌─────────────┐  │
-│  │  KasOverview │  │   KasBook    │  │KasChecklist │  │ KasSettings │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬──────┘  └──────┬──────┘  │
-└─────────┼─────────────────┼─────────────────┼───────────────┼──────────┘
-          │                 │                 │               │
-          ▼                 ▼                 ▼               ▼
+│                        DoodleNavbar Component                          │
+│  - Logo Kelas Gueh (Official SVG)                                      │
+│  - Judul Kelas & Indikator Cloud Sync (🟢/🟡/⚪)                       │
+│  - BGM Toggle (Sync SoundEngine)                                       │
+│  - Akun Profile & Role Badge                                           │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                      LocalKasRepository & AuthContext                  │
-│  - bcryptjs PIN Verification (Transactions >= Rp 500k)                │
-│  - Real Active User Audit Logging (user.name + role)                   │
-│  - Month-based Weekly Dues State (Year-Month-W1..W4)                   │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │ (Supabase JS Client + Realtime)
-                                   ▼
+│                        App Central State Router                        │
+│  - Transactions State & Member Checklist State                         │
+│  - Cloud Sync Status Listener (idle | syncing | synced)                │
+└───────┬───────────────────────────┬────────────────────────────┬───────┘
+        │                           │                            │
+        ▼                           ▼                            ▼
+┌──────────────────┐    ┌────────────────────────┐   ┌───────────────────┐
+│   KasBook View   │    │   KasChecklist View    │   │ KasSettings View  │
+│  - Compact rows  │    │  - Filter [Belum Lunas]│   │ - User Whitelist  │
+│  - Doodle button │    │  - Sticky Mobile Table │   │   & Member Binding│
+│  - Binder Print  │    │  - WA (Bendahara only) │   │ - SFX Audio Toggle│
+│  - Clean Excel   │    │  - Batch Upsert Guard  │   │ - Idempotent SQL  │
+└──────────────────┘    └────────────────────────┘   └───────────────────┘
+                                    │
+                                    ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                         Supabase PostgreSQL                            │
-│  - kas_transactions (id, type, amount, category, description, date)    │
-│  - kas_members (id, name, student_id, phone, monthly_weekly_status)    │
-│  - class_settings (id, class_name, target_amount, weekly_dues_amount)  │
-│  - audit_logs (id, action, details, performed_by, user_role, timestamp)│
+│                  LocalKasRepository (Cloud-First)                      │
+│  - Postgres RFC-4122 UUID Generator                                    │
+│  - Realtime Broadcast & BroadcastChannel Sync                          │
+│  - Single-query Batch Upsert & Supabase Storage Bucket                 │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+#### Struktur Data Pengguna & Pemetaan Siswa:
+```typescript
+export interface RegisteredUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'superadmin' | 'bendahara' | 'anggota';
+  linkedMemberId?: string; // ID siswa dari daftar tabel kas
+  registeredAt: string;
+}
+```
 
-## Proposed File Changes
-
-1. **`package.json`**:
-   - Add `bcryptjs` and `@types/bcryptjs`.
-2. **`src/utils/security.ts`**:
-   - Implement bcryptjs PIN hashing and comparison utilities (`hashPinBcrypt`, `verifyPinBcrypt`).
-3. **`src/services/supabaseClient.ts`**:
-   - Update `AuditLogEntry` and `LocalKasRepository` to support dynamic user details and month-based weekly dues keying (`YYYY_MM_W1..W4`).
-4. **`src/components/Doodle/KasChecklist.tsx`**:
-   - Add Month Selector (Jan-Dec) and render 4 Weeks per month with date ranges.
-   - Use dynamic logged-in user name for audit log entries.
-5. **`src/components/Doodle/KasBook.tsx` & `PinVerificationModal.tsx`**:
-   - Integrate `bcryptjs` PIN check before saving expenses >= Rp 500,000.
-6. **`src/components/Doodle/KasSettings.tsx`**:
-   - Update Supabase connection test to perform real query verification and offer 1-click table setup check.
-7. **`src/types/kas.ts`**:
-   - Update types for month-based weekly dues and audit log user fields.
-8. **`src/version.ts`**:
-   - Bump version to `v3.1.0` with full changelog and proactive suggestions.
-
----
-
-## Verification Plan
-
-1. **Lint & Build**:
-   - Run `lint_applet` and `compile_applet` to ensure zero TypeScript or syntax errors.
-2. **Functional Test**:
-   - Test PIN verification using `bcryptjs` for transactions >= Rp 500,000.
-   - Verify Checklist month selector switching and 4-week status toggling.
-   - Verify Audit Log correctly records Super Admin vs Bendahara identity.
-   - Test UI responsively on small screen sizes to ensure no horizontal scrollbars occur.
+#### State Indikator Cloud Realtime:
+```typescript
+export type CloudSyncState = 'synced' | 'syncing' | 'offline';
+```
+Indikator ini akan mengawasi siklus pemanggilan API Supabase: berubah menjadi `'syncing'` (kuning) saat mutasi data berlangsung, dan kembali ke `'synced'` (hijau) setelah batch query berhasil dieksekusi.

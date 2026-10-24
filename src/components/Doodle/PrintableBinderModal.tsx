@@ -211,7 +211,17 @@ export const PrintableBinderModal: React.FC<PrintableBinderModalProps> = ({
 
 
         {/* Printable Paper Area (Binder Document) */}
-        <div className="printable-binder-document bg-[#FFFDF9] border-2 border-slate-900 p-6 sm:p-10 rounded-sm relative text-slate-900 font-sans print:border-none print:p-0 print:bg-white">
+        <div className="printable-binder-document bg-[#FFFDF9] border-2 border-slate-900 p-6 sm:p-10 rounded-sm relative text-slate-900 font-sans print:border-none print:p-0 print:bg-white shadow-[4px_4px_0px_#1E293B]">
+          {/* Notebook Binder Rings (Left Edge) */}
+          <div className="absolute left-2 top-0 bottom-0 flex flex-col justify-around py-8 pointer-events-none print:hidden">
+            <div className="w-3.5 h-3.5 rounded-full bg-slate-100 border-2 border-slate-400 shadow-inner"></div>
+            <div className="w-3.5 h-3.5 rounded-full bg-slate-100 border-2 border-slate-400 shadow-inner"></div>
+            <div className="w-3.5 h-3.5 rounded-full bg-slate-100 border-2 border-slate-400 shadow-inner"></div>
+          </div>
+
+          {/* Doodle Tape Accents */}
+          <ScotchTape className="absolute -top-3 left-14 rotate-[-1deg]" />
+          <ScotchTape className="absolute -top-3 right-14 rotate-[2deg]" />
           
           {/* Header Kop Resmi */}
           <div className="text-center border-b-4 border-double border-slate-900 pb-4 mb-6">
@@ -225,12 +235,12 @@ export const PrintableBinderModal: React.FC<PrintableBinderModalProps> = ({
               {settings.academicYear} · Dokumen Resmi Kas Kelas
             </p>
             <p className="text-[11px] font-mono text-slate-500 mt-0.5">
-              Tanggal Cetak: {currentDate} · Status Audit: 100% Transparan
+              Tanggal Cetak: {currentDate} · Status Audit: 100% Transparan & Terverifikasi
             </p>
           </div>
 
           {/* Kotak Ringkasan Kas */}
-          <div className="grid grid-cols-3 gap-3 mb-6 p-4 bg-amber-50/60 border-2 border-slate-900 rounded-sm print:bg-slate-50">
+          <div className="grid grid-cols-3 gap-3 mb-6 p-4 bg-amber-50/70 border-2 border-slate-900 rounded-sm print:bg-slate-50">
             <div>
               <p className="text-[11px] uppercase font-bold text-slate-600">Total Debit (Masuk) (+)</p>
               <p className="text-lg sm:text-xl font-black font-mono text-emerald-800 tabular-nums">

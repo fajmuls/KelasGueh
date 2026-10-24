@@ -261,18 +261,17 @@ const AppContent: React.FC = () => {
         <AnimatedIntroScreen onFinish={() => setShowIntro(false)} />
       )}
 
-      {/* Doodle Navbar with User SVG Logo & SFX/BGM controls - Only show after intro */}
+      {/* Doodle Navbar with User SVG Logo & BGM controls - Only show after intro */}
       {isLoggedIn && !showIntro && (
         <DoodleNavbar
           currentTab={currentTab}
           onSelectTab={setCurrentTab}
           classNameTitle={settings.className}
-          onReplayIntro={() => setShowIntro(true)}
         />
       )}
 
-      {/* Main Content Viewport */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+      {/* Main Content Viewport - Compacted for mobile */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-2 sm:p-4 lg:p-6">
         {currentTab === 'ringkasan' && (
           <KasOverview
             transactions={transactions}
@@ -288,6 +287,7 @@ const AppContent: React.FC = () => {
         {currentTab === 'bukukas' && (
           <KasBook
             transactions={transactions}
+            members={members}
             settings={settings}
             onAddTransaction={handleAddTransaction}
             onDeleteTransaction={handleDeleteTransaction}
@@ -322,6 +322,7 @@ const AppContent: React.FC = () => {
         {currentTab === 'pengaturan' && canEditKas && (
           <KasSettings
             settings={settings}
+            members={members}
             onSaveSettings={handleSaveSettings}
             onResetData={handleResetData}
           />

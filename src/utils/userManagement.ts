@@ -5,6 +5,8 @@ export interface RegisteredUser {
   role: 'superadmin' | 'bendahara' | 'anggota';
   lastLogin: string;
   avatar?: string;
+  linkedMemberId?: string;
+  linkedMemberName?: string;
 }
 
 const STORAGE_KEY_REGISTERED = 'kelasgue_registered_users_v2';
@@ -94,6 +96,28 @@ export const updateUserRole = (email: string, newRole: 'bendahara' | 'anggota'):
   const updated = currentList.map(u => {
     if (u.email.toLowerCase() === emailLower && u.role !== 'superadmin') {
       return { ...u, role: newRole };
+    }
+    return u;
+  });
+
+  localStorage.setItem(STORAGE_KEY_REGISTERED, JSON.stringify(updated));
+  return updated;
+};
+
+export const updateUserLinkedMember = (
+  email: string,
+  memberId: string | undefined,
+  memberName?: string
+): RegisteredUser[] => {
+  const emailLower = email.toLowerCase().trim();
+  const currentList = getRegisteredUsers();
+  const updated = currentList.map(u => {
+    if (u.email.toLowerCase() === emailLower) {
+      return {
+        ...u,
+        linkedMemberId: memberId || undefined,
+        linkedMemberName: memberName || undefined
+      };
     }
     return u;
   });

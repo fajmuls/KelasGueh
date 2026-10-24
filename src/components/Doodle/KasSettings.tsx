@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { ClassSettings } from '../../types/kas.ts';
+import { ClassSettings, KasMember } from '../../types/kas.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { CURRENT_APP_VERSION } from '../../version.ts';
 import { ScotchTape, DoodleCrown } from './DoodleDecorations.tsx';
 import { getSupabaseClient, signInWithGoogleSupabase } from '../../services/supabaseClient.ts';
-import { getRegisteredUsers, updateUserRole, RegisteredUser } from '../../utils/userManagement.ts';
+import { getRegisteredUsers, updateUserRole, updateUserLinkedMember, RegisteredUser } from '../../utils/userManagement.ts';
 import { 
   Database, 
   Shield, 
@@ -20,19 +20,25 @@ import {
   Copy,
   Info,
   Terminal,
-  Bell
+  Bell,
+  Volume2,
+  VolumeX,
+  UserCheck,
+  GraduationCap
 } from 'lucide-react';
 import { saveNewPin } from '../../utils/security.ts';
 import { requestNotificationPermission, sendLocalNotification } from '../../utils/notifications.ts';
 
 interface KasSettingsProps {
   settings: ClassSettings;
+  members?: KasMember[];
   onSaveSettings: (settings: ClassSettings) => void;
   onResetData: () => void;
 }
 
 export const KasSettings: React.FC<KasSettingsProps> = ({
   settings,
+  members = [],
   onSaveSettings,
   onResetData,
 }) => {
@@ -42,6 +48,7 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
     return getSupabaseClient() ? 'connected' : 'not_configured';
   });
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => sfx.isEnabled());
 
   // User Role Management state for Super Admin
   const [userList, setUserList] = useState<RegisteredUser[]>(() => getRegisteredUsers());
@@ -50,6 +57,12 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
   // 6-Digit PIN Security State
   const [newPin, setNewPin] = useState('');
   const [pinMessage, setPinMessage] = useState<string | null>(null);
+
+  const handleToggleSound = () => {
+    const next = sfx.toggle();
+    setSoundEnabled(next);
+    if (next) sfx.playCoinChime();
+  };
 
   const handleUpdatePin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -363,7 +376,7 @@ END $$;`;
               navigator.clipboard.writeText(sqlScript);
               alert('SQL Script berhasil disalin!');
             }}
-            className="flex items-center gap-1.5 px-2 py-1 bg-white hover:bg-slate-100 text-slate-900 text-[10px] font-black rounded border-2 border-slate-900"
+            className="btn-doodle flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 text-[10px] font-black rounded border-2 border-slate-900"
           >
             <Copy className="w-3 h-3" />
             <span>Salin SQL</span>
@@ -377,64 +390,174 @@ END $$;`;
         </p>
       </div>
 
-      {/* 5. Role & PIN Management (Consolidated) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Role Whitelist */}
-        <div className="card-doodle p-5 rounded-lg bg-white relative">
-          <h3 className="text-sm font-black text-slate-900 mb-4 border-b-2 border-slate-900 pb-2 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-emerald-600" />
-            <span>Whitelist Bendahara</span>
-          </h3>
-          <form onSubmit={handleAddManualBendahara} className="flex gap-2 mb-4">
-            <input
-              type="email"
-              placeholder="Email Google..."
-              value={manualEmail}
-              onChange={(e) => setManualEmail(e.target.value)}
-              className="flex-1 px-3 py-1.5 text-xs font-mono border-2 border-slate-900 rounded-md focus:bg-amber-50/30 outline-none"
-            />
-            <button type="submit" className="btn-doodle px-3 py-1.5 bg-emerald-400 text-slate-900 text-xs font-black rounded-md">
-              <UserPlus className="w-3.5 h-3.5" />
-            </button>
-          </form>
-          <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
+      {/* 5. User Settings & Audio Preferences (QoL) */}
+      <div className="card-doodle p-4 sm:p-5 rounded-lg bg-white relative border-2 border-slate-900">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-900 pb-3 mb-3">
+          <div className="flex items-center gap-2">
+            {soundEnabled ? (
+              <Volume2 className="w-5 h-5 text-emerald-600" />
+            ) : (
+              <VolumeX className="w-5 h-5 text-slate-400" />
+            )}
+            <div>
+              <h3 className="text-sm sm:text-base font-black text-slate-900">
+                Preferensi Efek Suara (SFX)
+              </h3>
+              <p className="text-[11px] text-slate-600">
+                Suara koin, gemerisik kertas kwitansi, dan notifikasi interaktif.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleToggleSound}
+            className={`btn-doodle px-3 py-1.5 rounded-md text-xs font-black flex items-center gap-2 ${
+              soundEnabled ? 'bg-emerald-300 text-slate-900' : 'bg-slate-200 text-slate-600'
+            }`}
+          >
+            {soundEnabled ? (
+              <>
+                <Volume2 className="w-4 h-4 text-emerald-700" />
+                <span>Efek Suara: AKTIF</span>
+              </>
+            ) : (
+              <>
+                <VolumeX className="w-4 h-4 text-slate-500" />
+                <span>Efek Suara: SENYAP</span>
+              </>
+            )}
+          </button>
+        </div>
+        <p className="text-[10px] text-slate-500 italic">
+          * Catatan: Pengaturan ini tersimpan di browser Anda dan musik latar (BGM) tetap dapat dikontrol terpisah via navbar.
+        </p>
+      </div>
+
+      {/* 6. Role & PIN Management (Consolidated) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Role Whitelist & Member ID Binding */}
+        <div className="card-doodle p-4 sm:p-5 rounded-lg bg-white relative">
+          <div className="flex items-center justify-between mb-3 border-b-2 border-slate-900 pb-2">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-emerald-600" />
+              <span>Whitelist Pengguna & Hubungkan Siswa</span>
+            </h3>
+            <span className="text-[10px] bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded border border-sky-300">
+              {userList.length} Akun
+            </span>
+          </div>
+
+          {isSuperAdmin && (
+            <form onSubmit={handleAddManualBendahara} className="flex gap-2 mb-4">
+              <input
+                type="email"
+                placeholder="Tambah email Google bendahara..."
+                value={manualEmail}
+                onChange={(e) => setManualEmail(e.target.value)}
+                className="flex-1 px-3 py-1.5 text-xs font-mono border-2 border-slate-900 rounded-md focus:bg-amber-50/30 outline-none"
+              />
+              <button type="submit" className="btn-doodle px-3 py-1.5 bg-emerald-400 text-slate-900 text-xs font-black rounded-md flex items-center gap-1">
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Tambah</span>
+              </button>
+            </form>
+          )}
+
+          <div className="max-h-72 overflow-y-auto space-y-2.5 pr-1">
             {userList.map(u => (
-              <div key={u.id} className="flex items-center justify-between p-2 bg-slate-50 border-2 border-slate-900 rounded-md">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-black text-slate-900 truncate">{u.name}</p>
-                  <p className="text-[10px] text-slate-500 font-mono truncate">{u.email}</p>
+              <div key={u.id} className="p-2.5 bg-slate-50 border-2 border-slate-900 rounded-md space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-slate-900 truncate">{u.name}</p>
+                    <p className="text-[10px] text-slate-500 font-mono truncate">{u.email}</p>
+                  </div>
+                  
+                  {/* Role & Student Badges */}
+                  <div className="flex flex-wrap items-center gap-1 shrink-0">
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-black border border-slate-900 ${
+                      u.role === 'superadmin' ? 'bg-amber-300 text-slate-900' :
+                      u.role === 'bendahara' ? 'bg-emerald-300 text-slate-900' : 'bg-slate-200 text-slate-700'
+                    }`}>
+                      {u.role === 'superadmin' ? '👑 Super Admin' : u.role === 'bendahara' ? '🛡️ Bendahara' : '👤 Anggota'}
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border border-slate-900 ${
+                      u.linkedMemberName ? 'bg-sky-200 text-sky-900' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      🎓 {u.linkedMemberName ? u.linkedMemberName : 'Belum Terhubung'}
+                    </span>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleRoleToggle(u.email, u.role)}
-                  className={`px-2 py-1 rounded text-[10px] font-black border-2 border-slate-900 ${
-                    u.role === 'bendahara' ? 'bg-rose-300' : 'bg-slate-200'
-                  }`}
-                >
-                  {u.role === 'bendahara' ? 'Hapus' : 'Jadikan Bendahara'}
-                </button>
+
+                {/* Super Admin Control: Link to Student Dropdown + Role Switch */}
+                {isSuperAdmin && (
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1 border-t border-dashed border-slate-300">
+                    <div className="flex-1 flex items-center gap-1">
+                      <GraduationCap className="w-3 h-3 text-slate-500 shrink-0" />
+                      <select
+                        value={u.linkedMemberId || ''}
+                        onChange={(e) => {
+                          const selectedId = e.target.value;
+                          const selectedStudent = members.find(m => m.id === selectedId);
+                          const updated = updateUserLinkedMember(
+                            u.email,
+                            selectedId || undefined,
+                            selectedStudent ? selectedStudent.name : undefined
+                          );
+                          setUserList(updated);
+                          sfx.playClick();
+                          setSaveMessage(`Akun ${u.email} dihubungkan ke siswa: ${selectedStudent?.name || 'Dilepas'}`);
+                          setTimeout(() => setSaveMessage(null), 3000);
+                        }}
+                        className="w-full text-[10px] font-bold bg-white border border-slate-900 rounded px-1.5 py-0.5 outline-none"
+                      >
+                        <option value="">-- Hubungkan ke Siswa --</option>
+                        {members.map(m => (
+                          <option key={m.id} value={m.id}>
+                            {m.name} ({m.studentId})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {u.role !== 'superadmin' && (
+                      <button
+                        onClick={() => handleRoleToggle(u.email, u.role)}
+                        className={`btn-doodle px-2 py-0.5 rounded text-[9px] font-black border-2 border-slate-900 shrink-0 ${
+                          u.role === 'bendahara' ? 'bg-rose-300 hover:bg-rose-400 text-slate-900' : 'bg-emerald-300 hover:bg-emerald-400 text-slate-900'
+                        }`}
+                      >
+                        {u.role === 'bendahara' ? 'Jadikan Anggota' : 'Jadikan Bendahara'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
 
         {/* PIN Security */}
-        <div className="card-doodle p-5 rounded-lg bg-white relative">
-          <h3 className="text-sm font-black text-slate-900 mb-4 border-b-2 border-slate-900 pb-2 flex items-center gap-2">
+        <div className="card-doodle p-4 sm:p-5 rounded-lg bg-white relative">
+          <h3 className="text-sm font-black text-slate-900 mb-3 border-b-2 border-slate-900 pb-2 flex items-center gap-2">
             <Lock className="w-4 h-4 text-amber-600" />
-            <span>PIN Transaksi Besar (&gt;500k)</span>
+            <span>PIN Transaksi Keamanan (&gt;500k)</span>
           </h3>
-          <p className="text-[11px] text-slate-600 mb-3">Gunakan 6 digit angka untuk memverifikasi pengeluaran besar.</p>
+          <p className="text-[11px] text-slate-600 mb-3">
+            Otorisasi bendahara dengan 6 digit angka untuk pengeluaran bernominal besar di atas Rp 500.000.
+          </p>
           <div className="flex gap-2">
             <input
               type="password"
               maxLength={6}
-              placeholder="6 Digit PIN..."
+              placeholder="6 Digit Angka PIN..."
               value={newPin}
               onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
-              className="flex-1 px-3 py-1.5 text-xs font-mono border-2 border-slate-900 rounded-md outline-none"
+              className="flex-1 px-3 py-1.5 text-xs font-mono border-2 border-slate-900 rounded-md outline-none focus:bg-amber-50/50"
             />
-            <button onClick={handleUpdatePin} className="btn-doodle px-3 py-1.5 bg-amber-300 text-slate-900 text-xs font-black rounded-md">
-              <KeyRound className="w-4 h-4" />
+            <button onClick={handleUpdatePin} className="btn-doodle px-3.5 py-1.5 bg-amber-300 hover:bg-amber-400 text-slate-900 text-xs font-black rounded-md flex items-center gap-1">
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Simpan PIN</span>
             </button>
           </div>
           {pinMessage && <p className="text-[10px] text-emerald-700 font-bold mt-2">{pinMessage}</p>}

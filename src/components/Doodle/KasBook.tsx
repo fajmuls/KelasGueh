@@ -26,11 +26,12 @@ import { scanReceiptOcr, OcrDetectionResult } from '../../utils/receiptOcr.ts';
 import { PinVerificationModal } from './PinVerificationModal.tsx';
 import { generateGoogleSheetsCsv, downloadCsvFile, openGoogleSheetsImportGuide } from '../../utils/exportToGoogleSheets.ts';
 
-import { ClassSettings } from '../../types/kas.ts';
+import { ClassSettings, KasMember } from '../../types/kas.ts';
 import { Settings as SettingsIcon, MessageSquare, FileSpreadsheet, ExternalLink } from 'lucide-react';
 
 interface KasBookProps {
   transactions: KasTransaction[];
+  members?: KasMember[];
   settings: ClassSettings;
   onAddTransaction: (tx: Omit<KasTransaction, 'id' | 'createdAt'>) => void;
   onDeleteTransaction: (id: string) => void;
@@ -54,6 +55,7 @@ const CATEGORIES = [
 
 export const KasBook: React.FC<KasBookProps> = ({
   transactions,
+  members = [],
   settings,
   onAddTransaction,
   onDeleteTransaction,
@@ -284,7 +286,7 @@ export const KasBook: React.FC<KasBookProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {canEditKas && onOpenWhatsAppModal && (
               <button
                 type="button"
@@ -292,7 +294,8 @@ export const KasBook: React.FC<KasBookProps> = ({
                   sfx.playCardOpen();
                   onOpenWhatsAppModal();
                 }}
-                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200 transition-colors flex items-center gap-1.5"
+                className="btn-doodle px-2.5 py-1 bg-emerald-300 hover:bg-emerald-400 text-slate-900 text-[11px] font-black rounded-md flex items-center gap-1"
+                title="Bagikan Ringkasan Kas ke WhatsApp Kelas"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>WA</span>
@@ -306,7 +309,8 @@ export const KasBook: React.FC<KasBookProps> = ({
                   sfx.playPaperRustle();
                   onOpenPrintModal();
                 }}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 transition-colors flex items-center gap-1.5"
+                className="btn-doodle px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-slate-900 text-[11px] font-black rounded-md flex items-center gap-1"
+                title="Buka Lembaran Binder Siap Cetak & Simpan PDF"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Cetak</span>
@@ -317,12 +321,12 @@ export const KasBook: React.FC<KasBookProps> = ({
               type="button"
               onClick={() => {
                 sfx.playFileDownload();
-                const csvContent = generateGoogleSheetsCsv(transactions, [], settings);
+                const csvContent = generateGoogleSheetsCsv(transactions, members, settings);
                 downloadCsvFile(`laporan_kas_${settings.className.replace(/\s+/g, '_')}_${Date.now()}.csv`, csvContent);
                 openGoogleSheetsImportGuide();
               }}
-              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200 transition-colors flex items-center gap-1.5"
-              title="Ekspor Laporan Kas ke File CSV yang Siap Diimpor ke Google Sheets"
+              className="btn-doodle px-2.5 py-1 bg-sky-200 hover:bg-sky-300 text-slate-900 text-[11px] font-black rounded-md flex items-center gap-1"
+              title="Ekspor Laporan Kas & Matriks Checklist ke File CSV Siap Impor Google Sheets"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
               <span>Ekspor</span>
@@ -335,7 +339,7 @@ export const KasBook: React.FC<KasBookProps> = ({
                   sfx.playCardOpen();
                   setIsDuesModalOpen(true);
                 }}
-                className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-600 text-xs font-bold rounded-lg border border-slate-200 transition-colors flex items-center gap-1.5"
+                className="btn-doodle px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 text-[11px] font-black rounded-md flex items-center gap-1"
                 title="Atur Nominal Iuran Kas (Khusus Super Admin)"
               >
                 <SettingsIcon className="w-3.5 h-3.5" />
@@ -344,14 +348,14 @@ export const KasBook: React.FC<KasBookProps> = ({
             )}
 
             {canEditKas ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => {
                     sfx.playPaperRustle();
                     setIsOcrModalOpen(true);
                   }}
-                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 transition-colors flex items-center gap-1.5"
+                  className="btn-doodle px-2.5 py-1 bg-indigo-200 hover:bg-indigo-300 text-slate-900 text-[11px] font-black rounded-md flex items-center gap-1"
                   title="Pindai Struk / Nota dengan Kamera HP (OCR Pembaca Nominal Otomatis)"
                 >
                   <Camera className="w-3.5 h-3.5" />
@@ -363,14 +367,14 @@ export const KasBook: React.FC<KasBookProps> = ({
                     sfx.playCardOpen();
                     onOpenModal();
                   }}
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-lg shadow-sm transition-all flex items-center gap-1.5"
+                  className="btn-doodle px-3 py-1 bg-emerald-400 hover:bg-emerald-500 text-slate-900 text-xs font-black rounded-md flex items-center gap-1"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5" />
                   <span>+ Catat</span>
                 </button>
               </div>
             ) : (
-              <div className="text-[10px] bg-amber-50 border border-amber-200 p-1.5 rounded-lg font-bold text-amber-800">
+              <div className="text-[10px] bg-amber-50 border-2 border-slate-900 px-2 py-0.5 rounded font-black text-amber-900">
                 🔒 Mode Lihat Saja
               </div>
             )}
@@ -445,66 +449,66 @@ export const KasBook: React.FC<KasBookProps> = ({
         </div>
       </div>
 
-      {/* Transactions Table (Paper Notebook Lined Style) */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      {/* Transactions Table (Minimalist Doodle Notebook Style) */}
+      <div className="card-doodle rounded-lg bg-white overflow-hidden shadow-sm border-2 border-slate-900">
         <div className="overflow-x-auto max-h-[600px] relative">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 sticky top-0 z-20 shadow-2xs">
+            <thead className="bg-[#FAF7F2] border-b-2 border-slate-900 font-black uppercase text-slate-700 sticky top-0 z-20">
               <tr>
-                <th className="py-2.5 px-3">Tanggal</th>
-                <th className="py-2.5 px-3 min-w-[180px]">Keterangan / Transaksi</th>
-                <th className="py-2.5 px-3">Kategori</th>
-                <th className="py-2.5 px-3 text-right">Nominal</th>
-                <th className="py-2.5 px-3 text-center">Bukti</th>
-                {canEditKas && <th className="py-2.5 px-3 text-center">Aksi</th>}
+                <th className="py-2 px-2.5 text-[10px] sm:text-xs">Tanggal</th>
+                <th className="py-2 px-2.5 min-w-[170px] text-[10px] sm:text-xs">Keterangan / Transaksi</th>
+                <th className="py-2 px-2.5 text-[10px] sm:text-xs">Kategori</th>
+                <th className="py-2 px-2.5 text-right text-[10px] sm:text-xs">Nominal</th>
+                <th className="py-2 px-2.5 text-center text-[10px] sm:text-xs">Bukti</th>
+                {canEditKas && <th className="py-2 px-2.5 text-center text-[10px] sm:text-xs">Aksi</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={canEditKas ? 6 : 5} className="py-12 text-center text-slate-400 font-medium italic">
+                  <td colSpan={canEditKas ? 6 : 5} className="py-10 text-center text-slate-400 font-medium italic text-xs">
                     Belum ada data transaksi yang sesuai dengan filter pencarian.
                   </td>
                 </tr>
               ) : (
                 filtered.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={tx.id} className="hover:bg-amber-50/30 transition-colors">
                     {/* Tanggal */}
-                    <td className="py-2 px-3 whitespace-nowrap font-mono text-[10px] text-slate-500">
+                    <td className="py-1.5 px-2.5 whitespace-nowrap font-mono text-[10px] sm:text-[11px] text-slate-500">
                       {tx.date}
                     </td>
 
                     {/* Judul & Catatan */}
-                    <td className="py-2 px-3">
-                      <div className="font-bold text-slate-900 leading-tight">{tx.title}</div>
+                    <td className="py-1.5 px-2.5">
+                      <div className="font-bold text-slate-900 leading-tight text-[11px] sm:text-xs">{tx.title}</div>
                       {tx.notes && (
                         <div className="text-[10px] text-slate-400 italic mt-0.5 line-clamp-1">{tx.notes}</div>
                       )}
                     </td>
 
                     {/* Kategori */}
-                    <td className="py-2 px-3 whitespace-nowrap">
-                      <span className="text-[10px] font-bold bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-slate-600">
+                    <td className="py-1.5 px-2.5 whitespace-nowrap">
+                      <span className="text-[9px] sm:text-[10px] font-bold bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded text-slate-700">
                         {tx.category}
                       </span>
                     </td>
 
                     {/* Nominal */}
-                    <td className="py-2 px-3 text-right whitespace-nowrap font-mono font-bold tabular-nums">
-                      <span className={tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}>
+                    <td className="py-1.5 px-2.5 text-right whitespace-nowrap font-mono font-black tabular-nums text-[11px] sm:text-xs">
+                      <span className={tx.type === 'income' ? 'text-emerald-700' : 'text-rose-700'}>
                         {tx.type === 'income' ? '+' : '-'} {formatRupiah(tx.amount)}
                       </span>
                     </td>
 
                     {/* Bukti Nota */}
-                    <td className="py-2 px-3 text-center whitespace-nowrap">
+                    <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
                       {tx.receiptUrl ? (
                         <button
                           onClick={() => {
                             sfx.playPaperRustle();
                             setPreviewReceiptUrl(tx.receiptUrl!);
                           }}
-                          className="px-2 py-0.5 text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-800 rounded font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                          className="btn-doodle px-1.5 py-0.5 text-[9px] sm:text-[10px] bg-amber-200 hover:bg-amber-300 text-slate-900 rounded font-black inline-flex items-center gap-1 cursor-pointer border border-slate-900"
                         >
                           <Eye className="w-3 h-3" />
                           <span>Nota</span>
@@ -516,7 +520,7 @@ export const KasBook: React.FC<KasBookProps> = ({
 
                     {/* Aksi Hapus */}
                     {canEditKas && (
-                      <td className="py-2 px-3 text-center whitespace-nowrap">
+                      <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
                         <button
                           onClick={() => {
                             if (window.confirm(`Yakin ingin menghapus transaksi "${tx.title}"?`)) {
@@ -524,7 +528,8 @@ export const KasBook: React.FC<KasBookProps> = ({
                               onDeleteTransaction(tx.id);
                             }
                           }}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                          title="Hapus Transaksi"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -756,7 +761,7 @@ export const KasBook: React.FC<KasBookProps> = ({
                     sfx.playClick();
                     onCloseModal();
                   }}
-                  className="px-4 py-2 border-2 border-slate-900 rounded-md text-sm font-bold bg-white hover:bg-slate-100"
+                  className="btn-doodle px-4 py-2 border-2 border-slate-900 rounded-md text-xs sm:text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700"
                 >
                   Batal
                 </button>
@@ -890,7 +895,7 @@ export const KasBook: React.FC<KasBookProps> = ({
                     sfx.playCardClose();
                     setIsDuesModalOpen(false);
                   }}
-                  className="px-4 py-2 border-2 border-slate-900 rounded-md text-xs font-bold bg-white"
+                  className="btn-doodle px-4 py-2 border-2 border-slate-900 rounded-md text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700"
                 >
                   Batal
                 </button>

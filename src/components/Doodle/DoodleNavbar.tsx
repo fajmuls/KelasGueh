@@ -14,23 +14,23 @@ import {
   X
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWA/PWAInstallButton.tsx';
+import { subscribeCloudSync, getCloudSyncStatus, CloudSyncStatus } from '../../services/supabaseClient.ts';
+import { CURRENT_APP_VERSION } from '../../version.ts';
 
 interface DoodleNavbarProps {
   currentTab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog';
   onSelectTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog') => void;
   classNameTitle: string;
-  onReplayIntro?: () => void;
 }
 
 export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   currentTab,
   onSelectTab,
-  classNameTitle,
-  onReplayIntro
+  classNameTitle
 }) => {
   const { user, role, isSuperAdmin, isBendahara, canEditKas, logout, switchRole, loginWithGooglePrompt } = useAuth();
-  const [soundOn, setSoundOn] = useState(() => sfx.isEnabled());
   const [bgmPlaying, setBgmPlaying] = useState(() => sfx.getIsBgmPlaying());
+  const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>(() => getCloudSyncStatus());
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -42,10 +42,13 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
     return unsub;
   }, []);
 
-  const handleToggleSound = () => {
-    const next = sfx.toggle();
-    setSoundOn(next);
-  };
+  // Listen to cloud sync state (synced, syncing, offline)
+  useEffect(() => {
+    const unsub = subscribeCloudSync((status) => {
+      setSyncStatus(status);
+    });
+    return unsub;
+  }, []);
 
   const handleToggleBgm = () => {
     sfx.playClick();
@@ -62,11 +65,11 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-50 bg-[#FAF7F2] border-b-2 border-slate-900 shadow-sm w-full overflow-visible">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4 relative overflow-visible">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 py-2 flex items-center justify-between gap-2 sm:gap-4 relative overflow-visible">
         
-        {/* Zone 1: Brand Wordmark with Updated SVG Logo */}
+        {/* Zone 1: Brand Wordmark with Updated SVG Logo & Cloud Sync Indicator */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink min-w-0">
-          <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-lg bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] overflow-hidden p-1 flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] overflow-hidden p-1 flex items-center justify-center shrink-0">
             <img 
               src="/logo/Kelas_Gueh_Logo_Static.svg" 
               alt="Logo" 
@@ -74,18 +77,39 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             />
           </div>
           <div className="min-w-0 truncate">
-            <h1 className="text-sm sm:text-xl font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5 truncate">
+            <h1 className="text-xs sm:text-lg font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5 truncate">
               <span className="truncate">{classNameTitle || 'Kelas Gue'}</span>
-              <span className="hidden lg:inline-block text-[10px] sm:text-xs bg-emerald-200 border border-slate-900 px-1.5 py-0.2 rounded-xs font-bold text-slate-900 shrink-0">
+              <span className="hidden md:inline-block text-[9px] sm:text-[10px] bg-emerald-200 border border-slate-900 px-1 py-0.2 rounded-xs font-bold text-slate-900 shrink-0">
                 Kas Transparan
               </span>
             </h1>
-            <p className="text-[9px] sm:text-[11px] text-slate-600 font-medium truncate">Buku Kas Digital</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-[8px] sm:text-[10px] text-slate-600 font-medium truncate">Buku Kas Digital</p>
+              <span className="text-slate-300 text-[9px]">·</span>
+              {syncStatus === 'synced' && (
+                <span className="inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-1 py-0.2 rounded" title="Cloud Terhubung & Tersinkron">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Sinkron</span>
+                </span>
+              )}
+              {syncStatus === 'syncing' && (
+                <span className="inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1 py-0.2 rounded" title="Menyimpan ke Cloud...">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                  <span>Menyimpan...</span>
+                </span>
+              )}
+              {syncStatus === 'offline' && (
+                <span className="inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-bold text-slate-600 bg-slate-100 border border-slate-300 px-1 py-0.2 rounded" title="Mode Offline / Lokal">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  <span>Lokal</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Zone 2: Navigation Tabs (Desktop view) */}
-        <nav className="hidden md:flex items-center gap-2">
+        <nav className="hidden md:flex items-center gap-1.5">
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
             return (
@@ -95,7 +119,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                   sfx.playToggle();
                   onSelectTab(item.id as any);
                 }}
-                className={`px-3.5 py-2 text-xs sm:text-sm font-bold border-2 border-slate-900 rounded-md transition-all whitespace-nowrap shrink-0 ${
+                className={`px-3 py-1.5 text-xs font-bold border-2 border-slate-900 rounded-md transition-all whitespace-nowrap shrink-0 ${
                   isActive
                     ? 'bg-amber-300 text-slate-900 shadow-[2px_2px_0px_#1E293B] -translate-y-0.5'
                     : 'bg-white text-slate-700 hover:bg-amber-50 shadow-none'
@@ -107,8 +131,8 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
           })}
         </nav>
 
-        {/* Zone 3: Audio Toggle + Role Badge + Mobile Menu Toggle */}
-        <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
+        {/* Zone 3: BGM Audio + Role Badge + Mobile Menu Toggle */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* PWA Install Button */}
           <PWAInstallButton />
 
@@ -116,35 +140,12 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
           <button
             onClick={handleToggleBgm}
             title={bgmPlaying ? 'Jeda Musik Latar (BGM)' : 'Putar Musik Latar (BGM)'}
-            className={`w-8 h-8 sm:w-9 sm:h-9 btn-doodle rounded-md flex items-center justify-center transition-all ${
+            className={`w-7 h-7 sm:w-8 sm:h-8 btn-doodle rounded-md flex items-center justify-center transition-all ${
               bgmPlaying ? 'bg-amber-300 text-slate-900 border-2 border-slate-900 animate-pulse' : 'bg-white text-slate-400'
             }`}
           >
-            <Music className="w-4 h-4" />
+            <Music className="w-3.5 h-3.5" />
           </button>
-
-          {/* Sound SFX Toggle Button */}
-          <button
-            onClick={handleToggleSound}
-            title={soundOn ? 'Matikan Suara SFX' : 'Nyalakan Suara SFX'}
-            className="w-8 h-8 sm:w-9 sm:h-9 btn-doodle bg-white rounded-md flex items-center justify-center text-slate-800 hidden sm:flex"
-          >
-            {soundOn ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
-          </button>
-
-          {/* Replay Animated Intro Button */}
-          {onReplayIntro && (
-            <button
-              onClick={() => {
-                sfx.playClick();
-                onReplayIntro();
-              }}
-              title="Putar Ulang Animasi Intro Logo"
-              className="w-8 h-8 sm:w-9 sm:h-9 btn-doodle bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-md flex items-center justify-center transition-all hidden sm:flex"
-            >
-              <Sparkles className="w-4 h-4" />
-            </button>
-          )}
 
           {/* Role Status Pill & Floating Dropdown */}
           <div className="relative">
@@ -318,28 +319,12 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             })}
           </div>
 
-          <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600 font-bold px-1">
-            <button
-              onClick={handleToggleSound}
-              className="flex items-center gap-1.5 py-1 px-2 bg-white rounded border border-slate-300"
-            >
-              {soundOn ? <Volume2 className="w-3.5 h-3.5 text-emerald-600" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
-              <span>SFX: {soundOn ? 'Aktif' : 'Mati'}</span>
-            </button>
-
-            {onReplayIntro && (
-              <button
-                onClick={() => {
-                  sfx.playClick();
-                  setIsMobileMenuOpen(false);
-                  onReplayIntro();
-                }}
-                className="flex items-center gap-1 py-1 px-2 bg-amber-100 text-amber-900 rounded border border-slate-300 text-xs font-bold"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Putar Intro Logo</span>
-              </button>
-            )}
+          <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-600 font-bold px-1">
+            <span className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${syncStatus === 'synced' ? 'bg-emerald-500' : syncStatus === 'syncing' ? 'bg-amber-500' : 'bg-slate-400'}`} />
+              <span>Status: {syncStatus === 'synced' ? 'Cloud Sinkron' : syncStatus === 'syncing' ? 'Menyimpan...' : 'Lokal'}</span>
+            </span>
+            <span className="font-mono text-slate-500">v{CURRENT_APP_VERSION.version}</span>
           </div>
         </div>
       ) : (

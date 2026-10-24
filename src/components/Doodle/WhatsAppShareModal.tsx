@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { KasTransaction, ClassSettings } from '../../types/kas.ts';
+import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { ScotchTape, DoodleReceipt } from './DoodleDecorations.tsx';
-import { X, Send, Copy, Check } from 'lucide-react';
+import { X, Send, Copy, Check, ShieldAlert } from 'lucide-react';
 
 interface WhatsAppShareModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
   transactions,
   settings,
 }) => {
+  const { canEditKas } = useAuth();
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -41,30 +43,30 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     year: 'numeric'
   });
 
-  // Recent 5 expenses with receipt link if available
+  // Recent 5 expenses with concise notation
   const recentExpenses = transactions
     .filter(t => t.type === 'expense')
     .slice(0, 5)
-    .map(t => `• ${t.title}: ${formatRupiah(t.amount)}${t.receiptUrl ? ` (Nota: ${t.receiptUrl})` : ''}`)
+    .map(t => `- ${t.date} | ${t.title}: ${formatRupiah(t.amount)}`)
     .join('\n');
 
-  // WhatsApp formatted message text
-  const messageText = `📢 *LAPORAN TRANSPARANSI KAS ${settings.className.toUpperCase()}*
-📅 Per Tanggal: ${currentDate}
-🎓 ${settings.academicYear}
+  // WhatsApp formatted message text (Clean, official, no emoji clutter)
+  const messageText = `*LAPORAN PERTANGGUNGJAWABAN KAS - ${settings.className.toUpperCase()}*
+Tanggal: ${currentDate}
+Tahun Ajaran: ${settings.academicYear}
 
-💰 *RINGKASAN SALDO:*
-🟢 Total Debit: ${formatRupiah(totalIncome)}
-🔴 Total Kredit: ${formatRupiah(totalExpense)}
-💵 *SALDO KAS BERSIH: ${formatRupiah(balance)}*
-🎯 Target Kas Semester: ${formatRupiah(settings.kasTargetAmount)}
-📌 Iuran Kas Mingguan: ${formatRupiah(settings.weeklyDuesAmount)}/minggu
+RINGKASAN KEUANGAN KAS:
+• Saldo Kas Sekarang : ${formatRupiah(balance)}
+• Total Pemasukan    : ${formatRupiah(totalIncome)}
+• Total Pengeluaran  : ${formatRupiah(totalExpense)}
+• Tarif Iuran Kas    : ${formatRupiah(settings.weeklyDuesAmount)}/minggu
 
-📝 *5 KREDIT (PENGELUARAN) TERAKHIR:*
-${recentExpenses || '• Belum ada kredit kas.'}
+5 PENGELUARAN TERAKHIR:
+${recentExpenses || '- Belum ada pengeluaran tercatat.'}
 
-✨ _Laporan ini dihasilkan secara transparan & akurat dari sistem buku kas Kelas Gue._
-🌐 Cek bukti kuitansi & status iuran selengkapnya di aplikasi Kelas Gue.`;
+---
+Laporan resmi kas kelas diverifikasi transparan melalui sistem Kelas Gue.
+Foto kuitansi belanja & status checklist siswa dapat dicek langsung di aplikasi.`;
 
   const handleCopy = () => {
     sfx.playClick();
@@ -74,6 +76,10 @@ ${recentExpenses || '• Belum ada kredit kas.'}
   };
 
   const handleOpenWhatsApp = () => {
+    if (!canEditKas) {
+      alert('Hanya Bendahara atau Super Admin yang berhak membagikan laporan resmi ke WhatsApp.');
+      return;
+    }
     sfx.playMoneyIncome();
     const encoded = encodeURIComponent(messageText);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');

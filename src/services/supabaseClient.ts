@@ -62,6 +62,34 @@ export const getSupabaseClient = (): SupabaseClient | null => {
   return supabaseInstance;
 };
 
+// Realtime Cloud Sync Status Tracker ('synced' | 'syncing' | 'offline')
+export type CloudSyncStatus = 'synced' | 'syncing' | 'offline';
+type SyncListener = (status: CloudSyncStatus) => void;
+const syncListeners: SyncListener[] = [];
+let currentSyncStatus: CloudSyncStatus = getSupabaseClient() ? 'synced' : 'offline';
+
+export const getCloudSyncStatus = (): CloudSyncStatus => currentSyncStatus;
+
+export const setCloudSyncStatus = (status: CloudSyncStatus): void => {
+  currentSyncStatus = status;
+  syncListeners.forEach(listener => {
+    try {
+      listener(status);
+    } catch (e) {
+      console.warn('Sync listener error:', e);
+    }
+  });
+};
+
+export const subscribeCloudSync = (listener: SyncListener): () => void => {
+  syncListeners.push(listener);
+  listener(currentSyncStatus);
+  return () => {
+    const idx = syncListeners.indexOf(listener);
+    if (idx >= 0) syncListeners.splice(idx, 1);
+  };
+};
+
 // Compress image file using HTML Canvas to reduce size before uploading to Supabase Storage
 export const compressImage = async (file: File, maxWidth = 1200, quality = 0.82): Promise<Blob> => {
   return new Promise((resolve, reject) => {
@@ -332,6 +360,7 @@ export class LocalKasRepository {
     // Async push to Supabase with Postgres-compliant UUID
     const client = getSupabaseClient();
     if (client) {
+      setCloudSyncStatus('syncing');
       client.from('kas_transactions').insert([{
         id,
         type: tx.type,
@@ -344,6 +373,7 @@ export class LocalKasRepository {
         notes: tx.notes || null
       }]).then(({ error }) => {
         if (error) console.warn('Sync transaction fail:', error.message);
+        setTimeout(() => setCloudSyncStatus('synced'), 600);
       });
     }
 
@@ -357,8 +387,10 @@ export class LocalKasRepository {
 
     const client = getSupabaseClient();
     if (client) {
+      setCloudSyncStatus('syncing');
       client.from('kas_transactions').delete().eq('id', id).then(({ error }) => {
         if (error) console.warn('Supabase delete transaction error:', error.message);
+        setTimeout(() => setCloudSyncStatus('synced'), 600);
       });
     }
   }
@@ -413,6 +445,7 @@ export class LocalKasRepository {
       } else if (local.length > 0) {
         // Auto-sync local members up to empty Supabase table
         console.log('Syncing local members up to empty Supabase table...');
+        setCloudSyncStatus('syncing');
         const payload = local.map(m => ({
           id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.id) ? m.id : generateUUID(),
           name: m.name,
@@ -425,6 +458,7 @@ export class LocalKasRepository {
 
         client.from('kas_members').upsert(payload).then(({ error: upErr }) => {
           if (upErr) console.warn('Auto-sync members to Supabase error:', upErr.message);
+          setTimeout(() => setCloudSyncStatus('synced'), 600);
         });
         return normalizedLocal;
       }
@@ -456,10 +490,12 @@ export class LocalKasRepository {
     if (targetMember) {
       const client = getSupabaseClient();
       if (client) {
+        setCloudSyncStatus('syncing');
         client.from('kas_members').update({
           weekly_status: (targetMember as KasMember).weeklyStatus
         }).eq('id', memberId).then(({ error }) => {
           if (error) console.warn('Supabase toggleMemberWeek error:', error.message);
+          setTimeout(() => setCloudSyncStatus('synced'), 500);
         });
       }
     }
@@ -478,6 +514,7 @@ export class LocalKasRepository {
 
     const client = getSupabaseClient();
     if (client) {
+      setCloudSyncStatus('syncing');
       const payload = updated.map(m => ({
         id: m.id,
         name: m.name,
@@ -488,6 +525,7 @@ export class LocalKasRepository {
       // Batch upsert into Supabase in 1 atomic network call (prevents 39+ concurrent promise crashes)
       client.from('kas_members').upsert(payload).then(({ error }) => {
         if (error) console.warn('Bulk toggle Supabase upsert error:', error.message);
+        setTimeout(() => setCloudSyncStatus('synced'), 600);
       });
     }
     return updated;
@@ -508,6 +546,7 @@ export class LocalKasRepository {
 
     const client = getSupabaseClient();
     if (client) {
+      setCloudSyncStatus('syncing');
       client.from('kas_members').insert([{
         id,
         name: newMember.name,
@@ -516,6 +555,7 @@ export class LocalKasRepository {
         weekly_status: {}
       }]).then(({ error }) => {
         if (error) console.warn('Supabase addMember error:', error.message);
+        setTimeout(() => setCloudSyncStatus('synced'), 600);
       });
     }
     return newMember;
@@ -536,6 +576,7 @@ export class LocalKasRepository {
     if (updatedMember) {
       const client = getSupabaseClient();
       if (client) {
+        setCloudSyncStatus('syncing');
         client.from('kas_members').update({
           name: (updatedMember as KasMember).name,
           student_id: (updatedMember as KasMember).studentId,
@@ -543,6 +584,7 @@ export class LocalKasRepository {
           weekly_status: (updatedMember as KasMember).weeklyStatus || {}
         }).eq('id', memberId).then(({ error }) => {
           if (error) console.warn('Supabase updateMember error:', error.message);
+          setTimeout(() => setCloudSyncStatus('synced'), 600);
         });
       }
     }

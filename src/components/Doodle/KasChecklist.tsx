@@ -3,6 +3,7 @@ import { KasMember, ClassSettings } from '../../types/kas.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { ScotchTape } from './DoodleDecorations.tsx';
+import { LocalKasRepository } from '../../services/supabaseClient.ts';
 import {
   Check,
   X,
@@ -109,8 +110,16 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   const [reminderMember, setReminderMember] = useState<KasMember | null>(null);
   const [showAllArrearsModal, setShowAllArrearsModal] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<'all' | 'arrears'>('all');
 
-  const filteredMembers = members.filter(m =>
+  const membersWithArrears = members.filter(m => {
+    const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
+    return monthWeekKeys.some(key => !m.weeklyStatus?.[key]);
+  });
+
+  const baseList = filterMode === 'arrears' ? membersWithArrears : members;
+
+  const filteredMembers = baseList.filter(m =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
     m.studentId.includes(search)
   );
@@ -281,14 +290,35 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
     document.body.removeChild(link);
   };
 
+  const txs = LocalKasRepository.getTransactions();
+  const currentBalance = txs.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+  const currentMonthPrefix = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+  const monthExpenses = txs
+    .filter(t => t.type === 'expense' && t.date.startsWith(currentMonthPrefix))
+    .reduce((acc, t) => acc + t.amount, 0);
+
   const getWhatsAppReminderMessage = (member: KasMember) => {
     const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
     const unpaidWeeks = monthWeekKeys.filter(key => !member.weeklyStatus?.[key]);
+    const unpaidLabels = unpaidWeeks.map(k => `Minggu ${k.split('-W')[1] || k}`).join(', ');
     const totalUnpaid = unpaidWeeks.length * settings.weeklyDuesAmount;
-    return `Halo *${member.name}* 👋\n\nMengingatkan mengenai iuran kas *${settings.className}* bulan *${MONTHS[selectedMonth]} ${selectedYear}*.\nMasih ada tunggakan *${unpaidWeeks.length} minggu* senilai *${formatRupiah(totalUnpaid)}*.\n\nTerima kasih! 🙏`;
+
+    return `*LAPORAN IURAN KAS KELAS*\n` +
+      `*${settings.className}* · Periode *${MONTHS[selectedMonth]} ${selectedYear}*\n\n` +
+      `Yth. Sdr/i *${member.name}* (NIM: ${member.studentId}),\n\n` +
+      `Berikut rincian transparansi status iuran kas kelas Anda:\n` +
+      `• *Total Kas Terkumpul:* ${formatRupiah(currentBalance)}\n` +
+      `• *Pengeluaran Bulan Ini:* ${formatRupiah(monthExpenses)}\n` +
+      `• *Iuran Kas Mingguan:* ${formatRupiah(settings.weeklyDuesAmount)}\n` +
+      `• *Tunggakan Belum Bayar:* ${unpaidWeeks.length} Minggu (${unpaidLabels})\n` +
+      `• *Total Tagihan Iuran:* *${formatRupiah(totalUnpaid)}*\n\n` +
+      `Mohon dapat segera menyelesaikan pembayaran iuran kas melalui Bendahara Kelas.\n` +
+      `Terima kasih atas kerja sama dan transparansinya. 🙏\n\n` +
+      `_— Pengurus Kas ${settings.className}_`;
   };
 
   const handleSendWhatsApp = (member: KasMember) => {
+    if (!canEditKas) return;
     sfx.playMoneyIncome();
     const msg = getWhatsAppReminderMessage(member);
     const encoded = encodeURIComponent(msg);
@@ -297,35 +327,30 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
     window.open(url, '_blank');
   };
 
-  const membersWithArrears = members.filter(m => {
-    const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
-    return monthWeekKeys.some(key => !m.weeklyStatus?.[key]);
-  });
-
   return (
-    <div className="space-y-4">
-      {/* Header card */}
-      <div className="card-doodle p-4 rounded-lg bg-[#FFFDF9] relative">
+    <div className="space-y-3">
+      {/* Header card - Compact and Doodle */}
+      <div className="card-doodle p-3 sm:p-4 rounded-lg bg-[#FFFDF9] relative">
         <ScotchTape className="absolute -top-3 left-10 rotate-[-1deg]" />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-900 pb-3 mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-slate-900 pb-2.5 mb-2.5">
           <div>
-            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+            <h2 className="text-base sm:text-xl font-black text-slate-900 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700" />
               <span>Matriks Checklist Iuran Mingguan</span>
             </h2>
             <p className="text-[10px] sm:text-xs text-slate-600">
-              Iuran: <strong className="text-slate-900">{formatRupiah(settings.weeklyDuesAmount)}</strong>.
+              Tarif Iuran: <strong className="text-slate-900">{formatRupiah(settings.weeklyDuesAmount)}/mgg</strong> · Saldo Kas: <strong className="text-emerald-700">{formatRupiah(currentBalance)}</strong>
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {canEditKas && membersWithArrears.length > 0 && (
               <button
                 type="button"
                 onClick={() => setShowAllArrearsModal(true)}
-                className="btn-doodle px-2 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-slate-900 font-bold rounded text-[10px] flex items-center gap-1"
+                className="btn-doodle px-2.5 py-1 bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black rounded text-[10px] flex items-center gap-1"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
-                <span>WA ({membersWithArrears.length})</span>
+                <span>Tagih WA ({membersWithArrears.length})</span>
               </button>
             )}
             {canEditKas && (
@@ -333,7 +358,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowImportModal(true)}
-                  className="btn-doodle px-2 py-1.5 bg-sky-100 hover:bg-sky-200 text-slate-900 font-bold rounded text-[10px] flex items-center gap-1"
+                  className="btn-doodle px-2.5 py-1 bg-sky-100 hover:bg-sky-200 text-slate-900 font-bold rounded text-[10px] flex items-center gap-1"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
                   <span>Import</span>
@@ -341,7 +366,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddMember(true)}
-                  className="btn-doodle px-2 py-1.5 bg-amber-300 hover:bg-amber-400 text-slate-900 font-bold rounded text-[10px] flex items-center gap-1"
+                  className="btn-doodle px-2.5 py-1 bg-amber-300 hover:bg-amber-400 text-slate-900 font-black rounded text-[10px] flex items-center gap-1"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>+ Tambah</span>
@@ -351,15 +376,52 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="flex items-center gap-1 bg-slate-100 p-1 border-2 border-slate-900 rounded">
-            <button onClick={() => { sfx.playToggle(); const prev = selectedMonth === 0 ? 11 : selectedMonth - 1; if (selectedMonth === 0) setSelectedYear(y => y - 1); setSelectedMonth(prev); }} className="p-1 hover:bg-white rounded text-xs">←</button>
-            <div className="px-2 text-[10px] font-black text-slate-900 min-w-[100px] text-center">{MONTHS[selectedMonth]} {selectedYear}</div>
-            <button onClick={() => { sfx.playToggle(); const next = selectedMonth === 11 ? 0 : selectedMonth + 1; if (selectedMonth === 11) setSelectedYear(y => y + 1); setSelectedMonth(next); }} className="p-1 hover:bg-white rounded text-xs">→</button>
+        {/* Month Selector, Quick Arrears Filter, and Search Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {/* Month Stepper */}
+          <div className="flex items-center justify-between sm:justify-start gap-1 bg-slate-100 p-1 border-2 border-slate-900 rounded-md shrink-0">
+            <button onClick={() => { sfx.playToggle(); const prev = selectedMonth === 0 ? 11 : selectedMonth - 1; if (selectedMonth === 0) setSelectedYear(y => y - 1); setSelectedMonth(prev); }} className="p-1 hover:bg-white rounded text-xs font-bold">←</button>
+            <div className="px-2 text-[10px] sm:text-xs font-black text-slate-900 min-w-[90px] sm:min-w-[110px] text-center">{MONTHS[selectedMonth]} {selectedYear}</div>
+            <button onClick={() => { sfx.playToggle(); const next = selectedMonth === 11 ? 0 : selectedMonth + 1; if (selectedMonth === 11) setSelectedYear(y => y + 1); setSelectedMonth(next); }} className="p-1 hover:bg-white rounded text-xs font-bold">→</button>
           </div>
-          <div className="flex-1 relative w-full">
-            <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Cari nama atau NIM..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-7 pr-2 py-1.5 text-[11px] bg-white border-2 border-slate-900 rounded focus:outline-none focus:bg-amber-50/50" />
+
+          {/* Quick Filter: [Semua] vs [Hanya Belum Lunas] */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 border-2 border-slate-900 rounded-md shrink-0">
+            <button
+              type="button"
+              onClick={() => { sfx.playClick(); setFilterMode('all'); }}
+              className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${
+                filterMode === 'all'
+                  ? 'bg-amber-300 text-slate-900 shadow-[1px_1px_0px_#000]'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semua ({members.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => { sfx.playClick(); setFilterMode('arrears'); }}
+              className={`px-2 py-1 text-[10px] font-bold rounded transition-all flex items-center gap-1 ${
+                filterMode === 'arrears'
+                  ? 'bg-rose-300 text-slate-900 shadow-[1px_1px_0px_#000]'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>Belum Lunas</span>
+              <span className="px-1 bg-rose-500 text-white rounded text-[8px] font-black">{membersWithArrears.length}</span>
+            </button>
+          </div>
+
+          {/* Search Input */}
+          <div className="flex-1 relative">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari nama atau NIM siswa..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-8 pr-2 py-1 text-[11px] bg-white border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
+            />
           </div>
         </div>
       </div>

@@ -11,31 +11,34 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.4.3',
-  codename: 'Supabase Cloud-First & Resilient Engine Edition',
+  version: '3.5.0',
+  codename: 'Quality of Life & Mobile Refinement Edition',
   releaseDate: '2026-10-29',
   changes: [
-    'Supabase SQL Fix: Pembaruan skrip SQL dengan blok exception aman (idempotent) untuk mencegah error 42710 (relation is already member of publication) dan konfigurasi Public RLS Policies agar anon key dapat membaca & menyimpan data secara instan.',
-    'Cloud-First Data Persistence: Memperbaiki fetch anggota dan transaksi dengan auto-sync dari lokal ke cloud, memastikan nama siswa dan status checklist tidak tereset/hilang saat halaman di-refresh.',
-    'Crash Prevention: Menghilangkan bug crash (blank putih) saat menekan tombol "All" (Pilih Semua) di checklist iuran melalui optimasi batch upsert dan proteksi null-safety.',
-    'Audio State Sync: Menyelaraskan status visual tombol musik latar (BGM) di navbar sehingga langsung menyala/ter-highlight aktif saat audio mulai berputar otomatis.',
-    'Official PWA App Icon: Mengganti ikon biru generik saat instalasi PWA dengan logo resmi "Kelas Siapa? Kelas Gueh!" beresolusi tinggi (192px, 512px, maskable safe-zone, dan iOS apple-touch-icon).'
+    'Doodle Button Unification: Menyeragamkan seluruh tombol di seluruh aplikasi (navbar, buku kas, pengaturan, dan modal) dengan gaya btn-doodle yang konsisten dan interaktif.',
+    'Mobile Pixel Compaction: Mengoptimalkan ukuran padding, font, dan elemen tombol pada layar HP agar lebih padat, ringkas, dan tidak memerlukan scrolling berlebih.',
+    'Super Admin Member Binding: Super Admin kini dapat menghubungkan akun Google pengguna ke nama siswa di tabel iuran secara langsung dengan dropdown interaktif dan 2 badge status (Role & Nama Siswa).',
+    'Live Cloud Sync Badge: Indikator status sinkronisasi Supabase realtime di navbar (🟢 Sinkron / 🟡 Menyimpan... / ⚪ Lokal) untuk kepastian data tersimpan ke server.',
+    'Filter Cepat Siswa Menunggak: Tombol filter instan [Semua Siswa] vs [Hanya Belum Lunas] di tabel Checklist Iuran beserta counter siswa menunggak.',
+    'WhatsApp Reminder & Recap Remake: Format pesan WhatsApp disederhanakan menjadi laporan resmi ringkas tanpa emoji berlebih, menampilkan saldo kas dan daftar tunggakan, serta dibatasi khusus bendahara/super admin.',
+    'Audio Preference Relocation: Memindahkan toggle efek suara (SFX) dari navbar ke menu Pengaturan Kelas (Preferensi Suara & Tampilan) untuk menghemat ruang navbar mobile.',
+    'Printable Binder & Google Sheets Revamp: Pratinjau lembaran binder resmi dengan aksen lubang ring buku, kop resmi bergaris ganda, serta ekspor CSV Google Sheets yang lengkap dengan data anggota.'
   ],
   suggestedUpdates: [
     {
+      category: 'fitur',
+      title: 'Download Arsip Foto Nota ZIP',
+      description: 'Fitur 1-klik untuk mengunduh seluruh berkas foto kuitansi/nota belanja kas yang tersimpan di Supabase Storage dalam satu file ZIP terkompresi.'
+    },
+    {
       category: 'optimasi',
-      title: 'Offline-to-Online Visual Indicator',
-      description: 'Menambahkan badge status koneksi cloud realtime di navbar agar bendahara dan siswa tahu saat data berhasil tersinkronisasi ke Supabase.'
+      title: 'Grafik Tren Arus Kas Mingguan',
+      description: 'Visualisasi grafik doodle interaktif untuk memantau perbandingan pemasukan iuran vs pengeluaran kas kelas dari minggu ke minggu.'
     },
     {
-      category: 'fitur',
-      title: 'Ekspor Rekap Kas & Nota PDF',
-      description: 'Fitur 1-klik untuk mengunduh rekap laporan keuangan kas bulanan lengkap beserta lampiran foto nota transaksi dalam format PDF siap cetak.'
-    },
-    {
-      category: 'fitur',
-      title: 'Filter Cepat Siswa Menunggak',
-      description: 'Tab filter instan di Checklist Iuran untuk menampilkan hanya siswa yang belum lunas pada bulan terpilih guna mempermudah penagihan.'
+      category: 'keamanan',
+      title: 'Auto-Lock Session Bendahara',
+      description: 'Kunci otomatis sesi otorisasi bendahara setelah 15 menit tidak aktif untuk mencegah modifikasi tidak sengaja pada perangkat bersama.'
     }
   ]
 };
