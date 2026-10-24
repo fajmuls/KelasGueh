@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types/kas.ts';
 import { sfx } from '../utils/soundEffects.ts';
-import { signInWithGoogleSupabase, getSupabaseClient } from '../services/supabaseClient.ts';
+import { signInWithGoogleSupabase, getSupabaseClient, LocalKasRepository } from '../services/supabaseClient.ts';
 
 import { registerOrUpdateUser } from '../utils/userManagement.ts';
 
@@ -36,13 +36,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   // Handle Supabase user session mapping with Super Admin whitelist checking
-  const handleSupabaseUser = (sbUser: any) => {
+  const handleSupabaseUser = async (sbUser: any) => {
     const email = sbUser.email || '';
     const name = sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || email.split('@')[0];
     const avatar = sbUser.user_metadata?.avatar_url;
 
-    // Register user & resolve role via userManagement
-    const assignedRole = registerOrUpdateUser({ name, email, avatar });
+    // Sync profile and get resolved role from database
+    const assignedRole = await LocalKasRepository.syncUserProfile({
+      id: sbUser.id,
+      email,
+      name,
+      avatar
+    });
 
     const profile: UserProfile = {
       id: sbUser.id,
@@ -78,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const loginAs = (selectedRole: UserRole, customName?: string, customEmail?: string) => {
+  const loginAs = async (selectedRole: UserRole, customName?: string, customEmail?: string) => {
     sfx.playPaperRustle();
     const email = customEmail || (selectedRole === 'superadmin' ? SUPER_ADMIN_EMAIL : `${selectedRole}@kelasgue.sch.id`);
     const name = customName || (
@@ -86,7 +91,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       selectedRole === 'bendahara' ? 'Bendahara Kelas' : 'Anggota Siswa Kelas'
     );
 
-    const assignedRole = registerOrUpdateUser({ name, email });
+    const assignedRole = await LocalKasRepository.syncUserProfile({
+      id: `usr-${Date.now()}`,
+      email,
+      name
+    });
 
     const profile: UserProfile = {
       id: `usr-${Date.now()}`,

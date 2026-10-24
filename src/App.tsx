@@ -48,14 +48,16 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [txs, ms, st] = await Promise.all([
+        const [txs, ms, st, logs] = await Promise.all([
           LocalKasRepository.fetchTransactionsFromSupabase(),
           LocalKasRepository.fetchMembersFromSupabase(),
-          LocalKasRepository.fetchSettingsFromSupabase()
+          LocalKasRepository.fetchSettingsFromSupabase(),
+          LocalKasRepository.fetchAuditLogsFromSupabase()
         ]);
         setTransactions(txs);
         setMembers(ms);
         if (st) setSettings(st);
+        setAuditLogs(logs);
       } catch (err) {
         console.warn('Initial fetch error:', err);
       }
@@ -67,23 +69,17 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const unsubscribe = subscribeToRealtimeKas(
       (payload) => {
-        // When transaction is inserted/updated/deleted in Supabase by another device
-        if (payload.eventType === 'INSERT') {
-          sfx.playNotification();
-        }
+        if (payload.eventType === 'INSERT') sfx.playNotification();
         LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
-        setAuditLogs(LocalKasRepository.getAuditLogs());
+        LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
       },
       (payload) => {
-        // When member weekly dues status is updated in Supabase by another device
-        if (payload.eventType === 'UPDATE') {
-          sfx.playNotification();
-        }
+        if (payload.eventType === 'UPDATE') sfx.playNotification();
         LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
-        setAuditLogs(LocalKasRepository.getAuditLogs());
+        LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
       },
       (_payload) => {
-        setAuditLogs(LocalKasRepository.getAuditLogs());
+        LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
       },
       (_payload) => {
         LocalKasRepository.fetchSettingsFromSupabase().then(setSettings);
@@ -127,19 +123,15 @@ const AppContent: React.FC = () => {
   // Handlers
   const handleAddTransaction = async (newTxData: Omit<KasTransaction, 'id' | 'createdAt'>) => {
     try {
-      const saved = await LocalKasRepository.addTransaction(newTxData);
-      LocalKasRepository.addAuditLog({
+      await LocalKasRepository.addAuditLog({
         action: `CATAT ${newTxData.type === 'income' ? 'PEMASUKAN' : 'PENGELUARAN'}`,
         details: `${newTxData.title}: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(newTxData.amount)}`,
         performedBy: user?.name || 'Unknown',
         userRole: role,
       });
-      // Update local state for immediate feedback
-      setTransactions(prev => [saved, ...prev]);
-      setAuditLogs(LocalKasRepository.getAuditLogs());
-      
-      // Full resync to ensure database consistency
+      // Refresh all states from cloud
       LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
+      LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
     } catch (err) {
       console.error('Add transaction handler error:', err);
     }
@@ -170,16 +162,15 @@ const AppContent: React.FC = () => {
 
     await LocalKasRepository.deleteTransaction(id);
     
-    LocalKasRepository.addAuditLog({
+    await LocalKasRepository.addAuditLog({
       action: 'HAPUS TRANSAKSI',
       details: `Menghapus ${tx.title} (${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(tx.amount)})`,
       performedBy: user?.name || 'Unknown',
       userRole: role,
     });
     
-    setTransactions(prev => prev.filter(t => t.id !== id));
-    setAuditLogs(LocalKasRepository.getAuditLogs());
     LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
+    LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
   };
 
   const handleToggleWeek = async (memberId: string, weekKey: string) => {
@@ -219,28 +210,16 @@ const AppContent: React.FC = () => {
       }
     }
 
-    LocalKasRepository.addAuditLog({
+    await LocalKasRepository.addAuditLog({
       action: 'IURAN MINGGUAN',
       details: `${isNowPaid ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Iuran ${weekKey} untuk ${targetMember.name}`,
       performedBy: user?.name || 'Unknown',
       userRole: role,
     });
-    setAuditLogs(LocalKasRepository.getAuditLogs());
-
-    // Optimistic update
-    setMembers(prev => prev.map(m => {
-      if (m.id === memberId) {
-        return {
-          ...m,
-          weeklyStatus: {
-            ...(m.weeklyStatus || {}),
-            [weekKey]: isNowPaid
-          }
-        };
-      }
-      return m;
-    }));
+    
     LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
+    LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
+    LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
   };
 
   const handleAddMember = async (name: string, studentId: string, phone?: string) => {
@@ -257,14 +236,14 @@ const AppContent: React.FC = () => {
   };
 
   const handleAddMembers = async (newMembersList: { name: string; studentId: string; phone?: string }[]) => {
-    const created = LocalKasRepository.addMembers(newMembersList);
-    LocalKasRepository.addAuditLog({
+    const created = await LocalKasRepository.addMembers(newMembersList);
+    await LocalKasRepository.addAuditLog({
       action: 'IMPORT ANGGOTA',
       details: `Impor massal ${created.length} siswa baru`,
       performedBy: user?.name || 'Unknown',
       userRole: role,
     });
-    setAuditLogs(LocalKasRepository.getAuditLogs());
+    LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
     setMembers(prev => [...prev, ...created]);
     LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };

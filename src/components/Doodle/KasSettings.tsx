@@ -52,12 +52,19 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
   const [sqlMode, setSqlMode] = useState<'strict' | 'standard'>('strict');
 
   // User Role Management state for Super Admin
-  const [userList, setUserList] = useState<RegisteredUser[]>(() => getRegisteredUsers());
+  const [userList, setUserList] = useState<any[]>([]);
   const [manualEmail, setManualEmail] = useState('');
 
   // 6-Digit PIN Security State
   const [newPin, setNewPin] = useState('');
   const [pinMessage, setPinMessage] = useState<string | null>(null);
+
+  // Fetch whitelist on mount
+  React.useEffect(() => {
+    if (isSuperAdmin) {
+      LocalKasRepository.getWhitelist().then(setUserList);
+    }
+  }, [isSuperAdmin]);
 
   const handleToggleSound = () => {
     const next = sfx.toggle();
@@ -82,20 +89,22 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
     }
   };
 
-  const handleRoleToggle = (email: string, currentRole: string) => {
+  const handleRoleToggle = async (email: string, currentRole: string) => {
     sfx.playClick();
     const newRole = currentRole === 'bendahara' ? 'anggota' : 'bendahara';
-    const updated = updateUserRole(email, newRole);
+    await LocalKasRepository.updateWhitelist(email, newRole);
+    const updated = await LocalKasRepository.getWhitelist();
     setUserList(updated);
     setSaveMessage(`Hak akses ${email} berhasil diubah menjadi ${newRole.toUpperCase()}.`);
     setTimeout(() => setSaveMessage(null), 3000);
   };
 
-  const handleAddManualBendahara = (e: React.FormEvent) => {
+  const handleAddManualBendahara = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualEmail.trim() || !manualEmail.includes('@')) return;
     sfx.playCoinChime();
-    const updated = updateUserRole(manualEmail.trim(), 'bendahara');
+    await LocalKasRepository.updateWhitelist(manualEmail.trim(), 'bendahara');
+    const updated = await LocalKasRepository.getWhitelist();
     setUserList(updated);
     setManualEmail('');
     setSaveMessage(`Email ${manualEmail.trim()} berhasil ditambahkan sebagai Bendahara.`);
@@ -153,26 +162,36 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
 
   // 1. STRICT MODE RLS (Anti-Hack Google UID/Email Whitelist)
   const strictSqlScript = `-- ========================================================
--- KELAS GUE v3.7.6 - SKRIP SUPABASE STRICT RLS (ANTI-HACK)
+-- KELAS GUE v3.9.0 - SKRIP SUPABASE STRICT RLS (ANTI-HACK)
 -- ========================================================
 -- Hanya Super Admin & Bendahara Terdaftar yang bisa Menulis/Mengubah.
 -- Seluruh Siswa/Publik tetap bisa Melihat (SELECT) secara transparan.
 
--- 1. Membuat Tabel Transaksi Kas
-CREATE TABLE IF NOT EXISTS public.kas_transactions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-    title TEXT NOT NULL,
-    amount NUMERIC NOT NULL,
-    category TEXT NOT NULL,
-    date DATE NOT NULL DEFAULT CURRENT_DATE,
-    recorded_by TEXT NOT NULL,
-    receipt_url TEXT,
-    notes TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- 1. Tabel Pengaturan Kelas (PENTING: 1 Row Saja)
+CREATE TABLE IF NOT EXISTS public.class_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    class_name TEXT NOT NULL DEFAULT 'Kelas Gue',
+    weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000,
+    kas_target_amount NUMERIC NOT NULL DEFAULT 2500000,
+    currency_prefix TEXT NOT NULL DEFAULT 'Rp',
+    academic_year TEXT NOT NULL DEFAULT 'Semester Ganjil 2026/2027',
+    site_url TEXT,
+    supabase_url TEXT,
+    supabase_anon_key TEXT,
+    CONSTRAINT one_row CHECK (id = 1)
 );
 
--- 2. Membuat Tabel Anggota & Checklist Iuran
+-- Migrasi jika kolom lama 'target_amount' ada
+DO $$ 
+BEGIN 
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') THEN
+    ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
+  END IF;
+END $$;
+
+INSERT INTO public.class_settings (id, class_name) VALUES (1, 'Kelas Gue') ON CONFLICT (id) DO NOTHING;
+
+-- 2. Tabel Anggota & Iuran
 CREATE TABLE IF NOT EXISTS public.kas_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -182,7 +201,21 @@ CREATE TABLE IF NOT EXISTS public.kas_members (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3. Membuat Tabel Audit Log
+-- 3. Tabel Transaksi Kas
+CREATE TABLE IF NOT EXISTS public.kas_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    title TEXT NOT NULL,
+    amount NUMERIC NOT NULL DEFAULT 0,
+    category TEXT NOT NULL DEFAULT 'Umum',
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    recorded_by TEXT NOT NULL,
+    receipt_url TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 4. Tabel Audit Log
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     action TEXT NOT NULL,
@@ -192,172 +225,76 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 4. Membuat Tabel Pengaturan Kelas
-CREATE TABLE IF NOT EXISTS public.class_settings (
-    id INTEGER PRIMARY KEY DEFAULT 1,
-    class_name TEXT NOT NULL DEFAULT 'Kelas Gue',
-    weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000,
-    kas_target_amount NUMERIC NOT NULL DEFAULT 1000000,
-    currency_prefix TEXT NOT NULL DEFAULT 'Rp',
-    academic_year TEXT NOT NULL DEFAULT '2026/2027',
-    site_url TEXT,
-    CONSTRAINT one_row CHECK (id = 1)
-);
-
--- SELF-HEALING: Tambahkan kolom jika belum ada (untuk perbaikan skema otomatis)
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS class_name TEXT NOT NULL DEFAULT 'Kelas Gue';
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000;
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS kas_target_amount NUMERIC NOT NULL DEFAULT 1000000;
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS currency_prefix TEXT NOT NULL DEFAULT 'Rp';
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS academic_year TEXT NOT NULL DEFAULT '2026/2027';
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS site_url TEXT;
-
--- Perbaikan Skema Transaksi
-ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS recorded_by TEXT;
-ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS receipt_url TEXT;
-ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS notes TEXT;
-
--- Migrasi Lanjut: Tangani kolom lama jika ada
-DO $$ 
-BEGIN 
-  -- Rename target_amount -> kas_target_amount
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') 
-     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='kas_target_amount') THEN
-    ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
-  END IF;
-  
-  -- Matikan NOT NULL pada kolom target_amount jika masih ada (mencegah error sync)
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') THEN
-    ALTER TABLE public.class_settings ALTER COLUMN target_amount DROP NOT NULL;
-  END IF;
-END $$;
-
--- Perbaikan Skema Anggota
-ALTER TABLE public.kas_members ADD COLUMN IF NOT EXISTS phone TEXT;
-ALTER TABLE public.kas_members ADD COLUMN IF NOT EXISTS weekly_status JSONB NOT NULL DEFAULT '{}'::jsonb;
-
--- 5. Membuat Tabel Whitelist Akses Editor (Super Admin & Bendahara)
+-- 5. Tabel Authorisasi (Whitelist Editor)
 CREATE TABLE IF NOT EXISTS public.authorized_whitelist (
     email TEXT PRIMARY KEY,
     role TEXT NOT NULL CHECK (role IN ('superadmin', 'bendahara')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Masukkan Email Super Admin Anda ke Whitelist
+-- Masukkan Email Anda ke Whitelist
 INSERT INTO public.authorized_whitelist (email, role)
 VALUES ('mrachmanfm@gmail.com', 'superadmin')
 ON CONFLICT (email) DO NOTHING;
 
--- 6. Fungsi Helper Cek Otorisasi Google Auth
+-- 6. Fungsi Cek Otorisasi
 CREATE OR REPLACE FUNCTION public.is_authorized_editor()
 RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 STABLE
 AS $$
-DECLARE
-    current_user_email TEXT;
 BEGIN
-    current_user_email := auth.jwt() ->> 'email';
-    IF current_user_email IS NULL THEN
-        RETURN FALSE;
-    END IF;
     RETURN EXISTS (
         SELECT 1 FROM public.authorized_whitelist
-        WHERE LOWER(email) = LOWER(current_user_email)
-    ) OR LOWER(current_user_email) = 'mrachmanfm@gmail.com';
+        WHERE LOWER(email) = LOWER(auth.jwt() ->> 'email')
+    ) OR LOWER(auth.jwt() ->> 'email') = 'mrachmanfm@gmail.com';
 END;
 $$;
 
--- 7. Konfigurasi Row Level Security (RLS) Anti-Hack
-ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.kas_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+-- 7. RLS Config
 ALTER TABLE public.class_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kas_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.authorized_whitelist ENABLE ROW LEVEL SECURITY;
 
--- Policy kas_transactions
-DROP POLICY IF EXISTS "Publik BACA kas_transactions" ON public.kas_transactions;
-CREATE POLICY "Publik BACA kas_transactions" ON public.kas_transactions FOR SELECT TO public USING (true);
+CREATE POLICY "Public Read" ON public.class_settings FOR SELECT USING (true);
+CREATE POLICY "Public Read" ON public.kas_members FOR SELECT USING (true);
+CREATE POLICY "Public Read" ON public.kas_transactions FOR SELECT USING (true);
+CREATE POLICY "Public Read" ON public.audit_logs FOR SELECT USING (true);
 
-DROP POLICY IF EXISTS "Whitelist TULIS kas_transactions" ON public.kas_transactions;
-CREATE POLICY "Whitelist TULIS kas_transactions" ON public.kas_transactions FOR ALL TO authenticated
-USING (public.is_authorized_editor()) WITH CHECK (public.is_authorized_editor());
-
--- Policy kas_members
-DROP POLICY IF EXISTS "Publik BACA kas_members" ON public.kas_members;
-CREATE POLICY "Publik BACA kas_members" ON public.kas_members FOR SELECT TO public USING (true);
-
-DROP POLICY IF EXISTS "Whitelist TULIS kas_members" ON public.kas_members;
-CREATE POLICY "Whitelist TULIS kas_members" ON public.kas_members FOR ALL TO authenticated
-USING (public.is_authorized_editor()) WITH CHECK (public.is_authorized_editor());
-
--- Policy audit_logs
-DROP POLICY IF EXISTS "Publik BACA audit_logs" ON public.audit_logs;
-CREATE POLICY "Publik BACA audit_logs" ON public.audit_logs FOR SELECT TO public USING (true);
-
-DROP POLICY IF EXISTS "Catat audit_logs" ON public.audit_logs;
-CREATE POLICY "Catat audit_logs" ON public.audit_logs FOR INSERT TO public WITH CHECK (true);
-
--- Policy class_settings
-DROP POLICY IF EXISTS "Publik BACA class_settings" ON public.class_settings;
-CREATE POLICY "Publik BACA class_settings" ON public.class_settings FOR SELECT TO public USING (true);
-
-DROP POLICY IF EXISTS "Super Admin UBAH class_settings" ON public.class_settings;
-CREATE POLICY "Super Admin UBAH class_settings" ON public.class_settings FOR ALL TO authenticated
-USING (LOWER(auth.jwt() ->> 'email') = 'mrachmanfm@gmail.com')
-WITH CHECK (LOWER(auth.jwt() ->> 'email') = 'mrachmanfm@gmail.com');
-
--- Policy authorized_whitelist
-DROP POLICY IF EXISTS "Publik BACA authorized_whitelist" ON public.authorized_whitelist;
-CREATE POLICY "Publik BACA authorized_whitelist" ON public.authorized_whitelist FOR SELECT TO public USING (true);
-
-DROP POLICY IF EXISTS "Super Admin KELOLA authorized_whitelist" ON public.authorized_whitelist;
-CREATE POLICY "Super Admin KELOLA authorized_whitelist" ON public.authorized_whitelist FOR ALL TO authenticated
-USING (LOWER(auth.jwt() ->> 'email') = 'mrachmanfm@gmail.com')
-WITH CHECK (LOWER(auth.jwt() ->> 'email') = 'mrachmanfm@gmail.com');
-
--- 8. Daftarkan Realtime Publikasi
-DO $$
-BEGIN
-    BEGIN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.kas_transactions;
-    EXCEPTION WHEN duplicate_object THEN NULL;
-    END;
-    BEGIN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.kas_members;
-    EXCEPTION WHEN duplicate_object THEN NULL;
-    END;
-    BEGIN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs;
-    EXCEPTION WHEN duplicate_object THEN NULL;
-    END;
-    BEGIN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.class_settings;
-    EXCEPTION WHEN duplicate_object THEN NULL;
-    END;
-END $$;`;
+CREATE POLICY "Editor Full Access" ON public.class_settings FOR ALL TO authenticated USING (public.is_authorized_editor());
+CREATE POLICY "Editor Full Access" ON public.kas_members FOR ALL TO authenticated USING (public.is_authorized_editor());
+CREATE POLICY "Editor Full Access" ON public.kas_transactions FOR ALL TO authenticated USING (public.is_authorized_editor());
+CREATE POLICY "Editor Full Access" ON public.audit_logs FOR INSERT TO public WITH CHECK (true);
+`;
 
   // 2. STANDARD MODE RLS (Open Public)
   const standardSqlScript = `-- ========================================================
--- KELAS GUE v3.7.6 - SKRIP SUPABASE STANDARD PUBLIC
+-- KELAS GUE v3.9.0 - SKRIP SUPABASE STANDARD PUBLIC
 -- ========================================================
 
--- 1. Membuat Tabel Transaksi Kas
-CREATE TABLE IF NOT EXISTS public.kas_transactions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-    title TEXT NOT NULL,
-    amount NUMERIC NOT NULL,
-    category TEXT NOT NULL,
-    date DATE NOT NULL DEFAULT CURRENT_DATE,
-    recorded_by TEXT NOT NULL,
-    receipt_url TEXT,
-    notes TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS public.class_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    class_name TEXT NOT NULL DEFAULT 'Kelas Gue',
+    weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000,
+    kas_target_amount NUMERIC NOT NULL DEFAULT 2500000,
+    currency_prefix TEXT NOT NULL DEFAULT 'Rp',
+    academic_year TEXT NOT NULL DEFAULT 'Semester Ganjil 2026/2027',
+    CONSTRAINT one_row CHECK (id = 1)
 );
 
--- 2. Membuat Tabel Anggota & Checklist Iuran
+-- Migrasi jika kolom lama 'target_amount' ada
+DO $$ 
+BEGIN 
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') THEN
+    ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
+  END IF;
+END $$;
+
+INSERT INTO public.class_settings (id, class_name) VALUES (1, 'Kelas Gue') ON CONFLICT (id) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS public.kas_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -367,7 +304,19 @@ CREATE TABLE IF NOT EXISTS public.kas_members (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3. Membuat Tabel Audit Log
+CREATE TABLE IF NOT EXISTS public.kas_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    title TEXT NOT NULL,
+    amount NUMERIC NOT NULL DEFAULT 0,
+    category TEXT NOT NULL DEFAULT 'Umum',
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    recorded_by TEXT NOT NULL,
+    receipt_url TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     action TEXT NOT NULL,
@@ -377,86 +326,12 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 4. Membuat Tabel Pengaturan Kelas
-CREATE TABLE IF NOT EXISTS public.class_settings (
-    id INTEGER PRIMARY KEY DEFAULT 1,
-    class_name TEXT NOT NULL DEFAULT 'Kelas Gue',
-    weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000,
-    kas_target_amount NUMERIC NOT NULL DEFAULT 1000000,
-    currency_prefix TEXT NOT NULL DEFAULT 'Rp',
-    academic_year TEXT NOT NULL DEFAULT '2026/2027',
-    site_url TEXT,
-    CONSTRAINT one_row CHECK (id = 1)
-);
-
--- SELF-HEALING: Tambahkan kolom jika belum ada (untuk perbaikan skema otomatis)
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS class_name TEXT NOT NULL DEFAULT 'Kelas Gue';
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000;
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS kas_target_amount NUMERIC NOT NULL DEFAULT 1000000;
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS currency_prefix TEXT NOT NULL DEFAULT 'Rp';
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS academic_year TEXT NOT NULL DEFAULT '2026/2027';
-ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS site_url TEXT;
-
--- Perbaikan Skema Transaksi
-ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS recorded_by TEXT;
-ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS receipt_url TEXT;
-ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS notes TEXT;
-
--- Migrasi Lanjut: Tangani kolom lama jika ada
-DO $$ 
-BEGIN 
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') 
-     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='kas_target_amount') THEN
-    ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
-  END IF;
-  
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') THEN
-    ALTER TABLE public.class_settings ALTER COLUMN target_amount DROP NOT NULL;
-  END IF;
-END $$;
-
--- Perbaikan Skema Anggota
-ALTER TABLE public.kas_members ADD COLUMN IF NOT EXISTS phone TEXT;
-ALTER TABLE public.kas_members ADD COLUMN IF NOT EXISTS weekly_status JSONB NOT NULL DEFAULT '{}'::jsonb;
-
--- 5. Konfigurasi Row Level Security (RLS) & Kebijakan Akses Penuh
-ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.kas_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.class_settings ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Akses Penuh kas_transactions" ON public.kas_transactions;
-CREATE POLICY "Akses Penuh kas_transactions" ON public.kas_transactions FOR ALL TO public USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Akses Penuh kas_members" ON public.kas_members;
-CREATE POLICY "Akses Penuh kas_members" ON public.kas_members FOR ALL TO public USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Akses Penuh audit_logs" ON public.audit_logs;
-CREATE POLICY "Akses Penuh audit_logs" ON public.audit_logs FOR ALL TO public USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Akses Penuh class_settings" ON public.class_settings;
-CREATE POLICY "Akses Penuh class_settings" ON public.class_settings FOR ALL TO public USING (true) WITH CHECK (true);
-
--- 6. Daftarkan Realtime Aman
-DO $$
-BEGIN
-    BEGIN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.kas_transactions;
-    EXCEPTION WHEN duplicate_object THEN NULL;
-    END;
-    BEGIN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.kas_members;
-    EXCEPTION WHEN duplicate_object THEN NULL;
-    END;
-    BEGIN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs;
-    EXCEPTION WHEN duplicate_object THEN NULL;
-    END;
-    BEGIN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.class_settings;
-    EXCEPTION WHEN duplicate_object THEN NULL;
-    END;
-END $$;`;
+-- Akses Terbuka Tanpa RLS (Hanya untuk testing)
+ALTER TABLE public.class_settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kas_members DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kas_transactions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;
+`;
 
   const activeSqlScript = sqlMode === 'strict' ? strictSqlScript : standardSqlScript;
 

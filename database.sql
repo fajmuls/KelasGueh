@@ -1,8 +1,40 @@
--- SCRIPT SETUP DATABASE SUPABASE (KELAS GUE v3.3)
--- 1. Jalankan di SQL Editor Supabase Dashboard
--- 2. Pastikan Mode Realtime Aktif di Tabel-Tabel Ini
+-- SCRIPT SETUP DATABASE SUPABASE (KELAS GUE v3.9.0)
+-- 1. Jalankan di SQL Editor Supabase Dashboard (Klik "New Query")
+-- 2. Pastikan Mode Realtime Aktif di Tabel-Tabel Ini via Dashboard
 
--- [A] TABEL TRANSAKSI KAS
+-- [A] TABEL PENGATURAN KELAS (PENTING: Harus ada 1 row default)
+CREATE TABLE IF NOT EXISTS public.class_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    class_name TEXT NOT NULL DEFAULT 'Kelas Gue',
+    weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000,
+    kas_target_amount NUMERIC NOT NULL DEFAULT 2500000,
+    currency_prefix TEXT NOT NULL DEFAULT 'Rp',
+    academic_year TEXT NOT NULL DEFAULT 'Semester Ganjil 2026/2027',
+    site_url TEXT,
+    supabase_url TEXT,
+    supabase_anon_key TEXT,
+    CONSTRAINT one_row CHECK (id = 1)
+);
+
+-- Migrasi: Jika kolom lama 'target_amount' masih ada, kita rename (opsional jika clean setup)
+-- ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
+
+-- Masukkan data awal jika belum ada
+INSERT INTO public.class_settings (id, class_name) 
+VALUES (1, 'Kelas Gue')
+ON CONFLICT (id) DO NOTHING;
+
+-- [B] TABEL ANGGOTA / SISWA
+CREATE TABLE IF NOT EXISTS public.kas_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    student_id TEXT NOT NULL UNIQUE,
+    phone TEXT,
+    weekly_status JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- [C] TABEL TRANSAKSI KAS (BUKU KAS)
 CREATE TABLE IF NOT EXISTS public.kas_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
@@ -16,17 +48,7 @@ CREATE TABLE IF NOT EXISTS public.kas_transactions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- [B] TABEL ANGGOTA / SISWA
-CREATE TABLE IF NOT EXISTS public.kas_members (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    student_id TEXT NOT NULL UNIQUE,
-    phone TEXT,
-    weekly_status JSONB NOT NULL DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- [C] TABEL AUDIT LOG (KEAMANAN)
+-- [D] TABEL AUDIT LOG (LOG AKTIVITAS)
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     action TEXT NOT NULL,
@@ -36,43 +58,52 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- [D] TABEL PENGATURAN KELAS
-CREATE TABLE IF NOT EXISTS public.class_settings (
-    id INTEGER PRIMARY KEY DEFAULT 1,
-    class_name TEXT NOT NULL DEFAULT 'Kelas Gue',
-    weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000,
-    kas_target_amount NUMERIC NOT NULL DEFAULT 1000000,
-    currency_prefix TEXT NOT NULL DEFAULT 'Rp',
-    academic_year TEXT NOT NULL DEFAULT '2023/2024',
-    CONSTRAINT one_row CHECK (id = 1)
+-- [E] TABEL USER PROFILES (UNTUK LOGIN GOOGLE & ROLE)
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
+    email TEXT UNIQUE NOT NULL,
+    full_name TEXT,
+    avatar_url TEXT,
+    role TEXT NOT NULL DEFAULT 'member',
+    nim TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- [E] KEAMANAN: ROW LEVEL SECURITY (RLS)
--- Aktifkan RLS di semua tabel
-ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.kas_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+-- [F] TABEL ROLE CLAIMS (PENDING APPROVAL)
+CREATE TABLE IF NOT EXISTS public.role_claims (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    requested_role TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    reviewed_by UUID REFERENCES auth.users,
+    reviewed_at TIMESTAMPTZ
+);
+
+-- [G] KEAMANAN: ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.class_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kas_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.role_claims ENABLE ROW LEVEL SECURITY;
 
--- Buat Kebijakan Akses (Public Read, Authenticated Write)
--- Catatan: Untuk aplikasi kelas yang simpel, kita izinkan baca publik untuk transparansi.
-CREATE POLICY "Public Read Access" ON public.kas_transactions FOR SELECT USING (true);
-CREATE POLICY "Public Read Access" ON public.kas_members FOR SELECT USING (true);
-CREATE POLICY "Public Read Access" ON public.audit_logs FOR SELECT USING (true);
-CREATE POLICY "Public Read Access" ON public.class_settings FOR SELECT USING (true);
+-- Kebijakan Akses: Publik BISA BACA (untuk transparansi)
+CREATE POLICY "Public Read" ON public.class_settings FOR SELECT USING (true);
+CREATE POLICY "Public Read" ON public.kas_members FOR SELECT USING (true);
+CREATE POLICY "Public Read" ON public.kas_transactions FOR SELECT USING (true);
+CREATE POLICY "Public Read" ON public.audit_logs FOR SELECT USING (true);
+CREATE POLICY "Public Read" ON public.user_profiles FOR SELECT USING (true);
 
--- Hanya izinkan Insert/Update jika user memiliki hak (bisa dibatasi via Auth Role di Supabase)
--- Untuk tutorial ini kita buat simpel agar user bisa langsung pakai
-CREATE POLICY "Enable All for Authed" ON public.kas_transactions FOR ALL USING (true);
-CREATE POLICY "Enable All for Authed" ON public.kas_members FOR ALL USING (true);
-CREATE POLICY "Enable All for Authed" ON public.audit_logs FOR ALL USING (true);
-CREATE POLICY "Enable All for Authed" ON public.class_settings FOR ALL USING (true);
+-- Kebijakan Akses: Hanya Authed BISA TULIS (Disederhanakan untuk kemudahan)
+CREATE POLICY "Authed Write" ON public.class_settings FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authed Write" ON public.kas_members FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authed Write" ON public.kas_transactions FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authed Write" ON public.audit_logs FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Authed Write" ON public.user_profiles FOR ALL USING (auth.uid() = id OR auth.role() = 'authenticated');
+CREATE POLICY "Authed Write" ON public.role_claims FOR ALL USING (auth.role() = 'authenticated');
 
--- [F] AKTIFKAN REALTIME BROADCAST
--- Penting agar perubahan di HP Bendahara langsung muncul di HP Anggota lain
-ALTER PUBLICATION supabase_realtime ADD TABLE kas_transactions, kas_members, audit_logs, class_settings;
-
--- [G] SETUP STORAGE BUCKET
--- Jalankan ini via Dashboard Supabase (Menu Storage):
--- 1. Buat Bucket Baru bernama "nota-kas"
--- 2. Set sebagai "Public" agar semua anggota bisa melihat foto kuitansi
+-- [H] AKTIFKAN REALTIME
+-- Jalankan ini di dashboard Supabase -> Database -> Replication -> "supabase_realtime" publication
+-- Klik "Add Tables" dan pilih: class_settings, kas_members, kas_transactions, audit_logs, role_claims
