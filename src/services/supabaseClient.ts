@@ -41,11 +41,20 @@ export const initSupabase = (): SupabaseClient | null => {
     return null;
   }
 
+  // If already initialized with SAME config, don't re-init
+  if (supabaseInstance) {
+    const currentUrl = (supabaseInstance as any).supabaseUrl;
+    if (currentUrl === url) {
+      return supabaseInstance;
+    }
+  }
+
   try {
     supabaseInstance = createClient(url, anonKey, {
       auth: {
         persistSession: true,
-        autoRefreshToken: true
+        autoRefreshToken: true,
+        detectSessionInUrl: true
       }
     });
     return supabaseInstance;
@@ -674,25 +683,39 @@ export class LocalKasRepository {
       // Ensure UUIDs for everyone
       const fixId = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? id : generateUUID();
 
-      // Promise-based batch upload
-      await Promise.all([
-        client.from('class_settings').upsert([{
-          id: 1,
-          class_name: settings.className,
-          weekly_dues_amount: settings.weeklyDuesAmount,
-          kas_target_amount: settings.kasTargetAmount,
-          currency_prefix: settings.currencyPrefix,
-          academic_year: settings.academicYear,
-          site_url: settings.siteUrl
-        }]),
-        members.length > 0 ? client.from('kas_members').upsert(members.map(m => ({
+      // Perform updates one by one to catch specific table errors
+      // 1. Settings
+      const { error: settingsErr } = await client.from('class_settings').upsert([{
+        id: 1,
+        class_name: settings.className,
+        weekly_dues_amount: settings.weeklyDuesAmount,
+        kas_target_amount: settings.kasTargetAmount,
+        currency_prefix: settings.currencyPrefix,
+        academic_year: settings.academicYear,
+        site_url: settings.siteUrl
+      }]);
+
+      if (settingsErr) {
+        throw new Error(`Gagal sync Pengaturan: ${settingsErr.message}`);
+      }
+
+      // 2. Members
+      if (members.length > 0) {
+        const { error: membersErr } = await client.from('kas_members').upsert(members.map(m => ({
           id: fixId(m.id),
           name: m.name,
           student_id: m.studentId,
           phone: m.phone || null,
           weekly_status: m.weeklyStatus || {}
-        }))) : Promise.resolve(),
-        txs.length > 0 ? client.from('kas_transactions').upsert(txs.map(t => ({
+        })));
+        if (membersErr) {
+          throw new Error(`Gagal sync Anggota: ${membersErr.message}`);
+        }
+      }
+
+      // 3. Transactions
+      if (txs.length > 0) {
+        const { error: txsErr } = await client.from('kas_transactions').upsert(txs.map(t => ({
           id: fixId(t.id),
           type: t.type,
           title: t.title,
@@ -702,19 +725,30 @@ export class LocalKasRepository {
           recorded_by: t.recordedBy,
           receipt_url: t.receiptUrl || null,
           notes: t.notes || null
-        }))) : Promise.resolve()
-      ]);
+        })));
+        if (txsErr) {
+          throw new Error(`Gagal sync Transaksi: ${txsErr.message}`);
+        }
+      }
 
       setCloudSyncStatus('synced');
       return {
         success: true,
-        message: `✅ Berhasil memaksa sinkronisasi total ${txs.length} transaksi ke Cloud!`
+        message: `✅ Berhasil memaksa sinkronisasi total ${txs.length} transaksi & ${members.length} anggota ke Cloud!`
       };
     } catch (err: any) {
+      console.error('Sync Error:', err);
       setCloudSyncStatus('offline');
+      let msg = err?.message || 'Error tidak diketahui';
+      
+      // Better error message for schema issues
+      if (msg.includes('column') && msg.includes('not find')) {
+        msg += '\n\nTips: Silakan salin & jalankan ulang script SQL terbaru di dashboard Supabase (menu SQL Editor) untuk memperbarui struktur tabel.';
+      }
+      
       return {
         success: false,
-        message: `❌ Gagal memaksa sinkronisasi: ${err?.message || 'Error tidak diketahui'}`
+        message: `❌ ${msg}`
       };
     }
   }

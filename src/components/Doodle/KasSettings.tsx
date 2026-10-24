@@ -153,7 +153,7 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
 
   // 1. STRICT MODE RLS (Anti-Hack Google UID/Email Whitelist)
   const strictSqlScript = `-- ========================================================
--- KELAS GUE v3.5.2 - SKRIP SUPABASE STRICT RLS (ANTI-HACK)
+-- KELAS GUE v3.7.6 - SKRIP SUPABASE STRICT RLS (ANTI-HACK)
 -- ========================================================
 -- Hanya Super Admin & Bendahara Terdaftar yang bisa Menulis/Mengubah.
 -- Seluruh Siswa/Publik tetap bisa Melihat (SELECT) secara transparan.
@@ -199,10 +199,14 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000,
     kas_target_amount NUMERIC NOT NULL DEFAULT 1000000,
     currency_prefix TEXT NOT NULL DEFAULT 'Rp',
-    academic_year TEXT NOT NULL DEFAULT '2023/2024',
+    academic_year TEXT NOT NULL DEFAULT '2026/2027',
     site_url TEXT,
     CONSTRAINT one_row CHECK (id = 1)
 );
+
+-- SELF-HEALING: Tambahkan kolom jika belum ada (untuk user lama)
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS academic_year TEXT NOT NULL DEFAULT '2026/2027';
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS site_url TEXT;
 
 -- 5. Membuat Tabel Whitelist Akses Editor (Super Admin & Bendahara)
 CREATE TABLE IF NOT EXISTS public.authorized_whitelist (
@@ -308,7 +312,7 @@ END $$;`;
 
   // 2. STANDARD MODE RLS (Open Public)
   const standardSqlScript = `-- ========================================================
--- KELAS GUE v3.5.2 - SKRIP SUPABASE STANDARD PUBLIC
+-- KELAS GUE v3.7.6 - SKRIP SUPABASE STANDARD PUBLIC
 -- ========================================================
 
 -- 1. Membuat Tabel Transaksi Kas
@@ -352,10 +356,14 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     weekly_dues_amount NUMERIC NOT NULL DEFAULT 5000,
     kas_target_amount NUMERIC NOT NULL DEFAULT 1000000,
     currency_prefix TEXT NOT NULL DEFAULT 'Rp',
-    academic_year TEXT NOT NULL DEFAULT '2023/2024',
+    academic_year TEXT NOT NULL DEFAULT '2026/2027',
     site_url TEXT,
     CONSTRAINT one_row CHECK (id = 1)
 );
+
+-- SELF-HEALING: Tambahkan kolom jika belum ada (untuk user lama)
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS academic_year TEXT NOT NULL DEFAULT '2026/2027';
+ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS site_url TEXT;
 
 -- 5. Konfigurasi Row Level Security (RLS) & Kebijakan Akses Penuh
 ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;

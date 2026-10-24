@@ -11,14 +11,15 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.7.5',
-  codename: 'Custom Redirect Authority & Schema Sync Edition',
-  releaseDate: '2026-10-29',
+  version: '3.7.6',
+  codename: 'Database Schema Self-Healing & Singleton Auth Edition',
+  releaseDate: '2026-10-24',
   changes: [
-    'Dukungan Production Redirect URL: Menambahkan opsi "Production Site URL" di tab Pengaturan agar Bendahara dapat mengunci domain utama sebagai target redirect login Google, mencegah masalah URL otomatis yang berubah-ubah.',
-    'Pembaruan Schema Database: Menambahkan kolom site_url pada tabel class_settings di skrip SQL Supabase untuk sinkronisasi konfigurasi domain antar-HP.',
-    'Logika Redirect Cerdas: Aplikasi kini memprioritaskan domain produksi yang dikonfigurasi saat login, namun tetap mendukung domain preview AI Studio secara otomatis.',
-    'Perbaikan Arsitektur Cloud-First: Sinkronisasi pengaturan kelas kini mencakup konfigurasi domain untuk menjamin konsistensi akses login.'
+    'Self-Healing Schema Database: Skrip SQL Supabase kini dilengkapi perintah "ALTER TABLE" otomatis untuk memastikan kolom "academic_year" dan "site_url" tersedia tanpa menghapus data lama.',
+    'Penyempurnaan Auth Singleton: Memperbaiki peringatan "Multiple GoTrueClient instances" untuk stabilitas sesi login Google yang lebih baik.',
+    'Validasi Sinkronisasi Ketat: Fitur "Paksa Upload" kini mendeteksi kegagalan spesifik per tabel dan memberikan instruksi perbaikan yang jelas jika struktur database belum sesuai.',
+    'Pembaruan Tahun Akademik Default: Mengatur tahun akademik default ke 2026/2027 pada skrip database baru.',
+    'Peningkatan UI Feedback: Menampilkan status sinkronisasi yang lebih akurat dan informatif saat proses upload data ke cloud.'
   ],
   suggestedUpdates: [
     {
@@ -28,8 +29,8 @@ export const CURRENT_APP_VERSION: AppVersionInfo = {
     },
     {
       category: 'optimasi',
-      title: 'Export Laporan Excel Per-Semester',
-      description: 'Fitur untuk mengunduh rekapitulasi seluruh transaksi dan checklist iuran dalam format Excel yang rapi.'
+      title: 'Dukungan Foto Nota Berbasis Kamera HP',
+      description: 'Optimasi kompresi gambar langsung dari kamera smartphone untuk bukti struk yang lebih tajam namun hemat storage.'
     },
     {
       category: 'keamanan',
