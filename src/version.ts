@@ -11,14 +11,14 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.8.0',
-  codename: 'Auto-Link Iuran & Transaksi Edition',
+  version: '3.8.1',
+  codename: 'SQL Migration Resilience Edition',
   releaseDate: '2026-10-24',
   changes: [
-    'Fitur Auto-Link Iuran: Mencentang iuran di Checklist kini otomatis mencatat transaksi pemasukan di Buku Kas, lengkap dengan nama siswa dan periode minggu.',
-    'Sinkronisasi Dua Arah: Menghapus transaksi iuran di Buku Kas akan otomatis membatalkan status lunas (uncheck) di Checklist Iuran.',
-    'Audit Log Pintar: Setiap aksi iuran (tunggal maupun massal) kini terekam dengan detail yang lebih informatif di log aktivitas.',
-    'Pembaruan Engine Sinkronisasi: Memastikan konsistensi data antara checklist dan buku besar kas saat terjadi perubahan di perangkat berbeda.'
+    'SQL Script Refinement: Skrip SQL kini menyertakan logika migrasi otomatis untuk mengganti nama kolom "target_amount" menjadi "kas_target_amount" agar sinkronisasi tidak error.',
+    'Fix RecordedBy Column: Menambahkan kolom "recorded_by" yang hilang pada tabel transaksi untuk kompatibilitas riwayat audit cloud.',
+    'Enhanced Self-Healing: Perintah ALTER TABLE kini lebih agresif dalam memastikan struktur database Supabase cocok dengan aplikasi tanpa menghapus data.',
+    'Peningkatan Stabilitas Sync: Mengatasi error not-null constraint pada pengaturan kelas saat melakukan paksa upload ke cloud.'
   ],
   suggestedUpdates: [
     {

@@ -213,8 +213,24 @@ ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS academic_year TEXT NO
 ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS site_url TEXT;
 
 -- Perbaikan Skema Transaksi
+ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS recorded_by TEXT;
 ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS receipt_url TEXT;
 ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS notes TEXT;
+
+-- Migrasi Lanjut: Tangani kolom lama jika ada
+DO $$ 
+BEGIN 
+  -- Rename target_amount -> kas_target_amount
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') 
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='kas_target_amount') THEN
+    ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
+  END IF;
+  
+  -- Matikan NOT NULL pada kolom target_amount jika masih ada (mencegah error sync)
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') THEN
+    ALTER TABLE public.class_settings ALTER COLUMN target_amount DROP NOT NULL;
+  END IF;
+END $$;
 
 -- Perbaikan Skema Anggota
 ALTER TABLE public.kas_members ADD COLUMN IF NOT EXISTS phone TEXT;
@@ -382,8 +398,22 @@ ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS academic_year TEXT NO
 ALTER TABLE public.class_settings ADD COLUMN IF NOT EXISTS site_url TEXT;
 
 -- Perbaikan Skema Transaksi
+ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS recorded_by TEXT;
 ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS receipt_url TEXT;
 ALTER TABLE public.kas_transactions ADD COLUMN IF NOT EXISTS notes TEXT;
+
+-- Migrasi Lanjut: Tangani kolom lama jika ada
+DO $$ 
+BEGIN 
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') 
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='kas_target_amount') THEN
+    ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='class_settings' AND column_name='target_amount') THEN
+    ALTER TABLE public.class_settings ALTER COLUMN target_amount DROP NOT NULL;
+  END IF;
+END $$;
 
 -- Perbaikan Skema Anggota
 ALTER TABLE public.kas_members ADD COLUMN IF NOT EXISTS phone TEXT;
