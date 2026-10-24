@@ -272,6 +272,9 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
                 style={{ width: `${targetProgress}%` }}
               />
             </div>
+            <p className="text-[10px] text-slate-600 font-bold mt-1 text-right">
+              Target: {formatRupiah(settings.kasTargetAmount || 0)}
+            </p>
           </div>
         </div>
       </div>
@@ -293,7 +296,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
 
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis 
                   dataKey="month" 
@@ -303,8 +306,13 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
                 <YAxis 
                   axisLine={{ stroke: '#1e293b', strokeWidth: 2 }}
                   tick={{ fill: '#475569', fontSize: 10, fontWeight: 'bold' }}
+                  tickFormatter={(val) => val >= 1000000 ? `${(val/1000000).toFixed(1)}Jt` : `${(val/1000).toLocaleString('id-ID')}rb`}
                 />
                 <Tooltip 
+                  formatter={(value: any, name: any) => [
+                    `Rp ${Number(value || 0).toLocaleString('id-ID')}`, 
+                    name === 'pemasukan' ? 'Debit (Masuk)' : 'Kredit (Keluar)'
+                  ]}
                   contentStyle={{ 
                     backgroundColor: '#fff', 
                     border: '2px solid #1e293b', 

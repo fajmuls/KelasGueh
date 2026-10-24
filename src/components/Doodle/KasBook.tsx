@@ -652,6 +652,38 @@ export const KasBook: React.FC<KasBookProps> = ({
                     onChange={(e) => setTxAmount(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
                   />
+                  {/* Live Currency Formatting Badge with Dots */}
+                  <div className="mt-1.5 p-1.5 bg-emerald-50 border border-emerald-400 rounded flex items-center justify-between text-xs font-mono font-black text-emerald-950">
+                    <span>Terbaca:</span>
+                    <span className="text-sm underline text-emerald-800">
+                      {txAmount ? `Rp ${Number(txAmount).toLocaleString('id-ID')}` : 'Rp 0'}
+                    </span>
+                  </div>
+
+                  {/* Quick Nominal Shortcut Buttons */}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px]">
+                    <span className="font-bold text-slate-500 mr-1">Tambah:</span>
+                    {[5000, 10000, 20000, 50000, 100000, 500000].map(addVal => (
+                      <button
+                        key={addVal}
+                        type="button"
+                        onClick={() => {
+                          sfx.playClick();
+                          setTxAmount(prev => (typeof prev === 'number' ? prev + addVal : addVal));
+                        }}
+                        className="px-1.5 py-0.5 bg-slate-100 hover:bg-amber-200 border border-slate-800 rounded font-black text-slate-900"
+                      >
+                        +{addVal >= 1000000 ? `${addVal/1000000}Jt` : `${addVal/1000}rb`}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setTxAmount('')}
+                      className="px-1.5 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 rounded font-bold ml-auto"
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
@@ -855,9 +887,9 @@ export const KasBook: React.FC<KasBookProps> = ({
                   onChange={(e) => setDuesForm({ ...duesForm, weeklyDuesAmount: Number(e.target.value) })}
                   className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Nominal ini menjadi acuan perkalian checklist lunas anggota kelas.
-                </p>
+                <div className="mt-1 text-[11px] font-mono font-bold text-slate-700">
+                  Terbaca: <span className="text-emerald-800">Rp {Number(duesForm.weeklyDuesAmount || 0).toLocaleString('id-ID')}</span> per minggu
+                </div>
               </div>
 
               <div>
@@ -873,6 +905,9 @@ export const KasBook: React.FC<KasBookProps> = ({
                   onChange={(e) => setDuesForm({ ...duesForm, kasTargetAmount: Number(e.target.value) })}
                   className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
                 />
+                <div className="mt-1 text-[11px] font-mono font-bold text-slate-700">
+                  Terbaca: <span className="text-emerald-800">Rp {Number(duesForm.kasTargetAmount || 0).toLocaleString('id-ID')}</span>
+                </div>
               </div>
 
               <div>

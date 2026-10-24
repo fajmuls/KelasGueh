@@ -18,7 +18,9 @@ import {
   Send,
   AlertTriangle,
   Edit2,
-  Save
+  Save,
+  Zap,
+  Hand
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -52,6 +54,34 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   const [search, setSearch] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+
+  // Fast-Tap / Swipe Mode State
+  const [isFastTapMode, setIsFastTapMode] = useState(false);
+  const [selectedFastTapWeek, setSelectedFastTapWeek] = useState(0); // 0..3
+  const [isPointerSwiping, setIsPointerSwiping] = useState(false);
+  const lastSwipedMemberId = useRef<string | null>(null);
+
+  const handlePointerDownStudent = (memberId: string) => {
+    if (!canEditKas) return;
+    setIsPointerSwiping(true);
+    lastSwipedMemberId.current = memberId;
+    sfx.playCoinChime();
+    const wKey = getWeekKey(selectedFastTapWeek);
+    onToggleWeek(memberId, wKey);
+  };
+
+  const handlePointerEnterStudent = (memberId: string) => {
+    if (!canEditKas || !isPointerSwiping || lastSwipedMemberId.current === memberId) return;
+    lastSwipedMemberId.current = memberId;
+    sfx.playCoinChime();
+    const wKey = getWeekKey(selectedFastTapWeek);
+    onToggleWeek(memberId, wKey);
+  };
+
+  const handlePointerUp = () => {
+    setIsPointerSwiping(false);
+    lastSwipedMemberId.current = null;
+  };
   
   // Helpers for month-week logic
   const getWeekKey = (weekIndex: number) => {
@@ -346,6 +376,24 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
+            {canEditKas && (
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.playClick();
+                  setIsFastTapMode(!isFastTapMode);
+                }}
+                className={`btn-doodle px-2.5 py-1 text-[10px] font-black rounded flex items-center gap-1 transition-all ${
+                  isFastTapMode
+                    ? 'bg-amber-300 text-slate-900 border-2 border-slate-900 shadow-[1px_1px_0px_#000]'
+                    : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-900 border border-indigo-300'
+                }`}
+                title="Mode Centang Cepat Usap HP saat Menagih Iuran di Kelas"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-400" />
+                <span>{isFastTapMode ? '⚡ Fast-Tap Mode (Aktif)' : '⚡ Centang Cepat HP'}</span>
+              </button>
+            )}
             {canEditKas && membersWithArrears.length > 0 && (
               <button
                 type="button"
@@ -429,8 +477,122 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
         </div>
       </div>
 
-      {/* Checklist Table - Sticky Columns & High Density */}
-      <div className="card-doodle rounded-lg bg-white overflow-hidden shadow-sm border-2 border-slate-900">
+      {/* FAST-TAP SWIPE MODE VIEW FOR CLASSROOM COLLECTION */}
+      {isFastTapMode ? (
+        <div className="card-doodle p-4 rounded-lg bg-amber-50/50 border-2 border-slate-900 space-y-4">
+          {/* Week Selector Bar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3 border-2 border-slate-900 rounded-md">
+            <div>
+              <p className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                <Hand className="w-4 h-4 text-amber-600 animate-bounce" />
+                <span>Mode Centang Cepat HP (Menagih di Kelas)</span>
+              </p>
+              <p className="text-[10px] text-slate-600">
+                Pilih minggu di bawah, lalu usap atau ketuk kartu siswa untuk centang lunas secara instan.
+              </p>
+            </div>
+
+            {/* Week Pills */}
+            <div className="flex items-center gap-1 w-full sm:w-auto overflow-x-auto">
+              {[0, 1, 2, 3].map(wIdx => {
+                const isActive = selectedFastTapWeek === wIdx;
+                const wKey = getWeekKey(wIdx);
+                const paidInWeek = members.filter(m => !!m.weeklyStatus?.[wKey]).length;
+
+                return (
+                  <button
+                    key={wIdx}
+                    onClick={() => {
+                      sfx.playToggle();
+                      setSelectedFastTapWeek(wIdx);
+                    }}
+                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded text-xs font-black border-2 border-slate-900 transition-all ${
+                      isActive
+                        ? 'bg-amber-300 text-slate-900 shadow-[2px_2px_0px_#1E293B] -translate-y-0.5'
+                        : 'bg-slate-100 text-slate-700 hover:bg-white'
+                    }`}
+                  >
+                    <span>W{wIdx + 1}</span>
+                    <span className="ml-1 text-[9px] font-mono text-slate-800 bg-white/70 px-1 rounded">
+                      {paidInWeek}/{members.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Live Week Progress Counter */}
+          {(() => {
+            const currentWKey = getWeekKey(selectedFastTapWeek);
+            const paidCountInWeek = members.filter(m => !!m.weeklyStatus?.[currentWKey]).length;
+            const weekTotalCollected = paidCountInWeek * (settings.weeklyDuesAmount || 0);
+
+            return (
+              <div className="flex items-center justify-between p-3 bg-white border-2 border-slate-900 rounded-md">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Progres {WEEKS_LABELS[selectedFastTapWeek]} ({getWeekRangeLabel(selectedFastTapWeek)})</span>
+                  <p className="text-base sm:text-lg font-black text-slate-900 font-mono">
+                    {paidCountInWeek} / {members.length} Lunas <span className="text-xs text-slate-500 font-sans font-normal">({Math.round((paidCountInWeek / (members.length || 1)) * 100)}%)</span>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Iuran Terkumpul Minggu Ini</span>
+                  <p className="text-base sm:text-lg font-black text-emerald-800 font-mono">
+                    {formatRupiah(weekTotalCollected)}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Student Tap Cards Grid */}
+          <div
+            onPointerLeave={handlePointerUp}
+            onPointerUp={handlePointerUp}
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-[55vh] overflow-y-auto p-1 select-none"
+          >
+            {filteredMembers.map((member) => {
+              const currentWKey = getWeekKey(selectedFastTapWeek);
+              const isPaid = !!member.weeklyStatus?.[currentWKey];
+
+              return (
+                <div
+                  key={member.id}
+                  onPointerDown={() => handlePointerDownStudent(member.id)}
+                  onPointerEnter={() => handlePointerEnterStudent(member.id)}
+                  className={`p-3 rounded-lg border-2 border-slate-900 transition-all cursor-pointer flex flex-col justify-between select-none touch-none ${
+                    isPaid
+                      ? 'bg-emerald-300 shadow-[2px_2px_0px_#1E293B] scale-[1.01]'
+                      : 'bg-white hover:bg-amber-50 shadow-[1px_1px_0px_#1E293B]'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-1 mb-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-slate-900 truncate leading-tight">{member.name}</p>
+                      <p className="text-[9px] font-mono text-slate-600">{member.studentId}</p>
+                    </div>
+                    <div className={`w-6 h-6 rounded border-2 border-slate-900 flex items-center justify-center shrink-0 ${
+                      isPaid ? 'bg-slate-900 text-emerald-300' : 'bg-white text-slate-300'
+                    }`}>
+                      {isPaid ? <Check className="w-4 h-4 stroke-[4]" /> : <X className="w-3 h-3" />}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] font-mono font-bold pt-1 border-t border-slate-900/20">
+                    <span className={isPaid ? 'text-slate-900' : 'text-slate-400'}>
+                      {isPaid ? '✓ Lunas' : 'Belum Bayar'}
+                    </span>
+                    <span className={isPaid ? 'text-slate-900' : 'text-slate-500'}>
+                      {formatRupiah(settings.weeklyDuesAmount)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
         <div className="overflow-x-auto max-h-[60vh] relative">
           <table className="w-full text-left text-[10px] border-collapse min-w-[600px]">
             <thead className="bg-[#FAF7F2] border-b-2 border-slate-900 font-black uppercase text-slate-700 sticky top-0 z-40">
@@ -575,7 +737,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
             </tbody>
           </table>
         </div>
-      </div>
+      )}
 
       {/* Bulk Import Modal (Simplified for size) */}
       {showImportModal && (
