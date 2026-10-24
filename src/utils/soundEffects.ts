@@ -70,9 +70,30 @@ class SoundEngine {
     return next;
   }
 
+  private bgmListeners: Array<(isPlaying: boolean) => void> = [];
+
   // BGM controls
   public getIsBgmPlaying(): boolean {
     return this.isBgmPlaying;
+  }
+
+  public subscribeBgm(listener: (isPlaying: boolean) => void): () => void {
+    this.bgmListeners.push(listener);
+    listener(this.isBgmPlaying);
+    return () => {
+      this.bgmListeners = this.bgmListeners.filter(l => l !== listener);
+    };
+  }
+
+  private notifyBgm(playing: boolean): void {
+    this.isBgmPlaying = playing;
+    this.bgmListeners.forEach(listener => {
+      try {
+        listener(playing);
+      } catch (err) {
+        console.warn('BGM listener error:', err);
+      }
+    });
   }
 
   public toggleBgm(): boolean {
@@ -88,17 +109,17 @@ class SoundEngine {
   public startBgm(): void {
     if (!this.bgmAudio) return;
     this.bgmAudio.play().then(() => {
-      this.isBgmPlaying = true;
+      this.notifyBgm(true);
       localStorage.setItem('kelasgue_bgm', 'true');
     }).catch(() => {
-      this.isBgmPlaying = false;
+      this.notifyBgm(false);
     });
   }
 
   public pauseBgm(): void {
     if (!this.bgmAudio) return;
     this.bgmAudio.pause();
-    this.isBgmPlaying = false;
+    this.notifyBgm(false);
     localStorage.setItem('kelasgue_bgm', 'false');
   }
 

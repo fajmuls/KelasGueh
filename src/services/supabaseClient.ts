@@ -227,6 +227,19 @@ export const signInWithGoogleSupabase = async (): Promise<{ success: boolean; er
 };
 
 // Local storage reactive sync repository (Hybrid Supabase-Local)
+// Helper to generate RFC-4122 compliant UUIDs compatible with Postgres UUID columns
+export const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+// Local storage reactive sync repository (Hybrid Supabase-Local, Cloud-First Priority)
 export class LocalKasRepository {
   private static STORAGE_KEY_TX = 'kelasgue_transactions_v3';
   private static STORAGE_KEY_MEMBERS = 'kelasgue_members_v3';
@@ -245,55 +258,90 @@ export class LocalKasRepository {
 
   public static async fetchTransactionsFromSupabase(): Promise<KasTransaction[]> {
     const client = getSupabaseClient();
-    if (!client) return this.getTransactions();
+    const local = this.getTransactions();
+    if (!client) return local;
 
-    const { data, error } = await client
-      .from('kas_transactions')
-      .select('*')
-      .order('date', { ascending: false });
+    try {
+      const { data, error } = await client
+        .from('kas_transactions')
+        .select('*')
+        .order('date', { ascending: false });
 
-    if (error) return this.getTransactions();
+      if (error) {
+        console.warn('Fetch transactions from Supabase warning:', error.message);
+        return local;
+      }
 
-    const mapped: KasTransaction[] = (data || []).map(t => ({
-      id: t.id,
-      type: t.type,
-      title: t.title,
-      amount: Number(t.amount),
-      category: t.category,
-      date: t.date,
-      recordedBy: t.recorded_by,
-      receiptUrl: t.receipt_url,
-      notes: t.notes,
-      createdAt: t.created_at
-    }));
+      if (data && data.length > 0) {
+        const mapped: KasTransaction[] = data.map(t => ({
+          id: t.id,
+          type: t.type,
+          title: t.title,
+          amount: Number(t.amount),
+          category: t.category,
+          date: t.date,
+          recordedBy: t.recorded_by,
+          receiptUrl: t.receipt_url,
+          notes: t.notes,
+          createdAt: t.created_at
+        }));
 
-    this.saveTransactions(mapped);
-    return mapped;
+        this.saveTransactions(mapped);
+        return mapped;
+      } else if (local.length > 0) {
+        // Auto-sync local transactions to empty Supabase table
+        const payload = local.map(t => ({
+          id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t.id) ? t.id : generateUUID(),
+          type: t.type,
+          title: t.title,
+          amount: t.amount,
+          category: t.category,
+          date: t.date,
+          recorded_by: t.recordedBy,
+          receipt_url: t.receiptUrl || null,
+          notes: t.notes || null
+        }));
+        const normalizedLocal = local.map((t, idx) => ({ ...t, id: payload[idx].id }));
+        this.saveTransactions(normalizedLocal);
+
+        client.from('kas_transactions').upsert(payload).then(({ error: upErr }) => {
+          if (upErr) console.warn('Auto-sync transactions error:', upErr.message);
+        });
+        return normalizedLocal;
+      }
+
+      return [];
+    } catch (err: any) {
+      console.warn('Supabase fetchTransactions error:', err);
+      return local;
+    }
   }
 
   public static addTransaction(tx: Omit<KasTransaction, 'id' | 'createdAt'>): KasTransaction {
     const current = this.getTransactions();
+    const id = generateUUID();
     const newTx: KasTransaction = {
       ...tx,
-      id: `tx-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+      id,
       createdAt: new Date().toISOString()
     };
     
     const updated = [newTx, ...current];
     this.saveTransactions(updated);
 
-    // Async push to Supabase
+    // Async push to Supabase with Postgres-compliant UUID
     const client = getSupabaseClient();
     if (client) {
       client.from('kas_transactions').insert([{
+        id,
         type: tx.type,
         title: tx.title,
         amount: tx.amount,
         category: tx.category,
         date: tx.date,
         recorded_by: tx.recordedBy,
-        receipt_url: tx.receiptUrl,
-        notes: tx.notes
+        receipt_url: tx.receiptUrl || null,
+        notes: tx.notes || null
       }]).then(({ error }) => {
         if (error) console.warn('Sync transaction fail:', error.message);
       });
@@ -309,7 +357,9 @@ export class LocalKasRepository {
 
     const client = getSupabaseClient();
     if (client) {
-      client.from('kas_transactions').delete().eq('id', id).then();
+      client.from('kas_transactions').delete().eq('id', id).then(({ error }) => {
+        if (error) console.warn('Supabase delete transaction error:', error.message);
+      });
     }
   }
 
@@ -325,21 +375,65 @@ export class LocalKasRepository {
 
   public static async fetchMembersFromSupabase(): Promise<KasMember[]> {
     const client = getSupabaseClient();
-    if (!client) return this.getMembers();
+    const local = this.getMembers();
+    if (!client) return local;
 
-    const { data, error } = await client.from('kas_members').select('*').order('name', { ascending: true });
-    if (error) return this.getMembers();
+    try {
+      const { data, error } = await client
+        .from('kas_members')
+        .select('*')
+        .order('name', { ascending: true });
 
-    const mapped: KasMember[] = (data || []).map(m => ({
-      id: m.id,
-      name: m.name,
-      studentId: m.student_id,
-      phone: m.phone,
-      weeklyStatus: m.weekly_status || {}
-    }));
+      if (error) {
+        console.warn('Fetch members from Supabase warning:', error.message);
+        return local;
+      }
 
-    this.saveMembers(mapped);
-    return mapped;
+      if (data && data.length > 0) {
+        const mapped: KasMember[] = data.map(m => {
+          let weeklyStatus: Record<string, boolean> = {};
+          if (m.weekly_status) {
+            if (typeof m.weekly_status === 'string') {
+              try { weeklyStatus = JSON.parse(m.weekly_status); } catch {}
+            } else if (typeof m.weekly_status === 'object') {
+              weeklyStatus = m.weekly_status;
+            }
+          }
+          return {
+            id: m.id,
+            name: m.name || '',
+            studentId: m.student_id || '',
+            phone: m.phone || undefined,
+            weeklyStatus
+          };
+        });
+
+        this.saveMembers(mapped);
+        return mapped;
+      } else if (local.length > 0) {
+        // Auto-sync local members up to empty Supabase table
+        console.log('Syncing local members up to empty Supabase table...');
+        const payload = local.map(m => ({
+          id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.id) ? m.id : generateUUID(),
+          name: m.name,
+          student_id: m.studentId,
+          phone: m.phone || null,
+          weekly_status: m.weeklyStatus || {}
+        }));
+        const normalizedLocal = local.map((m, idx) => ({ ...m, id: payload[idx].id }));
+        this.saveMembers(normalizedLocal);
+
+        client.from('kas_members').upsert(payload).then(({ error: upErr }) => {
+          if (upErr) console.warn('Auto-sync members to Supabase error:', upErr.message);
+        });
+        return normalizedLocal;
+      }
+
+      return [];
+    } catch (err: any) {
+      console.warn('Supabase fetchMembers error:', err);
+      return local;
+    }
   }
 
   public static toggleMemberWeek(memberId: string, weekKey: string): void {
@@ -350,8 +444,8 @@ export class LocalKasRepository {
         targetMember = {
           ...m,
           weeklyStatus: {
-            ...m.weeklyStatus,
-            [weekKey]: !m.weeklyStatus[weekKey]
+            ...(m.weeklyStatus || {}),
+            [weekKey]: !m.weeklyStatus?.[weekKey]
           }
         };
         return targetMember;
@@ -364,17 +458,19 @@ export class LocalKasRepository {
       if (client) {
         client.from('kas_members').update({
           weekly_status: (targetMember as KasMember).weeklyStatus
-        }).eq('id', memberId).then();
+        }).eq('id', memberId).then(({ error }) => {
+          if (error) console.warn('Supabase toggleMemberWeek error:', error.message);
+        });
       }
     }
   }
 
-  public static toggleAllMembersWeek(weekKey: string, shouldPay: boolean): void {
+  public static toggleAllMembersWeek(weekKey: string, shouldPay: boolean): KasMember[] {
     const members = this.getMembers();
     const updated = members.map(m => ({
       ...m,
       weeklyStatus: {
-        ...m.weeklyStatus,
+        ...(m.weeklyStatus || {}),
         [weekKey]: shouldPay
       }
     }));
@@ -382,21 +478,29 @@ export class LocalKasRepository {
 
     const client = getSupabaseClient();
     if (client) {
-      updated.forEach(m => {
-        client.from('kas_members').update({
-          weekly_status: m.weeklyStatus
-        }).eq('id', m.id).then();
+      const payload = updated.map(m => ({
+        id: m.id,
+        name: m.name,
+        student_id: m.studentId,
+        phone: m.phone || null,
+        weekly_status: m.weeklyStatus
+      }));
+      // Batch upsert into Supabase in 1 atomic network call (prevents 39+ concurrent promise crashes)
+      client.from('kas_members').upsert(payload).then(({ error }) => {
+        if (error) console.warn('Bulk toggle Supabase upsert error:', error.message);
       });
     }
+    return updated;
   }
 
   public static addMember(name: string, studentId: string, phone?: string): KasMember {
     const members = this.getMembers();
+    const id = generateUUID();
     const newMember: KasMember = {
-      id: `m-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      name,
-      studentId,
-      phone,
+      id,
+      name: name.trim(),
+      studentId: studentId.trim(),
+      phone: phone?.trim() || undefined,
       weeklyStatus: {}
     };
     members.push(newMember);
@@ -405,11 +509,14 @@ export class LocalKasRepository {
     const client = getSupabaseClient();
     if (client) {
       client.from('kas_members').insert([{
-        name,
-        student_id: studentId,
-        phone,
+        id,
+        name: newMember.name,
+        student_id: newMember.studentId,
+        phone: newMember.phone || null,
         weekly_status: {}
-      }]).then();
+      }]).then(({ error }) => {
+        if (error) console.warn('Supabase addMember error:', error.message);
+      });
     }
     return newMember;
   }
@@ -432,17 +539,19 @@ export class LocalKasRepository {
         client.from('kas_members').update({
           name: (updatedMember as KasMember).name,
           student_id: (updatedMember as KasMember).studentId,
-          phone: (updatedMember as KasMember).phone,
-          weekly_status: (updatedMember as KasMember).weeklyStatus
-        }).eq('id', memberId).then();
+          phone: (updatedMember as KasMember).phone || null,
+          weekly_status: (updatedMember as KasMember).weeklyStatus || {}
+        }).eq('id', memberId).then(({ error }) => {
+          if (error) console.warn('Supabase updateMember error:', error.message);
+        });
       }
     }
   }
 
   public static addMembers(newMembersList: { name: string; studentId: string; phone?: string }[]): KasMember[] {
     const members = this.getMembers();
-    const created: KasMember[] = newMembersList.map((m, idx) => ({
-      id: `m-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+    const created: KasMember[] = newMembersList.map((m) => ({
+      id: generateUUID(),
       name: m.name.trim(),
       studentId: m.studentId.trim(),
       phone: m.phone?.trim() || undefined,
@@ -454,11 +563,14 @@ export class LocalKasRepository {
     const client = getSupabaseClient();
     if (client) {
       client.from('kas_members').insert(created.map(m => ({
+        id: m.id,
         name: m.name,
         student_id: m.studentId,
-        phone: m.phone,
+        phone: m.phone || null,
         weekly_status: {}
-      }))).then();
+      }))).then(({ error }) => {
+        if (error) console.warn('Supabase addMembers error:', error.message);
+      });
     }
     return created;
   }

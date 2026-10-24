@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { DoodleCoin, DoodleCrown } from './DoodleDecorations.tsx';
@@ -34,6 +34,14 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Synchronize BGM state with global SoundEngine so button highlights immediately when music starts
+  useEffect(() => {
+    const unsub = sfx.subscribeBgm((playing) => {
+      setBgmPlaying(playing);
+    });
+    return unsub;
+  }, []);
+
   const handleToggleSound = () => {
     const next = sfx.toggle();
     setSoundOn(next);
@@ -41,8 +49,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
 
   const handleToggleBgm = () => {
     sfx.playClick();
-    const next = sfx.toggleBgm();
-    setBgmPlaying(next);
+    sfx.toggleBgm();
   };
 
   const navItems = [

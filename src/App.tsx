@@ -149,7 +149,7 @@ const AppContent: React.FC = () => {
     LocalKasRepository.toggleMemberWeek(memberId, weekKey);
     const targetMember = members.find(m => m.id === memberId);
     if (targetMember) {
-      const isNowPaid = !targetMember.weeklyStatus[weekKey];
+      const isNowPaid = !targetMember.weeklyStatus?.[weekKey];
       LocalKasRepository.addAuditLog({
         action: 'IURAN MINGGUAN',
         details: `${isNowPaid ? 'Mencatat LUNAS' : 'Membatalkan Status Lunas'} Iuran ${weekKey} untuk ${targetMember.name}`,
@@ -163,8 +163,8 @@ const AppContent: React.FC = () => {
         return {
           ...m,
           weeklyStatus: {
-            ...m.weeklyStatus,
-            [weekKey]: !m.weeklyStatus[weekKey]
+            ...(m.weeklyStatus || {}),
+            [weekKey]: !m.weeklyStatus?.[weekKey]
           }
         };
       }
@@ -197,7 +197,19 @@ const AppContent: React.FC = () => {
   };
 
   const handleToggleAllWeek = (weekKey: string, shouldPay: boolean) => {
+    // 1. Optimistic instant React state update
+    setMembers(prev => prev.map(m => ({
+      ...m,
+      weeklyStatus: {
+        ...(m.weeklyStatus || {}),
+        [weekKey]: shouldPay
+      }
+    })));
+
+    // 2. Persist to storage and Supabase batch upsert
     LocalKasRepository.toggleAllMembersWeek(weekKey, shouldPay);
+
+    // 3. Record audit log
     LocalKasRepository.addAuditLog({
       action: 'IURAN MASSAL',
       details: `${shouldPay ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Seluruh Siswa untuk ${weekKey}`,
@@ -205,7 +217,6 @@ const AppContent: React.FC = () => {
       userRole: role,
     });
     setAuditLogs(LocalKasRepository.getAuditLogs());
-    LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };
 
 

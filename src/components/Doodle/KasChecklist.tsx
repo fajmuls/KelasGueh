@@ -283,7 +283,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 
   const getWhatsAppReminderMessage = (member: KasMember) => {
     const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
-    const unpaidWeeks = monthWeekKeys.filter(key => !member.weeklyStatus[key]);
+    const unpaidWeeks = monthWeekKeys.filter(key => !member.weeklyStatus?.[key]);
     const totalUnpaid = unpaidWeeks.length * settings.weeklyDuesAmount;
     return `Halo *${member.name}* 👋\n\nMengingatkan mengenai iuran kas *${settings.className}* bulan *${MONTHS[selectedMonth]} ${selectedYear}*.\nMasih ada tunggakan *${unpaidWeeks.length} minggu* senilai *${formatRupiah(totalUnpaid)}*.\n\nTerima kasih! 🙏`;
   };
@@ -299,7 +299,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 
   const membersWithArrears = members.filter(m => {
     const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
-    return monthWeekKeys.some(key => !m.weeklyStatus[key]);
+    return monthWeekKeys.some(key => !m.weeklyStatus?.[key]);
   });
 
   return (
@@ -382,7 +382,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                         <button
                           onClick={() => {
                             const wKey = getWeekKey(idx);
-                            const allPaid = filteredMembers.every(m => !!m.weeklyStatus[wKey]);
+                            const allPaid = filteredMembers.length > 0 && filteredMembers.every(m => !!m.weeklyStatus?.[wKey]);
                             if (onToggleAllWeek) {
                               onToggleAllWeek(wKey, !allPaid);
                               sfx.playLevelUp();
@@ -409,7 +409,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
               ) : (
                 filteredMembers.map((member, index) => {
                   const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
-                  const paidWeeksInMonth = monthWeekKeys.filter(key => member.weeklyStatus[key]).length;
+                  const paidWeeksInMonth = monthWeekKeys.filter(key => !!member.weeklyStatus?.[key]).length;
                   const totalPaid = paidWeeksInMonth * settings.weeklyDuesAmount;
                   const hasArrears = paidWeeksInMonth < 4;
                   const isEditing = editingId === member.id;
@@ -442,7 +442,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 
                       {/* Weekly checkboxes */}
                       {monthWeekKeys.map((wKey, idx) => {
-                        const isPaid = !!member.weeklyStatus[wKey];
+                        const isPaid = !!member.weeklyStatus?.[wKey];
                         return (
                           <td key={idx} className="py-1 px-0.5 text-center">
                             {canEditKas ? (
@@ -604,7 +604,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
             <div className="space-y-2">
               {membersWithArrears.map(m => {
                 const monthWeekKeys = [0,1,2,3].map(idx => getWeekKey(idx));
-                const unpaidCount = monthWeekKeys.filter(key => !m.weeklyStatus[key]).length;
+                const unpaidCount = monthWeekKeys.filter(key => !m.weeklyStatus?.[key]).length;
                 return (
                   <div key={m.id} className="p-2 bg-slate-50 border border-slate-800 rounded flex items-center justify-between gap-2">
                     <div className="min-w-0">

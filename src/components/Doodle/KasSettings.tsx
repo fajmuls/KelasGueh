@@ -137,8 +137,11 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
     }
   };
 
-  const sqlScript = `-- 1. Jalankan script ini di Supabase SQL Editor
--- Membuat Tabel Transaksi Kas
+  const sqlScript = `-- ========================================================
+-- KELAS GUE v3.4.3 - SKRIP SETUP SUPABASE LENGKAP & AMAN
+-- ========================================================
+
+-- 1. Membuat Tabel Transaksi Kas
 CREATE TABLE IF NOT EXISTS public.kas_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
@@ -152,7 +155,7 @@ CREATE TABLE IF NOT EXISTS public.kas_transactions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Membuat Tabel Anggota
+-- 2. Membuat Tabel Anggota & Checklist Iuran
 CREATE TABLE IF NOT EXISTS public.kas_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -162,7 +165,7 @@ CREATE TABLE IF NOT EXISTS public.kas_members (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Membuat Tabel Audit Log
+-- 3. Membuat Tabel Audit Log
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     action TEXT NOT NULL,
@@ -172,7 +175,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Membuat Tabel Settings
+-- 4. Membuat Tabel Pengaturan Kelas
 CREATE TABLE IF NOT EXISTS public.class_settings (
     id INTEGER PRIMARY KEY DEFAULT 1,
     class_name TEXT NOT NULL DEFAULT 'Kelas Gue',
@@ -183,8 +186,44 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
     CONSTRAINT one_row CHECK (id = 1)
 );
 
--- Aktifkan Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE kas_transactions, kas_members, audit_logs, class_settings;`;
+-- 5. Konfigurasi Row Level Security (RLS) & Kebijakan Akses Penuh (Public / Anon)
+ALTER TABLE public.kas_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kas_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.class_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Akses Penuh kas_transactions" ON public.kas_transactions;
+CREATE POLICY "Akses Penuh kas_transactions" ON public.kas_transactions FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Akses Penuh kas_members" ON public.kas_members;
+CREATE POLICY "Akses Penuh kas_members" ON public.kas_members FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Akses Penuh audit_logs" ON public.audit_logs;
+CREATE POLICY "Akses Penuh audit_logs" ON public.audit_logs FOR ALL TO public USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Akses Penuh class_settings" ON public.class_settings;
+CREATE POLICY "Akses Penuh class_settings" ON public.class_settings FOR ALL TO public USING (true) WITH CHECK (true);
+
+-- 6. Daftarkan Realtime Aman (Bebas dari Error 42710 jika sudah terdaftar)
+DO $$
+BEGIN
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.kas_transactions;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.kas_members;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.class_settings;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+END $$;`;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-12">
