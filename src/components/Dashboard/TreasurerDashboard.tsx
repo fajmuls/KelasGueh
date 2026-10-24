@@ -77,6 +77,17 @@ export const TreasurerDashboard: React.FC<TreasurerDashboardProps> = ({
             <Plus className="w-4 h-4" /> Kelola Kas & Transaksi
           </button>
           <button
+            onClick={async () => {
+              const txs = await LocalKasRepository.fetchTransactionsFromSupabase();
+              const members = await LocalKasRepository.fetchMembersFromSupabase();
+              const settings = LocalKasRepository.getSettings();
+              exportToExcel(txs, members, settings.className);
+            }}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer flex items-center gap-1.5 border border-emerald-500"
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Export Excel
+          </button>
+          <button
             onClick={() => onNavigate('transparency')}
             className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 border border-slate-700"
           >

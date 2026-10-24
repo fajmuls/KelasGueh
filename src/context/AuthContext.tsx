@@ -156,6 +156,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const role = user?.role || 'anggota';
   const isSuperAdmin = role === 'superadmin' || user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+  
+  // Ensure the role state is in sync with the email for the owner
+  useEffect(() => {
+    if (user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() && user.role !== 'superadmin') {
+      const updated: UserProfile = { ...user, role: 'superadmin' };
+      setUser(updated);
+      localStorage.setItem('kelasgue_active_user_v2', JSON.stringify(updated));
+    }
+  }, [user]);
+
   const isBendahara = role === 'bendahara';
   const canEditKas = isSuperAdmin || isBendahara;
 
