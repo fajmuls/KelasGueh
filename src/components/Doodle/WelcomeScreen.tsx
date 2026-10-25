@@ -1,26 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
-import { ScotchTape, PushPin, DoodleCoin, DoodleReceipt, DoodleCrown } from './DoodleDecorations.tsx';
-import { GoogleAuthGuideModal } from './GoogleAuthGuideModal.tsx';
+import { ScotchTape, PushPin, DoodleCoin } from './DoodleDecorations.tsx';
+import { ShieldCheck } from 'lucide-react';
 import { CURRENT_APP_VERSION } from '../../version.ts';
-import { HelpCircle, X, Check, ShieldCheck, ArrowRight } from 'lucide-react';
 
 export const WelcomeScreen: React.FC = () => {
   const { loginAs, loginWithGooglePrompt } = useAuth();
-  const [showGuideModal, setShowGuideModal] = useState(false);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [googleEmail, setGoogleEmail] = useState('');
-
-  const handleGoogleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    sfx.playMoneyIncome();
-    const email = googleEmail.trim();
-    if (!email) return;
-
-    loginAs('anggota', email.split('@')[0], email);
-    setShowGoogleModal(false);
-  };
 
   return (
     <div className="min-h-screen bg-paper-grid flex items-center justify-center p-4 sm:p-6 text-slate-900 font-sans">
@@ -115,7 +101,7 @@ export const WelcomeScreen: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs text-slate-600">
-                    Melihat transparansi saldo kas, kwitansi nota, & status bayar (Tanpa akses Pengaturan/WhatsApp)
+                    Melihat transparansi saldo kas, kwitansi nota, & status bayar.
                   </p>
                 </div>
               </div>
@@ -123,111 +109,18 @@ export const WelcomeScreen: React.FC = () => {
             </button>
           </div>
 
-          {/* Guide link for errors */}
-          <div className="mt-4 p-2.5 bg-amber-50/80 border border-slate-300 rounded text-center">
-            <button
-              type="button"
-              onClick={() => {
-                sfx.playClick();
-                setShowGuideModal(true);
-              }}
-              className="text-xs font-bold text-amber-900 hover:text-indigo-800 inline-flex items-center gap-1.5"
-            >
-              <HelpCircle className="w-4 h-4 text-amber-700" />
-              <span>Solusi Login Error 400 / 403 (Access Denied)</span>
-            </button>
+          {/* Whitelist Info */}
+          <div className="mt-6 p-4 bg-emerald-50 border-2 border-emerald-600 rounded-md text-xs text-emerald-900 font-bold flex items-center gap-3">
+            <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0" />
+            <span>Sistem Whitelist Aktif: Pastikan email Google Anda telah didaftarkan oleh Super Admin untuk mendapatkan hak akses pengelolaan.</span>
           </div>
 
           {/* Footer note */}
-          <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-            <span>Doodle Art Paper Edition</span>
+          <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-center text-[10px] text-slate-400 font-mono italic">
+            Doodle Art Paper Edition • Build v{CURRENT_APP_VERSION.version}
           </div>
         </div>
       </div>
-
-      {/* MODAL: Instant Google Login Form */}
-      {showGoogleModal && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              sfx.playCardClose();
-              setShowGoogleModal(false);
-            }
-          }}
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
-        >
-          <div className="card-doodle bg-white max-w-md w-full rounded-xl p-6 relative">
-            <ScotchTape className="absolute -top-3 left-1/2 -translate-x-1/2 rotate-1" />
-
-            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <DoodleCrown className="w-6 h-6" />
-                <h3 className="text-lg font-black text-slate-900">
-                  Masuk dengan Akun Google
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowGoogleModal(false)}
-                className="w-8 h-8 btn-doodle bg-slate-100 rounded flex items-center justify-center text-slate-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleGoogleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  Alamat Email Google Anda:
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="nama@gmail.com"
-                  value={googleEmail}
-                  onChange={(e) => setGoogleEmail(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
-                />
-                <p className="text-[11px] text-slate-600 mt-1.5 leading-relaxed">
-                  💡 Masukkan alamat email Google resmi Anda untuk melakukan verifikasi login.
-                </p>
-              </div>
-
-              <div className="p-3 bg-emerald-50 border-2 border-emerald-600 rounded-md text-xs text-emerald-900 font-bold flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span>Login langsung instan 100% tanpa risiko timeout Vercel atau error 400 OAuth.</span>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between gap-2 border-t-2 border-dashed border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowGoogleModal(false);
-                    setShowGuideModal(true);
-                  }}
-                  className="text-xs font-bold text-slate-600 hover:underline"
-                >
-                  Opsi Supabase OAuth ↗
-                </button>
-
-                <button
-                  type="submit"
-                  className="btn-doodle px-5 py-2.5 bg-amber-300 hover:bg-amber-400 text-slate-900 font-black rounded-md text-xs sm:text-sm flex items-center gap-1.5"
-                >
-                  <span>Masuk Sekarang</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Google Auth Guide Modal */}
-      <GoogleAuthGuideModal
-        isOpen={showGuideModal}
-        onClose={() => setShowGuideModal(false)}
-      />
     </div>
   );
 };

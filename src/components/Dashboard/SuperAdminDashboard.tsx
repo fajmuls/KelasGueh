@@ -17,6 +17,7 @@ import {
 import { Badge } from '../UI/Badge.tsx';
 import { exportToExcel } from '../../utils/excelExport.ts';
 import { LocalKasRepository } from '../../services/supabaseClient.ts';
+import { CURRENT_APP_VERSION } from '../../version.ts';
 
 interface SuperAdminDashboardProps {
   onNavigate: (module: string) => void;
@@ -72,7 +73,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onNavi
               
               // Open mailto to simulate "send to email"
               const subject = encodeURIComponent(`Laporan Kas ${settings.className}`);
-              const body = encodeURIComponent(`Halo Super Admin,\n\nBerikut adalah laporan terbaru dari sistem Kelas Gue.\nHarap download file yang terlampir di browser Anda.\n\nStatus: Sinkron\nVersi: v3.11.0`);
+              const body = encodeURIComponent(`Halo Super Admin,\n\nBerikut adalah laporan terbaru dari sistem Kelas Gue.\nHarap download file yang terlampir di browser Anda.\n\nStatus: Sinkron\nVersi: v${CURRENT_APP_VERSION.version}`);
               window.open(`mailto:mrachmanfm@gmail.com?subject=${subject}&body=${body}`);
             }}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"

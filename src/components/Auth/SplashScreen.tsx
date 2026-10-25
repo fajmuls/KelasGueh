@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { TEMPLATE_39_STUDENTS } from '../../services/firestoreSync.ts';
 import { api } from '../../services/api.ts';
+import { CURRENT_APP_VERSION } from '../../version.ts';
 
 interface SplashScreenProps {
   onEnterAsUser: (userId: string) => void;
@@ -102,10 +103,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
 
-  // Admin PIN Login Drawer (Alternative to Google Login)
-  const [showAdminPinLogin, setShowAdminPinLogin] = useState<boolean>(false);
-  const [adminPin, setAdminPin] = useState<string>('');
-  const [adminPinError, setAdminPinError] = useState<string | null>(null);
 
   // Class Management Modal (Only accessible by Super Admin)
   const [showClassEditor, setShowClassEditor] = useState<boolean>(false);
@@ -191,17 +188,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     }
   };
 
-  // Super Admin PIN Login
-  const handleAdminPinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = adminPin.trim().toUpperCase();
-    if (clean === '01SAKP014PRO' || clean === '01SAKP014' || clean === 'ADMIN123' || clean === 'SUPERADMIN' || clean === 'SAKP2026') {
-      setAdminPinError(null);
-      onEnterAsUser('usr_member_25'); // Super Admin
-    } else {
-      setAdminPinError('PIN Pengurus tidak valid. Gunakan 01SAKP014PRO atau login Google.');
-    }
-  };
 
   // Class Management (Super Admin ONLY)
   const handleDeleteClass = (classId: string, e?: React.MouseEvent) => {
@@ -284,7 +270,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             Online
           </span>
           <span className="px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 text-xs font-mono">
-            v3.3.0
+            v{CURRENT_APP_VERSION.version}
           </span>
         </div>
       </header>
@@ -335,46 +321,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
                 </button>
 
-                {/* Secondary Option: Admin PIN Login Drawer Toggle */}
-                <button
-                  onClick={() => setShowAdminPinLogin(!showAdminPinLogin)}
-                  className="text-xs text-slate-400 hover:text-slate-200 inline-flex items-center gap-1.5 py-1 transition-colors cursor-pointer"
-                >
-                  <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Akses Pengurus / Super Admin (PIN)</span>
-                </button>
-
-                {showAdminPinLogin && (
-                  <form
-                    onSubmit={handleAdminPinSubmit}
-                    className="p-4 bg-slate-950 rounded-2xl border border-amber-500/30 text-left space-y-2.5 animate-in fade-in-50"
-                  >
-                    <label className="block text-xs font-semibold text-amber-300">
-                      Masukkan PIN / Kode Pengurus Kelas:
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="password"
-                        placeholder="Ketik 01SAKP014PRO..."
-                        value={adminPin}
-                        onChange={(e) => setAdminPin(e.target.value)}
-                        className="flex-1 px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 font-mono focus:outline-indigo-500"
-                        autoFocus
-                      />
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs rounded-xl transition-colors cursor-pointer"
-                      >
-                        Buka Akses
-                      </button>
-                    </div>
-                    {adminPinError && (
-                      <p className="text-xs text-rose-400 font-medium flex items-center gap-1">
-                        <AlertCircle className="w-3.5 h-3.5" /> {adminPinError}
-                      </p>
-                    )}
-                  </form>
-                )}
               </div>
 
               {/* Feature Highlights Minimalist */}
@@ -540,7 +486,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                     </p>
                   </div>
                   <button
-                    onClick={() => onEnterAsUser('usr_member_25')}
+                    onClick={() => onEnterAsUser(allUsers.find(u => u.email.toLowerCase() === 'mrachmanfm@gmail.com')?.id || 'usr_member_25')}
                     className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg cursor-pointer"
                   >
                     <span>Masuk Portal Sebagai Super Admin</span>

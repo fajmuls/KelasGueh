@@ -15,6 +15,8 @@ import {
   Eye,
 } from 'lucide-react';
 import { Badge } from '../UI/Badge.tsx';
+import { LocalKasRepository } from '../../services/supabaseClient.ts';
+import { exportToExcel } from '../../utils/excelExport.ts';
 
 interface TreasurerDashboardProps {
   onNavigate: (module: string) => void;

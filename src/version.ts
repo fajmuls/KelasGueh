@@ -11,25 +11,26 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.12.1',
-  codename: 'Auto-Clear & Auth Resilience',
+  version: '3.13.1',
+  codename: 'Secure Cloud Migration',
   releaseDate: '2026-10-24',
   changes: [
-    'Auto-Clear Cache: Sistem sekarang otomatis membersihkan data konfigurasi lama di browser saat ada pembaruan versi (v3.12+).',
-    'Auth Resilience: Memperbaiki error "deleted_client" dengan optimalisasi pemetaan kredensial Google Cloud.',
-    'Infrastructure Refresh: Penguatan koneksi ke project Supabase baru (husymjsimolzvidunkur).',
-    'Excel Power-Up: Peningkatan performa pada sistem ekspor laporan keuangan.'
+    'Security Hardening: Seluruh pintu belakang (PIN bypass, Admin login shortcut) telah dihapus secara permanen untuk menjamin keamanan whitelist.',
+    'Pembersihan Legacy: Menghapus modul diagnostik Firebase/Firestore lama yang sudah tidak relevan dengan infrastruktur Supabase.',
+    'Version Sync: Memastikan tampilan versi aplikasi di seluruh layar (Welcome, Splash, Settings) tersinkronisasi secara otomatis.',
+    'Auth Resilience: Optimalisasi alur login Google untuk mencegah error "deleted_client" pada project baru.',
+    'Cloud-First Config: Konfigurasi API sekarang sepenuhnya dikelola oleh environment variables di Vercel.'
   ],
   suggestedUpdates: [
     {
-      category: 'fitur',
-      title: 'Bulk Add Members',
-      description: 'Fitur untuk menambah banyak anggota sekaligus lewat copy-paste daftar nama.'
+      category: 'keamanan',
+      title: 'Session Timeout',
+      description: 'Menambahkan fitur auto-logout jika aplikasi tidak digunakan dalam waktu tertentu.'
     },
     {
-      category: 'optimasi',
-      title: 'Email Notification',
-      description: 'Pengiriman notifikasi otomatis saat ada transaksi kas baru yang dicatat.'
+      category: 'fitur',
+      title: 'Excel Export Update',
+      description: 'Peningkatan format laporan Excel untuk mendukung rincian iuran mingguan lebih detail.'
     }
   ]
 };

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext.tsx';
 import { api } from '../../../services/api.ts';
-import { testFirestoreConnection, FirestoreConnectionResult } from '../../../services/firebase.ts';
 import { RoleClaimApprovalPanel } from '../../Admin/RoleClaimApprovalPanel.tsx';
-import { exportClassBackupJSON } from '../../../services/firestoreSync.ts';
+import { CURRENT_APP_VERSION } from '../../../version.ts';
 import {
   Settings,
   Save,
@@ -50,188 +49,16 @@ export const SettingsModule: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isExportingBackup, setIsExportingBackup] = useState(false);
 
-  // App version according to user instruction
-  const APP_VERSION = 'v3.3.0';
-  const BUILD_DATE = '10 September 2026 (Google Login First Flow, Restricted Class Editor to Super Admin, Zero-Friction Student Profile Selection & Clean Minimalist Online Status UI)';
+  // App version from version.ts
+  const APP_VERSION = `v${CURRENT_APP_VERSION.version}`;
+  const BUILD_DATE = `${CURRENT_APP_VERSION.releaseDate} (${CURRENT_APP_VERSION.codename})`;
 
   const PATCH_NOTES = [
     {
-      version: 'v3.3.0',
-      date: '10 September 2026',
-      type: 'Google Login First Flow, Restricted Class Management & Clean Minimalist UI',
-      notes: [
-        'Alur Autentikasi Google di Awal: Pengguna melakukan login Google terlebih dahulu di layar awal sebelum diarahkan untuk memilih kelas perkuliahan.',
-        'Akses Pengelolaan Kelas Khusus Super Admin: Tombol Tambah, Edit, dan Hapus kelas di layar selamat datang hanya dapat diakses oleh Super Admin (mrachmanfm@gmail.com). Pengguna biasa tidak memiliki akses manipulasi kelas.',
-        'Masuk Kelas Cepat Tanpa Login Ulang: Setelah memilih kelas, mahasiswa tidak perlu login lagi—cukup memasukkan NIM / memilih profil dari 39 roster dan langsung masuk ke menu kelas.',
-        'Penyederhanaan Status Online: Mengubah teks indikator koneksi yang panjang menjadi indikator bersih "Online" (titik hijau berkedip).',
-        'Banner Approval Lebih Ramping: Format notifikasi persetujuan role yang lebih ringkas dan tidak memakan banyak ruang visual.',
-      ]
-    },
-    {
-      version: 'v3.2.0',
-      date: '10 September 2026',
-      type: 'Direct Google Login as Anggota, Onboarding Class & NIM Selector, Super Admin Class Editor on Splash',
-      notes: [
-        'Akses Langsung Masuk Portal: Setelah login Google dan memilih kelas serta NIM, mahasiswa langsung masuk ke menu portal sebagai Anggota Kelas dengan hak akses aman untuk melihat detail kelas.',
-        'Alur Pengajuan & Persetujuan Role: Mahasiswa yang mengajukan jabatan pengurus (misal: Sekretaris atau Bendahara) langsung dapat menggunakan aplikasi sebagai Anggota, sementara pengajuan jabatannya menunggu approval Super Admin (mrachmanfm@gmail.com).',
-        'Banner Status Role Pengajuan: Pemberitahuan status di bagian atas aplikasi yang menginformasikan bahwa permohonan role sedang ditinjau oleh Super Admin.',
-        'Panel Kelola Kelas di Layar Selamat Datang: Super Admin dapat mengedit detail kelas (nama, kode, dosen wali, kapasitas) maupun menghapus kelas langsung dari splash screen awal.',
-        'Tab Persetujuan Role di Modul Anggota: Memudahkan Super Admin menyetujui atau menolak permohonan role mahasiswa langsung dari menu Anggota maupun Pengaturan.',
-        'Isolasi Data Cloud Firestore Terjamin: Struktur namespace database terpisah (/classify_users, /classes/cls_01sakp014, /roleClaimRequests) sehingga data perkuliahan tidak bercampur dengan data aplikasi kuis/pembelajaran.',
-      ]
-    },
-    {
-      version: 'v3.1.0',
-      date: '10 September 2026',
-      type: 'WhatsApp Billing, Dynamic QR Attendance, GPA Calculator, Academic Forum & Org Chart',
-      notes: [
-        'Notifikasi Otomatis Tagihan Kas via WhatsApp: Tombol broadcast tagihan massal untuk seluruh mahasiswa yang menunggak dan tombol tagih 1-klik perorangan dengan format pesan rincian iuran resmi.',
-        'Kwitansi Digital PDF Pembayaran Kas: Ekspor dan cetak kwitansi resmi tanda terima pembayaran kas dengan konversi terbilang Rupiah dan tanggal bayar.',
-        'Presensi QR Code Dinamis: Sistem presensi kuliah pintar dengan rotasi token 6 digit setiap 30 detik dan countdown timer real-time untuk mencegah titip absen.',
-        'Pengingat Deadline Tugas (H-1 Push Notification): Deteksi otomatis tugas kuliah berjarak waktu kurang dari 24 jam dengan izin web browser Push Notification.',
-        'Kalkulator Simulasi IPK & IPS Semester: Simulasi target perolehan nilai mata kuliah (A s/d E) dengan bobot SKS untuk menghitung proyeksi Indeks Prestasi dan predikat kelulusan (Cum Laude).',
-        'Forum Tanya Jawab & Diskusi Kuliah: Papan diskusi terbuka per mata kuliah untuk pembahasan tugas, kisi-kisi UTS/UAS, dan rangkuman materi dengan fitur like serta tanggapan langsung.',
-        'Bagan Struktur Organisasi Interaktif: Visualisasi hierarki kepengurusan kelas (Ketua, Wakil, Sekretaris, Bendahara, PJ Mata Kuliah) dilengkapi kontak WhatsApp dan rincian tupoksi.',
-      ]
-    },
-    {
-      version: 'v3.0.0',
-      date: '10 September 2026',
-      type: 'Portal Splash Screen, Master Passcode Auto-Approval & DB Isolation',
-      notes: [
-        'Layar Awal Splash Screen: Tampilan landing portal sebelum masuk kelas dengan pilihan profil cepat, statistik kelas, dan integrasi tombol Keluar Akun.',
-        'Master Passcode Auto-Approval: Mahasiswa yang memasukkan kode pro (01SAKP014PRO) pada formulir Google login langsung terverifikasi otomatis tanpa approval manual.',
-        'Isolasi Database Antar-Aplikasi: Koleksi Firestore terisolasi khusus (/classify_users dan /classes/cls_01sakp014) agar user ID dan profil tidak bercampur dengan aplikasi lain.',
-        'Ekspor Laporan PDF & Excel: Dukungan cetak 1-klik untuk Notulensi Rapat, Laporan Kas Bulanan, dan Direktori Anggota Kelas.',
-        'Penyempurnaan Hapus Data Real-time: Penghapusan instan tugas, agenda, notulensi rapat, dan pengumuman yang langsung ter-update di antarmuka pengguna.',
-      ]
-    },
-    {
-      version: 'v2.9.0',
-      date: '10 September 2026',
-      type: '01 SAKP 14 Engine, 39 Mahasiswa Template, Google NIM Claim & Unified Hub',
-      notes: [
-        'Template Default 01 SAKP 14: Inisialisasi paten kelas 01 SAKP 14 (S1 Akuntansi Perpajakan, FEB) dan 39 mahasiswa terdaftar langsung ke Cloud Firestore.',
-        'Isolasi Data Multi-App: Memisahkan data roster kelas dari pengguna kuis aplikasi lain, menjamin daftar anggota kelas selalu menampilkan 39 mahasiswa kelas.',
-        'Google Auth NIM & Pro Code Claim: Formulir pencocokan NIM dan pengajuan Kode Pro saat login akun Google untuk memverifikasi mahasiswa dan mempermudah approval oleh Ketua Kelas / Super Admin.',
-        'Unified Announcements & Meetings Hub: Menyatukan modul Pengumuman Resmi dan Jadwal Rapat & Notulensi ke dalam satu pusat informasi terpadu dengan integrasi link Google Meet dan share WhatsApp 1-klik.',
-        'Mobile Minimalist Polish: Tata letak antarmuka yang lebih rapi, compact, dan nyaman dioperasikan lewat smartphone dengan touch target optimal.',
-      ]
-    },
-    {
-      version: 'v2.8.1',
-      date: '10 September 2026',
-      type: 'Controlled Component React Sanitization & Console Cleanup',
-      notes: [
-        'Zero Controlled-to-Uncontrolled Warnings: Menjamin seluruh elemen input formulir (Tasks, Courses, Members, Agenda, Announcements, Finance, Settings, Role Claim, dan Setup Modals) memiliki fallback terdefinisi (|| "") sehingga React tidak pernah mengubah controlled component menjadi uncontrolled.',
-        'Vite WebSocket Suppression: Penanganan komprehensif error [vite] dan WebSocket disconnection pada runtime interceptor untuk lingkungan sandboxed container.',
-        'Resilient State Initialization: Sinkronisasi asinkron profil kelas, webhook bot config, dan form edit anggota dengan sanitasi data default.',
-      ]
-    },
-    {
-      version: 'v2.8.0',
-      date: '10 September 2026',
-      type: 'Class Manager Engine, Real-time Member Sync & Data Backup',
-      notes: [
-        'Class Manager Flow: Alur inisialisasi kelas untuk Super Admin (mrachmanfm@gmail.com) jika belum ada kelas terdeteksi di Firestore, lengkap dengan pemilihan Jurusan, Fakultas, dan Iuran.',
-        'Real-time Firestore Member Sync: Sinkronisasi satu arah via onSnapshot pada koleksi /users, memastikan anggota baru dan login akun Google langsung tampil real-time di seluruh perangkat (AI Studio & Vercel).',
-        'Vercel Data Parity: Menghubungkan clientFallback langsung ke Cloud Firestore agar data di Vercel sama persis dengan preview (tidak lagi 0 anggota).',
-        'Header Online/Offline Badge: Indikator status real-time koneksi Firestore di header atas aplikasi dengan status pulsing.',
-        'Ekspor Cadangan Data Kelas: Fitur unduh backup lengkap data kelas, anggota, transaksi kas, agenda, dan tugas dalam 1 file JSON offline.',
-        'Zero WebSocket Noise: Penekanan error WebSocket/HMR pada log terminal dan browser.',
-      ]
-    },
-    {
-      version: 'v2.7.3',
-      date: '9 September 2026',
-      type: 'Firebase Service, Zero-404 Vercel & Schema Validation',
-      notes: [
-        'Firebase Service: Inisialisasi Firestore terpusat di src/lib/firebase.ts menggunakan konfigurasi firebase-applet-config.json dan ekspor instance db global.',
-        'Fix HTTP 404 on Vercel: Penanganan cerdas Zero-Crash Hybrid Client Fallback sehingga aksi di web Vercel tidak lagi menghasilkan HTTP error 404 dan pembersihan log spam API.',
-        'Profile Isolation: Penyimpanan profil di /users/{userId} menggunakan field spesifik Classify Pro (student_id, nim, class_role) dengan merge aman agar tidak menimpa data aplikasi kuis (quiz_stats, xp, rank).',
-        'Schema Validation Rules: Penerapan validasi struktur dan payload anti-spam untuk koleksi test_packages, bank_soal, dan article_questions pada firestore.rules yang telah dideploy.',
-      ]
-    },
-    {
-      version: 'v2.7.2',
-      date: '9 September 2026',
-      type: 'Database Security & Multi-App Sync',
-      notes: [
-        'Firestore Rules: Integrasi aturan keamanan terpadu untuk 2 aplikasi dalam 1 project Firebase (Users, Sessions, Friend Requests, Benchmark Scores, Global Leaderboard, Test Packages, Bank Soal, Article Questions, Battles).',
-        'Live Deployment: Aturan firestore.rules langsung dideploy dan disinkronkan ke server Cloud Firestore.',
-        'Data Isolation: Pengamanan subkoleksi akun dan data belajar antar-aplikasi tanpa merusak akses Classify Pro.',
-      ]
-    },
-    {
-      version: 'v2.7.1',
-      date: '9 September 2026',
-      type: 'Bug Fix & Data Normalization',
-      notes: [
-        'Bug Fix: Mengatasi Uncaught TypeError: semesters.map is not a function dengan normalisasi response API dan defensive rendering.',
-        'API Fix: Menambahkan dukungan multi-method (POST & PUT) pada rute pengaturan semester aktif backend.',
-        'Data Resiliency: Fallback otomatis untuk mendeteksi data semester dalam bentuk array maupun nested object.',
-      ]
-    },
-    {
-      version: 'v2.7.0',
-      date: '9 September 2026',
-      type: 'Major QoL & UI Update',
-      notes: [
-        'UI/UX: Implementasi Dashboard Skeleton Screen dengan shimmering pulse realistis menggantikan spinner loading tradisional.',
-        'QoL: Mekanisme Silent-Refresh Token Firebase & Session Persistence (localStorage caching) untuk mencegah logout mendadak saat sesi lama.',
-        'Database: Integrasi Diagnostik Koneksi Cloud Firestore dan checklist panduan aktivasi Firebase Console interaktif.',
-        'Architecture: Persiapan modularisasi backend API router guna mempercepat cold-start server.',
-      ]
-    },
-    {
-      version: 'v2.6.4',
-      date: '6 September 2026',
-      type: 'Improvements',
-      notes: [
-        'Memperbaiki masalah "kedap-kedip" (infinite loading loop) saat inisialisasi aplikasi.',
-        'Peningkatan stabilitas sinkronisasi status antara Firebase dan Backend.',
-        'Optimasi polling notifikasi untuk mengurangi beban server saat user belum login.',
-      ]
-    },
-    {
-      version: 'v2.6.3',
-      date: '6 September 2026',
-      type: 'Bug Fixes',
-      notes: [
-        'Meningkatkan ketahanan sistem terhadap error "Failed to fetch" saat startup.',
-        'Penambahan logging mendalam pada sisi server untuk melacak kegagalan routing API.',
-        'Optimalisasi pemuatan daftar mahasiswa pada modal klaim identitas.',
-      ]
-    },
-    {
-      version: 'v2.6.2',
-      date: '6 September 2026',
-      type: 'Bug Fixes',
-      notes: [
-        'Memperbaiki alur verifikasi identitas (Google Role Claim) yang tidak muncul saat login.',
-        'Sinkronisasi field name antara frontend dan backend untuk klaim identitas.',
-        'Peningkatan ketahanan AuthContext terhadap error 404 dari API.',
-        'Penyaringan otomatis list mahasiswa agar tidak menampilkan Super Admin.',
-      ]
-    },
-    {
-      version: 'v2.6.1',
-      date: '6 September 2026',
-      type: 'Improvements',
-      notes: [
-        'Penambahan Authorized Domain Helper untuk mengatasi error domain Firebase.',
-        'Fitur Login Bypass untuk pengujian cepat oleh Admin.',
-      ]
-    },
-    {
-      version: 'v2.6.0',
-      date: '5 September 2026',
-      type: 'Major Update',
-      notes: [
-        'Integrasi PWA (Progressive Web App) untuk akses offline.',
-        'Modul Manajemen Semester dan Tahun Akademik.',
-        'Peningkatan keamanan RBAC pada API endpoints.',
-      ]
+      version: `v${CURRENT_APP_VERSION.version}`,
+      date: CURRENT_APP_VERSION.releaseDate,
+      type: CURRENT_APP_VERSION.codename,
+      notes: CURRENT_APP_VERSION.changes
     }
   ];
 
@@ -263,33 +90,9 @@ export const SettingsModule: React.FC = () => {
     return localStorage.getItem('cms_show_role_switcher') === 'true';
   });
 
-  // Cloud Firestore Diagnostics
-  const [firestoreStatus, setFirestoreStatus] = useState<FirestoreConnectionResult | null>(null);
-  const [isTestingFirestore, setIsTestingFirestore] = useState(false);
-
-  const handleTestFirestore = async () => {
-    setIsTestingFirestore(true);
-    try {
-      const res = await testFirestoreConnection();
-      setFirestoreStatus(res);
-    } catch (err: any) {
-      setFirestoreStatus({
-        connected: false,
-        status: 'error',
-        message: err?.message || 'Gagal menguji koneksi',
-        projectId: 'fajmuls-learning',
-        databaseId: '(default)',
-        timestamp: new Date().toISOString(),
-      });
-    } finally {
-      setIsTestingFirestore(false);
-    }
-  };
-
   useEffect(() => {
     loadWebhookSettings();
     loadSemesters();
-    handleTestFirestore();
   }, []);
 
   useEffect(() => {
@@ -528,8 +331,8 @@ export const SettingsModule: React.FC = () => {
               Lihat Patch Notes
             </button>
             <span className="text-xs text-slate-400">({BUILD_DATE})</span>
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
-              Firebase: fajmuls-learning
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+              Database: Supabase
             </span>
           </div>
           <h3 className="text-base font-bold text-white">Class Management System (CMS Pro 01SAKP014)</h3>
@@ -545,152 +348,6 @@ export const SettingsModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Cloud Firestore Connectivity & Diagnostics Guide Card */}
-      <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900">
-                  Status Koneksi Cloud Firestore & Panduan Firebase Web
-                </h3>
-                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono font-semibold">
-                  fajmuls-learning
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Pemantauan status konektivitas database Cloud Firestore dan petunjuk konfigurasi di Firebase Console.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {isTestingFirestore ? (
-              <span className="inline-flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 font-semibold">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Menguji Koneksi...
-              </span>
-            ) : firestoreStatus?.status === 'connected' ? (
-              <span className="inline-flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 font-semibold">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Terhubung Langsung
-              </span>
-            ) : firestoreStatus?.status === 'permission_denied' ? (
-              <span className="inline-flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200 font-semibold">
-                <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" /> Database Aktif (Rules Berjalan)
-              </span>
-            ) : firestoreStatus?.status === 'not_found' ? (
-              <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 font-semibold">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-600" /> Database Belum Dibuat
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 text-xs text-slate-700 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 font-semibold">
-                <AlertCircle className="w-3.5 h-3.5 text-slate-500" /> Mode Standby
-              </span>
-            )}
-
-            <button
-              type="button"
-              onClick={handleTestFirestore}
-              disabled={isTestingFirestore}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isTestingFirestore ? 'animate-spin' : ''}`} />
-              <span>Uji Ulang</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Live Diagnostics Message */}
-        {firestoreStatus && (
-          <div
-            className={`p-4 rounded-xl text-xs flex items-start gap-3 border ${
-              firestoreStatus.status === 'connected' || firestoreStatus.status === 'permission_denied'
-                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
-                : firestoreStatus.status === 'not_found'
-                ? 'bg-amber-50/70 border-amber-200 text-amber-900'
-                : 'bg-slate-50 border-slate-200 text-slate-800'
-            }`}
-          >
-            <Info className="w-4 h-4 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold">{firestoreStatus.message}</p>
-              {firestoreStatus.details && (
-                <p className="text-[11px] font-mono opacity-80 break-all">{firestoreStatus.details}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Step-by-Step Instructions for Firebase Web Console */}
-        <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-200/80 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-              <span>Langkah yang Harus Dilakukan di Firebase Web Console:</span>
-            </h4>
-            <a
-              href="https://console.firebase.google.com/project/fajmuls-learning/firestore"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 underline underline-offset-2"
-            >
-              <span>Buka Firebase Console</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px]">
-                  1
-                </span>
-                <span className="font-bold text-slate-800">Buat Database Cloud Firestore</span>
-              </div>
-              <p className="text-slate-600 text-[11px] leading-relaxed">
-                Di menu <strong>Build &gt; Firestore Database</strong>, klik tombol <strong>"Create Database"</strong> jika database belum ada. Pilih Database ID: <code>(default)</code> dan Region yang terdekat (contoh: <code>asia-southeast2</code> Jakarta atau <code>asia-southeast1</code> Singapura).
-              </p>
-            </div>
-
-            <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px]">
-                  2
-                </span>
-                <span className="font-bold text-slate-800">Publish Security Rules</span>
-              </div>
-              <p className="text-slate-600 text-[11px] leading-relaxed">
-                Buka tab <strong>Rules</strong> di Firestore Database. Pastikan aturan keamanan mengizinkan user terautentikasi (aturan lengkap telah kami buatkan di file <code>firestore.rules</code> pada proyek ini).
-              </p>
-            </div>
-
-            <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px]">
-                  3
-                </span>
-                <span className="font-bold text-slate-800">Otorisasi Domain Web (Auth)</span>
-              </div>
-              <p className="text-slate-600 text-[11px] leading-relaxed">
-                Di menu <strong>Authentication &gt; Settings &gt; Authorized Domains</strong>, pastikan domain host Cloud Run (<code>ais-dev-t6ocsfpygutqt3ojgdzst4-10827594519.asia-southeast1.run.app</code>) telah ditambahkan ke daftar izin.
-              </p>
-            </div>
-
-            <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px]">
-                  4
-                </span>
-                <span className="font-bold text-slate-800">Uji Ulang Koneksi</span>
-              </div>
-              <p className="text-slate-600 text-[11px] leading-relaxed">
-                Setelah database Firestore dibuat dan Rules di-publish, klik tombol <strong>"Uji Ulang"</strong> di atas. Status akan berubah menjadi hijau menandakan koneksi realtime siap digunakan.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Webhook WhatsApp / Telegram Integration Panel */}
       <form
@@ -1136,44 +793,6 @@ export const SettingsModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Backup & Cadangan Data Offline (User Request) */}
-      <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-              <FileJson className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Cadangan Data Kelas Offline (JSON Backup)
-              </h3>
-              <p className="text-xs text-slate-500">
-                Ekspor seluruh data kelas, anggota, transaksi kas, agenda, dan tugas ke dalam 1 file cadangan offline.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            disabled={isExportingBackup}
-            onClick={async () => {
-              try {
-                setIsExportingBackup(true);
-                await exportClassBackupJSON(classInfo, allUsers);
-              } catch (err) {
-                console.error('Backup error:', err);
-                alert('Gagal mengunduh cadangan data.');
-              } finally {
-                setIsExportingBackup(false);
-              }
-            }}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            {isExportingBackup ? 'Menyiapkan Cadangan...' : 'Download Cadangan Data Kelas'}
-          </button>
-        </div>
-      </div>
 
       {/* Saran Update & Pembaruan Sistem (User Instruction) */}
       <div className="p-6 bg-white rounded-2xl border border-blue-200 shadow-2xs space-y-4">
