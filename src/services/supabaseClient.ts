@@ -26,14 +26,14 @@ export const INITIAL_TRANSACTIONS: KasTransaction[] = [];
 let supabaseInstance: SupabaseClient | null = null;
 
 export const getSupabaseConfig = (): { url: string; anonKey: string } => {
-  const localUrl = localStorage.getItem('kelasgue_supabase_url');
-  const localKey = localStorage.getItem('kelasgue_supabase_key');
   const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
   const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+  const localUrl = localStorage.getItem('kelasgue_supabase_url');
+  const localKey = localStorage.getItem('kelasgue_supabase_key');
 
   return {
-    url: localUrl || envUrl || DEFAULT_SETTINGS.supabaseUrl || '',
-    anonKey: localKey || envKey || DEFAULT_SETTINGS.supabaseAnonKey || ''
+    url: envUrl || localUrl || DEFAULT_SETTINGS.supabaseUrl || '',
+    anonKey: envKey || localKey || DEFAULT_SETTINGS.supabaseAnonKey || ''
   };
 };
 
