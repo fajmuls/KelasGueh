@@ -660,8 +660,44 @@ export class LocalKasRepository {
   public static async getWhitelist(): Promise<any[]> {
     const client = getSupabaseClient();
     if (!client) return [];
-    const { data } = await client.from('authorized_whitelist').select('*');
-    return data || [];
+
+    try {
+      const { data: whitelistData } = await client.from('authorized_whitelist').select('*');
+      const { data: profilesData } = await client.from('user_profiles').select('*');
+
+      const map = new Map<string, any>();
+
+      // Add profiles first (all Google login users)
+      (profilesData || []).forEach(p => {
+        map.set(p.email.toLowerCase(), {
+          id: p.id,
+          email: p.email,
+          name: p.full_name || p.email.split('@')[0],
+          role: p.role || 'anggota',
+          avatar: p.avatar_url
+        });
+      });
+
+      // Override / add with whitelist roles
+      (whitelistData || []).forEach(w => {
+        const existing = map.get(w.email.toLowerCase());
+        if (existing) {
+          existing.role = w.role;
+        } else {
+          map.set(w.email.toLowerCase(), {
+            id: `wl_${w.email}`,
+            email: w.email,
+            name: w.email.split('@')[0],
+            role: w.role,
+          });
+        }
+      });
+
+      return Array.from(map.values());
+    } catch (err) {
+      console.error('Error fetching whitelist & profiles:', err);
+      return [];
+    }
   }
 
   public static async updateWhitelist(email: string, role: 'bendahara' | 'anggota'): Promise<void> {

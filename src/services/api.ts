@@ -26,6 +26,7 @@ import {
   KasChecklistEntry,
 } from '../types/index.ts';
 import { handleClientFallback } from './clientFallback.ts';
+import { getSupabaseClient, LocalKasRepository } from './supabaseClient.ts';
 
 class ApiService {
   private currentUserId: string = 'usr_member_01';
@@ -246,10 +247,60 @@ class ApiService {
 
   // Finance
   async getFinanceSummary(): Promise<FinanceSummary> {
+    const client = getSupabaseClient();
+    if (client) {
+      const txs = await LocalKasRepository.fetchTransactionsFromSupabase();
+      const totalIncome = txs.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const totalExpense = txs.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const balance = totalIncome - totalExpense;
+      return {
+        balance,
+        totalIncome,
+        totalExpense,
+        monthlyIncome: totalIncome,
+        paidMembersCount: 0,
+        unpaidMembersCount: 0,
+        recentTransactions: txs.slice(0, 5).map(t => ({
+          id: t.id,
+          class_id: 'cls_01sakp014',
+          code: `TRX-${t.id.slice(0, 5)}`,
+          type: t.type,
+          amount: t.amount,
+          category_id: t.category || 'cat_kas_rutin',
+          category_name: t.category || 'Kas Rutin',
+          description: t.title || t.notes || 'Transaksi Kas',
+          receipt_url: t.receiptUrl || '',
+          created_by: t.recordedBy || 'usr_super_01',
+          created_at: t.createdAt || new Date().toISOString(),
+          updated_at: t.createdAt || new Date().toISOString(),
+          deleted_at: null,
+        })),
+        monthlyChart: [],
+      };
+    }
     return this.request('/finance/summary');
   }
 
   async getTransactions(params?: { type?: string; category?: string; date_from?: string; date_to?: string }): Promise<Transaction[]> {
+    const client = getSupabaseClient();
+    if (client) {
+      const txs = await LocalKasRepository.fetchTransactionsFromSupabase();
+      return txs.map(t => ({
+        id: t.id,
+        class_id: 'cls_01sakp014',
+        code: `TRX-${t.id.slice(0, 5)}`,
+        type: t.type,
+        amount: t.amount,
+        category_id: t.category || 'cat_kas_rutin',
+        category_name: t.category || 'Kas Rutin',
+        description: t.title || t.notes || 'Transaksi Kas',
+        receipt_url: t.receiptUrl || '',
+        created_by: t.recordedBy || 'usr_super_01',
+        created_at: t.createdAt || new Date().toISOString(),
+        updated_at: t.createdAt || new Date().toISOString(),
+        deleted_at: null,
+      }));
+    }
     const query = new URLSearchParams(params as any).toString();
     return this.request(`/finance/transactions${query ? `?${query}` : ''}`);
   }
@@ -259,6 +310,34 @@ class ApiService {
   }
 
   async createTransaction(data: any): Promise<Transaction> {
+    const client = getSupabaseClient();
+    if (client) {
+      const added = await LocalKasRepository.addTransaction({
+        type: data.type,
+        title: data.description,
+        amount: Number(data.amount),
+        category: data.category_id,
+        date: new Date().toISOString().split('T')[0],
+        recordedBy: this.getUserId(),
+        receiptUrl: data.receipt_url,
+        notes: data.description,
+      });
+      return {
+        id: added.id,
+        class_id: 'cls_01sakp014',
+        code: `TRX-${added.id.slice(0, 5)}`,
+        type: added.type,
+        amount: added.amount,
+        category_id: added.category || 'cat_kas_rutin',
+        category_name: added.category || 'Kas Rutin',
+        description: added.title || added.notes || 'Transaksi Kas',
+        receipt_url: added.receiptUrl || '',
+        created_by: added.recordedBy || 'usr_super_01',
+        created_at: added.createdAt || new Date().toISOString(),
+        updated_at: added.createdAt || new Date().toISOString(),
+        deleted_at: null,
+      };
+    }
     return this.request('/finance/transactions', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -273,6 +352,11 @@ class ApiService {
   }
 
   async deleteTransaction(id: string): Promise<{ success: boolean }> {
+    const client = getSupabaseClient();
+    if (client) {
+      await LocalKasRepository.deleteTransaction(id);
+      return { success: true };
+    }
     return this.request(`/finance/transactions/${id}`, { method: 'DELETE' });
   }
 

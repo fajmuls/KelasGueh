@@ -11,26 +11,25 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.13.1',
-  codename: 'Secure Cloud Migration',
+  version: '3.13.2',
+  codename: 'Cloud Finance & Whitelist Fix',
   releaseDate: '2026-10-24',
   changes: [
-    'Security Hardening: Seluruh pintu belakang (PIN bypass, Admin login shortcut) telah dihapus secara permanen untuk menjamin keamanan whitelist.',
-    'Pembersihan Legacy: Menghapus modul diagnostik Firebase/Firestore lama yang sudah tidak relevan dengan infrastruktur Supabase.',
-    'Version Sync: Memastikan tampilan versi aplikasi di seluruh layar (Welcome, Splash, Settings) tersinkronisasi secara otomatis.',
-    'Auth Resilience: Optimalisasi alur login Google untuk mencegah error "deleted_client" pada project baru.',
-    'Cloud-First Config: Konfigurasi API sekarang sepenuhnya dikelola oleh environment variables di Vercel.'
+    'Supabase Transaction Persistence: Transaksi non-iuran (pemasukan/pengeluaran manual) kini terhubung langsung ke tabel Supabase dan otomatis memperbarui ringkasan kas.',
+    'Google User Detection in Super Admin: Panel Whitelist & Pengaturan Super Admin sekarang menggabungkan user_profiles dan authorized_whitelist sehingga seluruh pengguna yang login dengan Google terdeteksi.',
+    'Unified Database Sync: Penyelarasan penuh antara ApiService dan LocalKasRepository untuk memastikan tidak ada data transaksi yang tersimpan secara lokal semata.',
+    'Auth Resilience & Stale Session Cleared: Peningkatan stabilitas sesi login dan pembersihan otomatis cache lama.'
   ],
   suggestedUpdates: [
     {
-      category: 'keamanan',
-      title: 'Session Timeout',
-      description: 'Menambahkan fitur auto-logout jika aplikasi tidak digunakan dalam waktu tertentu.'
+      category: 'fitur',
+      title: 'Monthly PDF Export',
+      description: 'Ekspor laporan keuangan bulanan lengkap dengan grafik kas masuk dan keluar.'
     },
     {
-      category: 'fitur',
-      title: 'Excel Export Update',
-      description: 'Peningkatan format laporan Excel untuk mendukung rincian iuran mingguan lebih detail.'
+      category: 'optimasi',
+      title: 'Realtime Badge Counter',
+      description: 'Indikator jumlah permohonan role baru yang belum disetujui di header Super Admin.'
     }
   ]
 };
