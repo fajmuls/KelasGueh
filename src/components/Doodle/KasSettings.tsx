@@ -621,33 +621,7 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
         </div>
       )}
 
-      {/* 3. Audio Preferences */}
-      <div className="card-doodle p-4 sm:p-5 rounded-lg bg-white relative border-2 border-slate-900">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-900 pb-3 mb-3">
-          <div className="flex items-center gap-2">
-            {soundEnabled ? (
-              <Volume2 className="w-5 h-5 text-emerald-600" />
-            ) : (
-              <VolumeX className="w-5 h-5 text-slate-400" />
-            )}
-            <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-900">
-                Preferensi Efek Suara (SFX)
-              </h3>
-            </div>
-          </div>
 
-          <button
-            type="button"
-            onClick={handleToggleSound}
-            className={`btn-doodle px-3.5 py-2 min-h-[44px] rounded-md text-xs font-black flex items-center justify-center gap-2 ${
-              soundEnabled ? 'bg-emerald-300 text-slate-900' : 'bg-slate-200 text-slate-600'
-            }`}
-          >
-            {soundEnabled ? 'Efek Suara: AKTIF' : 'Efek Suara: SENYAP'}
-          </button>
-        </div>
-      </div>
 
       {/* 4. Role & PIN Management (Only Super Admin) */}
       {isSuperAdmin && (

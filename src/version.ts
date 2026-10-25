@@ -11,15 +11,14 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.19.0',
-  codename: 'Guided Experience & Dark Theme Polish',
+  version: '3.19.1',
+  codename: 'Audio Controls Consolidation',
   releaseDate: '2026-10-25',
   changes: [
-    'Tur Panduan Interaktif (Walkthrough): Menambahkan tur panduan cerita berbasis ilustrasi doodle untuk membantu pengguna baru memahami fungsi menu utama.',
-    'Opsi Ulangi Panduan: Tersedia tombol "Ulangi Tur Panduan App" di Menu Lainnya (Hamburger) agar dapat dibuka kembali sewaktu-waktu.',
-    'Perbaikan Kontras Dark Mode: Mengoptimalkan kontras warna font dan kartu di mode Dark Jurnal Antik agar teks sangat legibel dan tidak tertumpuk.',
-    'Penanganan Cloud Halus: Menyembunyikan pesan error fetch berlebih dan beralih ke Mode Lokal secara transparan tanpa mengganggu pengalaman pengguna.',
-    'Pembersihan Akses Menu Anggota: Menyembunyikan tombol Pengaturan Kelas di menu burger untuk akun Anggota biasa agar lebih rapi.'
+    'Konsolidasi Kontrol Suara (SFX & BGM): Tombol sakelar Efek Suara (SFX) dipindahkan ke Menu Lainnya (Hamburger) berdampingan dalam tampilan 2-kolom bersama Musik Latar (BGM).',
+    'Tur Panduan Interaktif (Walkthrough): Panduan interaktif berbasis cerita doodle untuk membantu pengguna baru memahami seluruh fitur aplikasi.',
+    'Perbaikan Kontras Dark Mode: Pengoptimalan legibilitas teks dan kartu di mode Dark Jurnal Antik agar tidak tertumpuk.',
+    'Pembersihan Akses Menu Anggota: Tombol Pengaturan Kelas disembunyikan khusus untuk akun Anggota biasa agar lebih rapi.'
   ],
   suggestedUpdates: [
     {

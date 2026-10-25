@@ -44,6 +44,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   const { user, role, isSuperAdmin, isRealSuperAdmin, isBendahara, canEditKas, logout, switchRole, loginWithGooglePrompt } = useAuth();
   const { theme, setTheme } = useTheme();
   const [bgmPlaying, setBgmPlaying] = useState(() => sfx.getIsBgmPlaying());
+  const [sfxEnabled, setSfxEnabled] = useState(() => sfx.isEnabled());
   const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>(() => getCloudSyncStatus());
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -114,6 +115,12 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
     const nextState = sfx.toggleBgm();
     setBgmPlaying(nextState);
     showToast(nextState ? 'Musik latar (BGM) diputar 🎵' : 'Musik latar (BGM) dijeda 🔇', 'info');
+  };
+
+  const handleToggleSfx = () => {
+    const nextState = sfx.toggle();
+    setSfxEnabled(nextState);
+    showToast(nextState ? 'Efek suara (SFX) AKTIF 🔔' : 'Efek suara (SFX) SENYAP 🔇', 'info');
   };
 
   const handleLogoutConfirm = async () => {
@@ -509,24 +516,48 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                 </button>
               )}
 
-              {/* BGM Toggle in Hamburger */}
-              <button
-                onClick={handleToggleBgm}
-                aria-pressed={bgmPlaying}
-                className={`w-full min-h-[48px] px-4 py-2.5 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
-                  bgmPlaying
-                    ? 'bg-amber-300 text-slate-950 shadow-[2px_2px_0px_#1E293B]'
-                    : 'bg-white text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  {bgmPlaying ? <Volume2 className="w-4 h-4 text-slate-900 animate-pulse" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
-                  <span>Musik Latar Santai (BGM)</span>
-                </span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded border border-slate-900 ${bgmPlaying ? 'bg-emerald-300 text-slate-900' : 'bg-slate-200 text-slate-600'}`}>
-                  {bgmPlaying ? 'AKTIF' : 'SENYAP'}
-                </span>
-              </button>
+              {/* Audio Controls Grid: BGM (Left) & SFX (Right) */}
+              <div className="grid grid-cols-2 gap-2">
+                {/* BGM Toggle */}
+                <button
+                  onClick={handleToggleBgm}
+                  aria-pressed={bgmPlaying}
+                  className={`min-h-[48px] px-3 py-2 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
+                    bgmPlaying
+                      ? 'bg-amber-300 text-slate-950 shadow-[2px_2px_0px_#1E293B]'
+                      : 'bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                  title={bgmPlaying ? 'Jeda Musik Latar (BGM)' : 'Putar Musik Latar (BGM)'}
+                >
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    {bgmPlaying ? <Volume2 className="w-4 h-4 text-slate-900 animate-pulse shrink-0" /> : <VolumeX className="w-4 h-4 text-slate-400 shrink-0" />}
+                    <span className="truncate">Musik Latar</span>
+                  </span>
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border border-slate-900 shrink-0 ${bgmPlaying ? 'bg-emerald-300 text-slate-900' : 'bg-slate-200 text-slate-600'}`}>
+                    {bgmPlaying ? 'AKTIF' : 'MUTE'}
+                  </span>
+                </button>
+
+                {/* SFX Toggle */}
+                <button
+                  onClick={handleToggleSfx}
+                  aria-pressed={sfxEnabled}
+                  className={`min-h-[48px] px-3 py-2 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
+                    sfxEnabled
+                      ? 'bg-emerald-300 text-slate-950 shadow-[2px_2px_0px_#1E293B]'
+                      : 'bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                  title={sfxEnabled ? 'Matikan Efek Suara (SFX)' : 'Aktifkan Efek Suara (SFX)'}
+                >
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    {sfxEnabled ? <Volume2 className="w-4 h-4 text-slate-900 shrink-0" /> : <VolumeX className="w-4 h-4 text-slate-400 shrink-0" />}
+                    <span className="truncate">Efek Suara</span>
+                  </span>
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border border-slate-900 shrink-0 ${sfxEnabled ? 'bg-amber-300 text-slate-900' : 'bg-slate-200 text-slate-600'}`}>
+                    {sfxEnabled ? 'AKTIF' : 'MUTE'}
+                  </span>
+                </button>
+              </div>
 
               {/* Share Portal Button */}
               {onOpenShareModal && (
