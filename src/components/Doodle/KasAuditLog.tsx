@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { AuditLogEntry } from '../../services/supabaseClient.ts';
+import { AuditLogEntry, LocalKasRepository } from '../../services/supabaseClient.ts';
 import { sfx } from '../../utils/soundEffects.ts';
 import { ScotchTape, DoodleCrown, DoodleReceipt } from './DoodleDecorations.tsx';
-import { Shield, Search, FileSpreadsheet, RefreshCw, Filter, CheckCircle2, User, Clock } from 'lucide-react';
+import { Shield, Search, FileSpreadsheet, RefreshCw, Filter, CheckCircle2, User, Clock, Trash2 } from 'lucide-react';
 import { downloadCsvFile } from '../../utils/exportToGoogleSheets.ts';
 
 interface KasAuditLogProps {
@@ -71,6 +71,21 @@ export const KasAuditLog: React.FC<KasAuditLogProps> = ({ auditLogs, onRefreshLo
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={async () => {
+                if (window.confirm('Apakah Anda yakin ingin menghapus semua catatan audit log? Tindakan ini tidak dapat dibatalkan.')) {
+                  sfx.playWarning();
+                  await LocalKasRepository.clearAuditLogs();
+                  if (onRefreshLogs) onRefreshLogs();
+                }
+              }}
+              className="btn-doodle px-3.5 py-2 bg-rose-200 hover:bg-rose-300 text-rose-950 text-xs sm:text-sm font-bold rounded-md flex items-center gap-1.5"
+              title="Hapus Semua Log Audit"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Clear Log</span>
+            </button>
             {onRefreshLogs && (
               <button
                 type="button"

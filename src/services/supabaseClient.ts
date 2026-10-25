@@ -488,6 +488,14 @@ export class LocalKasRepository {
     return data ? JSON.parse(data) : [];
   }
 
+  public static async clearAuditLogs(): Promise<void> {
+    localStorage.removeItem(this.KEY_AUDIT);
+    const client = getSupabaseClient();
+    if (client) {
+      await client.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+  }
+  
   public static async addAuditLog(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): Promise<AuditLogEntry> {
     const newLog: AuditLogEntry = {
       ...entry,
