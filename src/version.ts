@@ -11,25 +11,25 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.13.4',
-  codename: 'Kas Book Transaction Persistence Fix',
+  version: '3.13.5',
+  codename: 'Supabase User Sync & SQL Schema Integration',
   releaseDate: '2026-10-24',
   changes: [
-    'Kas Book Transaction Saving Fix: Memperbaiki fungsi penyimpanan transaksi kas (debit/kredit) agar langsung masuk ke tabel kas_transactions database Supabase dan Buku Kas.',
+    'Supabase User Profile Sync: Integrasi otomatis user login Google ke tabel user_profiles dan authorized_whitelist agar terdeteksi di panel Super Admin.',
+    'Kas Book Transaction Persistence Fix: Memperbaiki fungsi penyimpanan transaksi kas ke database Supabase.',
     'Zero Double-Counting Fix: Ringkasan kas dan total saldo dihitung murni dari Buku Kas tanpa duplikasi.',
-    'Auto-Clear Cache on Version Update: Sistem otomatis membersihkan cache lokal lama saat pembaruan versi agar data tidak nyangkut.',
-    'Google User Detection in Super Admin: Whitelist & pengaturan Super Admin menggabungkan user_profiles dan authorized_whitelist.'
+    'Auto-Clear Cache on Version Update: Sistem otomatis membersihkan cache lokal lama saat pembaruan versi agar data tidak nyangkut.'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
-      title: 'Monthly PDF Export & Receipt Printing',
-      description: 'Ekspor laporan keuangan bulanan lengkap dengan cetak kuitansi otomatis.'
+      title: 'Automatic Role Request Notification',
+      description: 'Notifikasi email otomatis saat ada user baru yang login dan meminta akses bendahara.'
     },
     {
-      category: 'optimasi',
-      title: 'Transaction Audit Trail Badge',
-      description: 'Indikator aktivitas pencatatan transaksi kas secara real-time di dashboard Super Admin.'
+      category: 'keamanan',
+      title: 'Row Level Security (RLS) Policy Audit',
+      description: 'Pemeriksaan berkala kebijakan akses database Supabase untuk keamanan data kas kelas.'
     }
   ]
 };
