@@ -11,26 +11,21 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.18.0',
-  codename: 'Sepia Paper & Antique Dark Mode',
+  version: '3.19.0',
+  codename: 'Guided Experience & Dark Theme Polish',
   releaseDate: '2026-10-25',
   changes: [
-    'Dukungan Multi-Tema Visual: Kini tersedia 3 pilihan tema untuk kenyamanan mata (Kertas Terang, Kertas Sepia, dan Dark Jurnal Antik).',
-    'Theme Switcher Quick Access: Pengubah tema dapat diakses dengan cepat melalui "Menu Lainnya" (Hamburger) untuk semua pengguna.',
-    'Peningkatan Kontras Malam Hari: Mode Dark Jurnal Antik dirancang khusus untuk mengurangi kelelahan mata bendahara saat mencatat kas di malam hari.',
-    'Konsistensi Cetak PDF: Dokumen PDF laporan kas tetap dipertahankan putih bersih (High Contrast) agar rapi dan hemat tinta saat dicetak fisik.',
-    'Sistem Transisi Halus: Perpindahan antar tema kini memiliki animasi transisi warna yang lembut dan nyaman.'
+    'Tur Panduan Interaktif (Walkthrough): Menambahkan tur panduan cerita berbasis ilustrasi doodle untuk membantu pengguna baru memahami fungsi menu utama.',
+    'Opsi Ulangi Panduan: Tersedia tombol "Ulangi Tur Panduan App" di Menu Lainnya (Hamburger) agar dapat dibuka kembali sewaktu-waktu.',
+    'Perbaikan Kontras Dark Mode: Mengoptimalkan kontras warna font dan kartu di mode Dark Jurnal Antik agar teks sangat legibel dan tidak tertumpuk.',
+    'Penanganan Cloud Halus: Menyembunyikan pesan error fetch berlebih dan beralih ke Mode Lokal secara transparan tanpa mengganggu pengalaman pengguna.',
+    'Pembersihan Akses Menu Anggota: Menyembunyikan tombol Pengaturan Kelas di menu burger untuk akun Anggota biasa agar lebih rapi.'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
       title: 'Auto Reminder WhatsApp H-1 Tenggat Iuran via Scheduled Push',
       description: 'Pengiriman notifikasi otomatis H-1 tenggat iuran kas mingguan untuk siswa yang belum melunasi iuran.'
-    },
-    {
-      category: 'fitur',
-      title: 'Export PDF Laporan Bertanda Tangan & Doodle Stamp',
-      description: 'Stempel digital doodle kelas & kode QR verifikasi keabsahan dokumen PDF kas kelas.'
     },
     {
       category: 'optimasi',

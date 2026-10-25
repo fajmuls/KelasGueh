@@ -218,7 +218,6 @@ export class LocalKasRepository {
       const { data, error } = await client.from('class_settings').select('*').eq('id', 1).maybeSingle();
       
       if (error) {
-        console.warn('⚠️ Gagal fetch settings cloud:', error.message);
         setCloudSyncStatus('offline');
         return local;
       }

@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for Checklist Clean Look, Settings Member Management, Google Auth Profile Dropdown, Title Case names, and Full PDF Stempel & QR Verification.",
-  "updatedAt":  "2026-10-25T07:37:34.960908077Z",
+  "summary":  "Guided Experience & Dark Theme Polish update. Adds an interactive story-based walkthrough for new users, improves dark mode readability with better contrast, handles cloud fetch errors gracefully with offline indicators, and removes irrelevant menu items for members. Bumps version to v3.19.0.",
+  "updatedAt":  "2026-10-25T08:25:18.829542507Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

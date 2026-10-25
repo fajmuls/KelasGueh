@@ -31,13 +31,15 @@ interface DoodleNavbarProps {
   onSelectTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog') => void;
   classNameTitle: string;
   onOpenShareModal?: () => void;
+  onOpenWalkthrough?: () => void;
 }
 
 export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   currentTab,
   onSelectTab,
   classNameTitle,
-  onOpenShareModal
+  onOpenShareModal,
+  onOpenWalkthrough
 }) => {
   const { user, role, isSuperAdmin, isRealSuperAdmin, isBendahara, canEditKas, logout, switchRole, loginWithGooglePrompt } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -463,27 +465,49 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                 </div>
               </div>
 
-              {/* Single location for Pengaturan (All roles: Anggota, Bendahara, Super Admin) */}
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  sfx.playToggle();
-                  onSelectTab('pengaturan');
-                }}
-                className={`w-full min-h-[48px] px-4 py-2.5 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
-                  currentTab === 'pengaturan'
-                    ? 'bg-amber-300 text-slate-900 shadow-[2px_2px_0px_#1E293B]'
-                    : 'bg-white text-slate-800 hover:bg-amber-50'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Settings className="w-4 h-4 text-indigo-600" />
-                  <span>Pengaturan Kelas & Preferensi</span>
-                </span>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded border border-slate-900 bg-indigo-100 text-indigo-900">
-                  AKSES
-                </span>
-              </button>
+              {/* Ulangi Tur Panduan Button */}
+              {onOpenWalkthrough && (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    sfx.playClick();
+                    onOpenWalkthrough();
+                  }}
+                  className="w-full min-h-[48px] px-4 py-2.5 rounded-lg border-2 border-slate-900 bg-sky-100 hover:bg-sky-200 font-bold text-xs text-slate-900 flex items-center justify-between transition-all"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-sky-700" />
+                    <span>Ulangi Tur Panduan App</span>
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded border border-slate-900 bg-sky-200 text-sky-900">
+                    PANDUAN
+                  </span>
+                </button>
+              )}
+
+              {/* Pengaturan Button ONLY for Bendahara & Super Admin (canEditKas) */}
+              {canEditKas && (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    sfx.playToggle();
+                    onSelectTab('pengaturan');
+                  }}
+                  className={`w-full min-h-[48px] px-4 py-2.5 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
+                    currentTab === 'pengaturan'
+                      ? 'bg-amber-300 text-slate-900 shadow-[2px_2px_0px_#1E293B]'
+                      : 'bg-white text-slate-800 hover:bg-amber-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Settings className="w-4 h-4 text-indigo-600" />
+                    <span>Pengaturan Kelas & Preferensi</span>
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded border border-slate-900 bg-indigo-100 text-indigo-900">
+                    AKSES
+                  </span>
+                </button>
+              )}
 
               {/* BGM Toggle in Hamburger */}
               <button

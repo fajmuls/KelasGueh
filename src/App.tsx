@@ -13,6 +13,7 @@ import { WhatsAppShareModal } from './components/Doodle/WhatsAppShareModal.tsx';
 import { ClassShareModal } from './components/Doodle/ClassShareModal.tsx';
 import { SplitBillModal } from './components/Doodle/SplitBillModal.tsx';
 import { AnimatedIntroScreen } from './components/Doodle/AnimatedIntroScreen.tsx';
+import { DoodleWalkthrough } from './components/Doodle/DoodleWalkthrough.tsx';
 import {
   LocalKasRepository,
   INITIAL_TRANSACTIONS,
@@ -34,6 +35,18 @@ const AppContent: React.FC = () => {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSplitBillModalOpen, setIsSplitBillModalOpen] = useState(false);
+  const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
+
+  // Auto trigger walkthrough on first visit after intro
+  useEffect(() => {
+    if (isLoggedIn && !showIntro) {
+      const completed = localStorage.getItem('kelasgue_walkthrough_completed_v1');
+      if (completed !== 'true') {
+        const timer = setTimeout(() => setIsWalkthroughOpen(true), 600);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isLoggedIn, showIntro]);
 
   // Auto redirect from settings tab if user is read-only Anggota
   useEffect(() => {
@@ -362,6 +375,7 @@ const AppContent: React.FC = () => {
           onSelectTab={setCurrentTab}
           classNameTitle={settings.className}
           onOpenShareModal={() => setIsShareModalOpen(true)}
+          onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
         />
       )}
 
@@ -429,6 +443,13 @@ const AppContent: React.FC = () => {
           />
         )}
       </main>
+
+      {/* Interactive Story Walkthrough Modal */}
+      <DoodleWalkthrough
+        isOpen={isWalkthroughOpen}
+        onClose={() => setIsWalkthroughOpen(false)}
+        onSelectTab={setCurrentTab}
+      />
 
       {/* Printable Binder Modal */}
       <PrintableBinderModal
