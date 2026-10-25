@@ -23,6 +23,8 @@ import {
   Hand
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { showToast, showConfirm } from '../UI/DoodleDialog.tsx';
+import { toTitleCase } from '../../utils/textFormatting.ts';
 
 interface KasChecklistProps {
   members: KasMember[];
@@ -350,8 +352,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
               Tarif Iuran: <strong className="text-slate-900">{formatRupiah(settings.weeklyDuesAmount)}/mgg</strong> · Saldo Kas: <strong className="text-emerald-700">{formatRupiah(currentBalance)}</strong>
             </p>
           </div>
-          {/* Action buttons: Uniform 2x2 grid on mobile, flex on desktop */}
-          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center sm:gap-1.5 mt-2 sm:mt-0">
+          {/* Action buttons: Compact Mode Kartu and Tagih WA */}
+          <div className="flex items-center gap-1.5 shrink-0 mt-2 sm:mt-0">
             {canEditKas && (
               <button
                 type="button"
@@ -359,14 +361,14 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                   sfx.playClick();
                   setIsFastTapMode(!isFastTapMode);
                 }}
-                className={`btn-doodle px-2.5 py-2 min-h-[44px] text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all ${
+                className={`btn-doodle px-2.5 py-1.5 min-h-[38px] text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all ${
                   isFastTapMode
                     ? 'bg-amber-300 text-slate-900 border-2 border-slate-900 shadow-[1px_1px_0px_#000]'
-                    : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-2 border-slate-900'
+                    : 'bg-white hover:bg-indigo-50 text-slate-800 border-2 border-slate-900'
                 }`}
-                title="Tampilan Mode Kartu Per-Siswa saat Menagih Iuran di Kelas"
+                title="Tampilan Mode Kartu Per-Siswa"
               >
-                <Hand className="w-4 h-4 text-amber-600 shrink-0" />
+                <Hand className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <span>{isFastTapMode ? 'Mode Kartu (Aktif)' : 'Mode Kartu'}</span>
               </button>
             )}
@@ -376,38 +378,15 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                 type="button"
                 disabled={membersWithArrears.length === 0}
                 onClick={() => setShowAllArrearsModal(true)}
-                className={`btn-doodle px-2.5 py-2 min-h-[44px] border-2 border-slate-900 font-bold rounded-md text-xs flex items-center justify-center gap-1.5 transition-all ${
+                className={`btn-doodle px-2.5 py-1.5 min-h-[38px] border-2 border-slate-900 font-bold rounded-md text-xs flex items-center justify-center gap-1.5 transition-all ${
                   membersWithArrears.length > 0
                     ? 'bg-emerald-300 hover:bg-emerald-400 text-slate-900'
                     : 'bg-slate-100 text-slate-400 opacity-60 cursor-not-allowed'
                 }`}
               >
-                <MessageCircle className="w-4 h-4 text-emerald-800 shrink-0" />
+                <MessageCircle className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
                 <span>Tagih WA ({membersWithArrears.length})</span>
               </button>
-            )}
-
-            {canEditKas && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowImportModal(true)}
-                  className="btn-doodle px-2.5 py-2 min-h-[44px] bg-sky-100 hover:bg-sky-200 text-slate-900 border-2 border-slate-900 font-bold rounded-md text-xs flex items-center justify-center gap-1.5"
-                >
-                  <FileSpreadsheet className="w-4 h-4 text-sky-800 shrink-0" />
-                  <span>Import Siswa</span>
-                </button>
-
-                {/* Primary Action Button: Tambah Siswa */}
-                <button
-                  type="button"
-                  onClick={() => setShowAddMember(true)}
-                  className="btn-doodle px-3 py-2 min-h-[44px] bg-amber-300 hover:bg-amber-400 text-slate-900 border-2 border-slate-900 font-black rounded-md text-xs flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
-                >
-                  <UserPlus className="w-4 h-4 text-slate-900 shrink-0" />
-                  <span>Tambah Siswa</span>
-                </button>
-              </>
             )}
           </div>
         </div>
@@ -554,7 +533,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                 >
                   <div className="flex items-start justify-between gap-1 mb-2">
                     <div className="min-w-0">
-                      <p className="text-xs font-black text-slate-900 truncate leading-tight">{member.name}</p>
+                      <p className="text-xs font-black text-slate-900 truncate leading-tight">{toTitleCase(member.name)}</p>
                       <p className="text-[9px] font-mono text-slate-600">{member.studentId}</p>
                     </div>
                     <div className={`w-6 h-6 rounded border-2 border-slate-900 flex items-center justify-center shrink-0 ${
@@ -650,8 +629,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                               onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                             />
                           ) : (
-                            <span className="block text-[10px] sm:text-xs leading-tight line-clamp-2 max-w-[130px] sm:max-w-none break-words" title={member.name}>
-                              {member.name}
+                            <span className="block text-[10px] sm:text-xs font-bold text-slate-900 leading-tight line-clamp-2 max-w-[130px] sm:max-w-none break-words" title={member.name}>
+                              {toTitleCase(member.name)}
                             </span>
                           )}
                         </td>

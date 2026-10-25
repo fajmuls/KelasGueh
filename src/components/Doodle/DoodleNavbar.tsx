@@ -14,7 +14,8 @@ import {
   Volume2,
   VolumeX,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Settings
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWA/PWAInstallButton.tsx';
 import { subscribeCloudSync, getCloudSyncStatus, CloudSyncStatus } from '../../services/supabaseClient.ts';
@@ -276,27 +277,27 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                 <div className="absolute right-0 top-full mt-2 w-64 card-doodle p-3.5 rounded-xl z-[100] bg-white shadow-2xl border-2 border-slate-900 animate-in fade-in zoom-in duration-150">
                   <div className="mb-2 border-b border-slate-200 pb-2">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Akun Aktif
+                      Akun Terhubung
                     </p>
                     <p className="text-xs font-black text-slate-900 truncate">
-                      {user?.name || 'Tamu Anggota'}
+                      {user?.name || 'M Rachman Fajri M'}
                     </p>
                     <p className="text-[10px] font-mono text-slate-600 truncate">
-                      {user?.email || 'Mode Read-Only'}
+                      {user?.email || 'mrachmanfm@gmail.com'}
                     </p>
                   </div>
 
-                  {isSuperAdmin ? (
-                    <div className="space-y-1">
+                  {isSuperAdmin && (
+                    <div className="space-y-1 mb-2.5">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 mb-1">
-                        Mode Simulasi Role:
+                        Mode Simulasi Akses:
                       </p>
                       <button
                         onClick={() => {
                           switchRole('superadmin');
                           setShowRoleMenu(false);
                         }}
-                        className={`w-full min-h-[44px] text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
+                        className={`w-full min-h-[36px] text-left px-2 py-1 text-xs font-bold rounded flex items-center justify-between ${
                           role === 'superadmin' ? 'bg-amber-100 text-amber-900 border border-slate-900 font-black' : 'hover:bg-slate-100'
                         }`}
                       >
@@ -308,7 +309,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                           switchRole('bendahara');
                           setShowRoleMenu(false);
                         }}
-                        className={`w-full min-h-[44px] text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
+                        className={`w-full min-h-[36px] text-left px-2 py-1 text-xs font-bold rounded flex items-center justify-between ${
                           role === 'bendahara' ? 'bg-emerald-100 text-emerald-900 border border-slate-900 font-black' : 'hover:bg-slate-100'
                         }`}
                       >
@@ -320,7 +321,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                           switchRole('anggota');
                           setShowRoleMenu(false);
                         }}
-                        className={`w-full min-h-[44px] text-left px-2.5 py-1.5 text-xs font-bold rounded flex items-center justify-between ${
+                        className={`w-full min-h-[36px] text-left px-2 py-1 text-xs font-bold rounded flex items-center justify-between ${
                           role === 'anggota' ? 'bg-sky-100 text-sky-900 border border-slate-900 font-black' : 'hover:bg-slate-100'
                         }`}
                       >
@@ -328,32 +329,31 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                         {role === 'anggota' && <span>✓</span>}
                       </button>
                     </div>
-                  ) : isBendahara ? (
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                        Hak Akses Aktif:
-                      </p>
-                      <div className="p-2 bg-emerald-50 border border-emerald-300 rounded text-xs font-bold text-emerald-900 flex items-center justify-between">
-                        <span>🛡️ Bendahara Kelas</span>
-                        <span className="text-[10px] bg-emerald-300 text-slate-900 px-1.5 py-0.5 rounded font-mono">Aktif</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 pt-1">
-                      <p className="text-[11px] text-slate-600 leading-snug">
-                        Anda dalam <strong>Mode Anggota (Hanya Lihat)</strong>.
-                      </p>
-                      <button
-                        onClick={() => {
-                          setShowRoleMenu(false);
-                          loginWithGooglePrompt();
-                        }}
-                        className="w-full btn-doodle px-3 py-2 min-h-[44px] bg-amber-300 hover:bg-amber-400 text-slate-900 font-black text-xs rounded-md text-center flex items-center justify-center gap-1.5"
-                      >
-                        <span>Masuk Akun Google ↗</span>
-                      </button>
-                    </div>
                   )}
+
+                  {canEditKas && (
+                    <button
+                      onClick={() => {
+                        onSelectTab('pengaturan');
+                        setShowRoleMenu(false);
+                      }}
+                      className="w-full btn-doodle px-3 py-2 min-h-[40px] bg-slate-100 hover:bg-amber-100 text-slate-900 font-bold text-xs rounded-md flex items-center justify-center gap-1.5 border border-slate-900 mb-2"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-slate-800" />
+                      <span>Pengaturan Kelas</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setShowRoleMenu(false);
+                      handleLogoutConfirm();
+                    }}
+                    className="w-full btn-doodle px-3 py-2 min-h-[40px] bg-rose-100 hover:bg-rose-200 text-rose-800 font-black text-xs rounded-md flex items-center justify-center gap-1.5 border border-slate-900"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Keluar dari Akun</span>
+                  </button>
                 </div>
               </>
             )}

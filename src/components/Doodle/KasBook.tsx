@@ -379,11 +379,7 @@ export const KasBook: React.FC<KasBookProps> = ({
                   <span>Catat Transaksi</span>
                 </button>
               </div>
-            ) : (
-              <div className="text-[10px] bg-amber-50 border-2 border-slate-900 px-2 py-0.5 rounded font-black text-amber-900">
-                🔒 Mode Lihat Saja
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
 

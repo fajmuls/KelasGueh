@@ -422,6 +422,9 @@ const AppContent: React.FC = () => {
             members={members}
             onSaveSettings={handleSaveSettings}
             onResetData={handleResetData}
+            onAddMember={handleAddMember}
+            onAddMembers={handleAddMembers}
+            onUpdateMember={handleUpdateMember}
           />
         )}
       </main>

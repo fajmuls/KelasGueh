@@ -316,7 +316,7 @@ export const PrintableBinderModal: React.FC<PrintableBinderModalProps> = ({
               <div className="h-20 flex items-end justify-center">
                 <span className="font-serif italic text-slate-400 text-sm">( Tanda Tangan Basah )</span>
               </div>
-              <p className="font-bold underline text-slate-900">M. Rahman FM</p>
+              <p className="font-bold underline text-slate-900">M Rachman Fajri M</p>
               <p className="text-[10px] text-slate-500">mrachmanfm@gmail.com</p>
             </div>
 
@@ -327,13 +327,47 @@ export const PrintableBinderModal: React.FC<PrintableBinderModalProps> = ({
                 <span className="font-serif italic text-slate-400 text-sm">( Tanda Tangan Basah )</span>
               </div>
               <p className="font-bold underline text-slate-900">Bendahara {settings.className}</p>
-              <p className="text-[10px] text-slate-500">Divisi Keuangan & Administrasi</p>
+              <p className="text-[10px] text-slate-500">Divisi Keuangan &amp; Administrasi</p>
+            </div>
+          </div>
+
+          {/* Stempel Doodle Digital & QR Code Verification */}
+          <div className="mt-8 pt-4 border-t-2 border-slate-900 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {/* QR Code Graphic Container */}
+              <div className="w-14 h-14 bg-white border-2 border-slate-900 p-1 rounded flex flex-col items-center justify-center shrink-0 shadow-[2px_2px_0px_#000]">
+                <div className="w-full h-full border border-slate-800 p-0.5 grid grid-cols-3 gap-0.5 bg-slate-900">
+                  <div className="bg-white" />
+                  <div className="bg-emerald-400" />
+                  <div className="bg-white" />
+                  <div className="bg-emerald-400" />
+                  <div className="bg-white" />
+                  <div className="bg-emerald-400" />
+                  <div className="bg-white" />
+                  <div className="bg-emerald-400" />
+                  <div className="bg-white" />
+                </div>
+              </div>
+              <div className="text-[10px] text-slate-600 font-mono">
+                <p className="font-bold text-slate-900 uppercase">KODE VERIFIKASI DOKUMEN</p>
+                <p className="text-emerald-800 font-black">KG-AUDIT-VERIFIED-CLOUDSYNC</p>
+                <p className="text-[9px] text-slate-500">Scan untuk cek integritas ledger cloud Supabase</p>
+              </div>
+            </div>
+
+            {/* Stempel Doodle Circle Badge */}
+            <div className="w-24 h-24 rounded-full border-4 border-dashed border-indigo-700 p-1 flex items-center justify-center rotate-[-8deg] opacity-90 pointer-events-none select-none shrink-0">
+              <div className="w-full h-full rounded-full border-2 border-indigo-800 flex flex-col items-center justify-center text-center p-1 bg-indigo-50/40">
+                <span className="text-[7px] font-black uppercase tracking-widest text-indigo-900">VERIFIKASI CLOUD</span>
+                <span className="text-[10px] font-black text-indigo-950 uppercase border-y border-indigo-800 my-0.5 px-1">SAH &amp; AUDIT</span>
+                <span className="text-[7px] font-bold text-indigo-800">KELAS GUE</span>
+              </div>
             </div>
           </div>
 
           {/* Footer stempel */}
-          <div className="mt-8 pt-3 border-t border-slate-300 text-center text-[10px] text-slate-400 font-mono">
-            Dokumen ini dicetak secara otomatis dari sistem informasi Kelas Gue · Terverifikasi Cloud Supabase
+          <div className="mt-4 pt-2 border-t border-slate-300 text-center text-[10px] text-slate-400 font-mono">
+            Dokumen resmi ini dicetak secara otomatis dari sistem informasi Kelas Gue · Terverifikasi Cloud Supabase
           </div>
         </div>
       </div>

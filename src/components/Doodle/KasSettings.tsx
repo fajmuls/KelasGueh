@@ -16,26 +16,40 @@ import {
   Bell,
   Volume2,
   VolumeX,
-  GraduationCap
+  GraduationCap,
+  Users,
+  FileSpreadsheet,
+  Upload,
+  X,
+  Edit2,
+  Trash2
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { saveNewPin } from '../../utils/security.ts';
 import { requestNotificationPermission, sendLocalNotification } from '../../utils/notifications.ts';
 import { DoodleCurrencyInput } from '../UI/DoodleCurrencyInput.tsx';
 import { DoodleSelect } from '../UI/DoodleSelect.tsx';
 import { NotificationCardModal } from '../UI/NotificationCardModal.tsx';
-import { showToast } from '../UI/DoodleDialog.tsx';
+import { showToast, showConfirm } from '../UI/DoodleDialog.tsx';
+import { toTitleCase } from '../../utils/textFormatting.ts';
 
 interface KasSettingsProps {
   settings: ClassSettings;
   members?: KasMember[];
   onSaveSettings: (settings: ClassSettings) => void;
   onResetData: () => void;
+  onAddMember?: (name: string, studentId: string, phone?: string) => void;
+  onAddMembers?: (newMembersList: { name: string; studentId: string; phone?: string }[]) => void;
+  onUpdateMember?: (memberId: string, updates: Partial<KasMember>) => void;
 }
 
 export const KasSettings: React.FC<KasSettingsProps> = ({
   settings,
   members = [],
   onSaveSettings,
+  onAddMember,
+  onAddMembers,
+  onUpdateMember,
 }) => {
   const { isSuperAdmin } = useAuth();
   const [form, setForm] = useState<ClassSettings>({ ...settings });
@@ -49,6 +63,148 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
   // 6-Digit PIN Security State
   const [newPin, setNewPin] = useState('');
   const [pinMessage, setPinMessage] = useState<string | null>(null);
+
+  // Student Management State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newNim, setNewNim] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importPreview, setImportPreview] = useState<{ name: string; studentId: string; phone?: string }[]>([]);
+  const [importFileName, setImportFileName] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+  const [pasteData, setPasteData] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleAddMemberSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    if (onAddMember) {
+      onAddMember(
+        newName.trim(),
+        newNim.trim() || `230101${(members.length + 1).toString().padStart(3, '0')}`,
+        newPhone.trim() || undefined
+      );
+      sfx.playCoinChime();
+      showToast(`Berhasil menambahkan siswa "${toTitleCase(newName.trim())}"!`, 'success');
+    }
+    setNewName('');
+    setNewNim('');
+    setNewPhone('');
+    setShowAddModal(false);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    setImportError(null);
+    sfx.playPaperRustle();
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rawJson: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        if (!rawJson || rawJson.length === 0) {
+          setImportError('File kosong atau tidak memiliki data tabel.');
+          return;
+        }
+
+        const parsedList: { name: string; studentId: string; phone?: string }[] = [];
+        let startIndex = 0;
+        const firstRowStr = (rawJson[0] || []).join(' ').toLowerCase();
+        if (firstRowStr.includes('nama') || firstRowStr.includes('nim') || firstRowStr.includes('siswa')) {
+          startIndex = 1;
+        }
+
+        for (let i = startIndex; i < rawJson.length; i++) {
+          const row = rawJson[i];
+          if (!row || row.length === 0) continue;
+          let name = '';
+          let studentId = '';
+          let phone = '';
+          const cells = row.map((c: any) => String(c ?? '').trim()).filter((c: string) => c !== '');
+          if (cells.length === 0) continue;
+
+          if (cells.length === 1) {
+            name = cells[0];
+            studentId = `230101${(members.length + parsedList.length + 1).toString().padStart(3, '0')}`;
+          } else if (cells.length >= 2) {
+            const firstIsNum = /^\d+$/.test(cells[0]);
+            const secondIsNum = /^\d+$/.test(cells[1]);
+            if (firstIsNum && cells[0].length >= 7) {
+              studentId = cells[0];
+              name = cells[1];
+              phone = cells[2] || '';
+            } else if (secondIsNum && cells[1].length >= 7) {
+              name = cells[0];
+              studentId = cells[1];
+              phone = cells[2] || '';
+            } else {
+              name = cells[0];
+              studentId = cells[1];
+              phone = cells[2] || '';
+            }
+          }
+
+          if (name) {
+            parsedList.push({
+              name: toTitleCase(name),
+              studentId: studentId || `230101${(members.length + parsedList.length + 1).toString().padStart(3, '0')}`,
+              phone: phone || undefined
+            });
+          }
+        }
+
+        if (parsedList.length === 0) {
+          setImportError('Tidak dapat mengekstrak nama siswa dari file.');
+        } else {
+          setImportPreview(parsedList);
+          sfx.playSuccess();
+        }
+      } catch (err: any) {
+        setImportError(`Gagal membaca file: ${err.message}`);
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleParsePaste = () => {
+    if (!pasteData.trim()) return;
+    const lines = pasteData.trim().split(/\r?\n/);
+    const parsedList: { name: string; studentId: string; phone?: string }[] = [];
+    lines.forEach((line) => {
+      const parts = line.split(/[\t,;]+/).map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 1) {
+        let name = parts[0];
+        let studentId = parts[1] || `230101${(members.length + parsedList.length + 1).toString().padStart(3, '0')}`;
+        let phone = parts[2] || '';
+        parsedList.push({ name: toTitleCase(name), studentId, phone: phone || undefined });
+      }
+    });
+    if (parsedList.length > 0) {
+      setImportPreview(parsedList);
+      setPasteData('');
+      sfx.playSuccess();
+    }
+  };
+
+  const handleConfirmImport = () => {
+    if (importPreview.length === 0) return;
+    if (onAddMembers) {
+      onAddMembers(importPreview);
+      showToast(`Berhasil mengimpor ${importPreview.length} siswa baru!`, 'success');
+    }
+    sfx.playLevelUp();
+    setShowImportModal(false);
+    setImportPreview([]);
+  };
 
   // Fetch whitelist on mount
   React.useEffect(() => {
@@ -208,6 +364,261 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
           </div>
         </form>
       </div>
+
+      {/* 2.5. Student Member Management */}
+      <div className="card-doodle p-5 sm:p-6 rounded-lg bg-white relative">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-900 pb-3 mb-4">
+          <div>
+            <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+              <Users className="w-5 h-5 text-sky-600" />
+              <span>Manajemen Anggota Siswa Kelas ({members.length})</span>
+            </h3>
+            <p className="text-xs text-slate-500">
+              Tambah siswa baru, impor file spreadsheet Excel/CSV, atau sunting data anggota.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowImportModal(true)}
+              className="btn-doodle px-3 py-2 min-h-[44px] bg-sky-100 hover:bg-sky-200 text-slate-900 border-2 border-slate-900 font-bold rounded-md text-xs flex items-center gap-1.5"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-sky-800" />
+              <span>Import Siswa</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              className="btn-doodle px-3.5 py-2 min-h-[44px] bg-amber-300 hover:bg-amber-400 text-slate-900 border-2 border-slate-900 font-black rounded-md text-xs flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
+            >
+              <UserPlus className="w-4 h-4 text-slate-900" />
+              <span>+ Tambah Siswa</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Student List Table */}
+        <div className="max-h-72 overflow-y-auto border-2 border-slate-900 rounded-md bg-[#FFFDF9]">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-[#FAF7F2] border-b-2 border-slate-900 font-black uppercase text-slate-700 sticky top-0">
+              <tr>
+                <th className="p-2 w-8 text-center">#</th>
+                <th className="p-2">Nama Siswa</th>
+                <th className="p-2 w-28 font-mono">NIM / Absen</th>
+                <th className="p-2 w-32 font-mono">No. WhatsApp</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {members.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-6 text-center text-slate-400 italic">
+                    Belum ada data siswa terdaftar.
+                  </td>
+                </tr>
+              ) : (
+                members.map((m, idx) => (
+                  <tr key={m.id} className="hover:bg-amber-50/40 transition-colors">
+                    <td className="p-2 text-center font-mono text-[10px] text-slate-500">{idx + 1}</td>
+                    <td className="p-2 font-bold text-slate-900">{toTitleCase(m.name)}</td>
+                    <td className="p-2 font-mono text-[11px] text-slate-600">{m.studentId}</td>
+                    <td className="p-2 font-mono text-[11px] text-slate-600">{m.phone || '-'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal Tambah Siswa Baru */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="card-doodle bg-white max-w-sm w-full rounded-xl p-5 relative border-2 border-slate-900 shadow-[4px_4px_0px_#1E293B]">
+            <ScotchTape className="absolute -top-3 left-10 rotate-1" />
+            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2 mb-3">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-1.5">
+                <UserPlus className="w-4 h-4 text-amber-600" />
+                <span>Tambah Siswa Baru</span>
+              </h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="w-7 h-7 rounded-full border-2 border-slate-900 bg-slate-100 flex items-center justify-center text-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddMemberSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold uppercase text-slate-600 text-[10px] mb-1">
+                  Nama Lengkap Siswa *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: M Rachman Fajri M"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  className="w-full px-3 py-2 border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold uppercase text-slate-600 text-[10px] mb-1">
+                  NIM / Nomor Absen
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: 230101001"
+                  value={newNim}
+                  onChange={e => setNewNim(e.target.value)}
+                  className="w-full px-3 py-2 font-mono border-2 border-slate-900 rounded-md focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold uppercase text-slate-600 text-[10px] mb-1">
+                  Nomor WhatsApp (Opsional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: 081234567890"
+                  value={newPhone}
+                  onChange={e => setNewPhone(e.target.value)}
+                  className="w-full px-3 py-2 font-mono border-2 border-slate-900 rounded-md focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="btn-doodle px-3 py-2 bg-slate-100 text-slate-800 font-bold rounded-md border-2 border-slate-900"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="btn-doodle px-4 py-2 bg-amber-300 hover:bg-amber-400 text-slate-900 font-black rounded-md border-2 border-slate-900 shadow-[1px_1px_0px_#1E293B]"
+                >
+                  Simpan Siswa
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Import Siswa Excel/CSV */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="card-doodle bg-white max-w-lg w-full rounded-xl p-5 relative border-2 border-slate-900 shadow-[4px_4px_0px_#1E293B]">
+            <ScotchTape className="absolute -top-3 left-10 rotate-1" />
+            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-1.5">
+                <FileSpreadsheet className="w-4 h-4 text-sky-700" />
+                <span>Import Daftar Siswa (Excel / CSV)</span>
+              </h3>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="w-7 h-7 rounded-full border-2 border-slate-900 bg-slate-100 flex items-center justify-center text-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-slate-800 rounded-lg p-5 text-center bg-slate-50 hover:bg-amber-50/50 cursor-pointer transition-colors"
+              >
+                <Upload className="w-6 h-6 mx-auto text-slate-400 mb-1" />
+                <p className="font-black text-slate-900">{importFileName || 'Klik untuk memilih file .xlsx / .csv'}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">Format kolom: Nama Siswa, NIM, No WhatsApp</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold uppercase text-slate-600 text-[10px] mb-1">
+                  Atau Paste Teks dari Excel / Spreadsheet:
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Paste baris data nama, nim, wa di sini..."
+                  value={pasteData}
+                  onChange={e => setPasteData(e.target.value)}
+                  className="w-full p-2 font-mono text-[11px] border-2 border-slate-900 rounded-md focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleParsePaste}
+                  className="w-full mt-1 btn-doodle py-1.5 bg-amber-300 font-black text-slate-900 rounded-md text-xs"
+                >
+                  Proses Teks Paste
+                </button>
+              </div>
+
+              {importError && (
+                <p className="text-xs font-bold text-rose-600 bg-rose-50 p-2 border border-rose-300 rounded">
+                  {importError}
+                </p>
+              )}
+
+              {importPreview.length > 0 && (
+                <div>
+                  <p className="font-bold text-slate-800 mb-1">
+                    Pratinjau Siswa Siap Diimpor ({importPreview.length} Siswa):
+                  </p>
+                  <div className="max-h-36 overflow-y-auto border-2 border-slate-900 rounded-md bg-[#FFFDF9]">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-slate-100 border-b border-slate-900 font-black">
+                        <tr>
+                          <th className="p-1.5">Nama Siswa</th>
+                          <th className="p-1.5 w-24">NIM</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.map((m, idx) => (
+                          <tr key={idx} className="border-t border-slate-200">
+                            <td className="p-1.5 font-bold text-slate-900">{m.name}</td>
+                            <td className="p-1.5 font-mono text-[10px]">{m.studentId}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowImportModal(false)}
+                  className="btn-doodle px-3 py-1.5 bg-slate-100 text-slate-800 font-bold rounded-md border-2 border-slate-900"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={importPreview.length === 0}
+                  onClick={handleConfirmImport}
+                  className="btn-doodle px-4 py-1.5 bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black rounded-md border-2 border-slate-900 disabled:opacity-50"
+                >
+                  Impor {importPreview.length} Siswa
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3. Audio Preferences */}
       <div className="card-doodle p-4 sm:p-5 rounded-lg bg-white relative border-2 border-slate-900">
