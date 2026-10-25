@@ -11,13 +11,13 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.13.6',
-  codename: 'Doodle UI Enhancements & Audit Log Cleanup',
+  version: '3.13.7',
+  codename: 'Doodle UI Enhancements & Bug Fixes',
   releaseDate: '2026-10-24',
   changes: [
-    'Clear Audit Log: Menambahkan fitur pembersihan catatan audit log untuk menjaga kebersihan database.',
-    'Doodle UI/UX Dropdowns: Standardisasi tampilan menu dropdown agar lebih konsisten dengan gaya aplikasi.',
-    'Bug Fix Whitelist: Memperbaiki masalah sinkronisasi role saat anggota dihubungkan ke akun pengguna.',
+    'Whitelist Bug Fix: Memperbaiki masalah sinkronisasi user dalam pengaturan whitelist bendahara.',
+    'UI Improvement: Standardisasi tampilan dropdown dengan gaya doodle yang lebih konsisten.',
+    'Clear Audit Log: Fitur pembersihan catatan audit log.',
     'Supabase User Sync: Integrasi otomatis user login Google ke tabel user_profiles dan authorized_whitelist.'
   ],
   suggestedUpdates: [

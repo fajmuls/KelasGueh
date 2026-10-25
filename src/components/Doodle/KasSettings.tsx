@@ -288,10 +288,11 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
                           selectedId || undefined,
                           selectedStudent ? selectedStudent.name : undefined
                         );
-                        setUserList(updated);
+                        // Refresh the list from the repository to ensure UI consistency
+                        LocalKasRepository.getWhitelist().then(setUserList);
                         sfx.playClick();
                       }}
-                      className="flex-1 text-[10px] font-bold bg-white border border-slate-900 rounded px-1.5 py-0.5 outline-none"
+                      className="flex-1 text-[10px] font-bold bg-amber-50 border-2 border-slate-900 rounded-md px-2 py-1 outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)]"
                     >
                       <option value="">-- Hubungkan ke Siswa --</option>
                       {members.map(m => (

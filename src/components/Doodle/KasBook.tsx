@@ -439,7 +439,7 @@ export const KasBook: React.FC<KasBookProps> = ({
               sfx.playToggle();
               setSelectedCategory(e.target.value);
             }}
-            className="w-full px-3 py-2 text-xs sm:text-sm bg-white border-2 border-slate-900 rounded-md focus:outline-none"
+            className="w-full px-3 py-2 text-xs sm:text-sm bg-amber-50 border-2 border-slate-900 rounded-md outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] focus:bg-white"
           >
             <option value="all">Semua Kategori</option>
             {CATEGORIES.map(cat => (
@@ -692,7 +692,7 @@ export const KasBook: React.FC<KasBookProps> = ({
                   <select
                     value={txCategory}
                     onChange={(e) => setTxCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md focus:outline-none"
+                    className="w-full px-3 py-2 text-sm bg-amber-50 border-2 border-slate-900 rounded-md outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] focus:bg-white"
                   >
                     {CATEGORIES.map(c => (
                       <option key={c} value={c}>{c}</option>
