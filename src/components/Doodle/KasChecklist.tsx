@@ -298,9 +298,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 
   const txs = LocalKasRepository.getTransactions();
   const totalTxIncome = txs.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
-  const totalDuesIncome = members.reduce((acc, m) => acc + (m.weeklyStatus ? Object.values(m.weeklyStatus).filter(Boolean).length : 0) * (settings.weeklyDuesAmount || 0), 0);
   const totalTxExpense = txs.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
-  const currentBalance = (totalTxIncome + totalDuesIncome) - totalTxExpense;
+  const currentBalance = totalTxIncome - totalTxExpense;
   const currentMonthPrefix = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
   const monthExpenses = txs
     .filter(t => t.type === 'expense' && t.date.startsWith(currentMonthPrefix))
@@ -589,7 +588,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
             </span>
           </div>
 
-          <div className="overflow-x-auto max-h-[60vh] relative no-scrollbar touch-pan-x">
+          <div className="overflow-auto max-h-[60vh] relative overscroll-contain touch-pan-x touch-pan-y">
             <table className="w-full text-left text-[10px] border-collapse min-w-[600px]">
               <thead className="bg-[#FAF7F2] border-b-2 border-slate-900 font-black uppercase text-slate-700 sticky top-0 z-40">
                 <tr>
@@ -677,11 +676,11 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                               <button
                                 type="button"
                                 onClick={() => { sfx.playCoinChime(); onToggleWeek(member.id, wKey); }}
-                                className={`w-5 h-5 mx-auto rounded border border-slate-800 flex items-center justify-center transition-all ${
-                                  isPaid ? 'bg-emerald-400 text-slate-900 shadow-[1px_1px_0px_#1E293B]' : 'bg-white hover:bg-slate-100'
+                                className={`w-6 h-6 mx-auto rounded border-2 border-slate-800 flex items-center justify-center transition-transform active:scale-90 touch-manipulation cursor-pointer ${
+                                  isPaid ? 'bg-emerald-400 text-slate-900 shadow-[1px_1px_0px_#1E293B]' : 'bg-white hover:bg-amber-100'
                                 }`}
                               >
-                                {isPaid && <Check className="w-3 h-3 stroke-[4]" />}
+                                {isPaid && <Check className="w-3.5 h-3.5 stroke-[4]" />}
                               </button>
                             ) : (
                               <div className={`w-5 h-5 mx-auto rounded border border-slate-800 flex items-center justify-center ${isPaid ? 'bg-emerald-400 text-slate-900' : 'bg-slate-50 text-slate-300'}`}>

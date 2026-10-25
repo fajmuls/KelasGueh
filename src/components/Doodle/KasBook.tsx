@@ -27,11 +27,12 @@ import { PinVerificationModal } from './PinVerificationModal.tsx';
 import { generateGoogleSheetsCsv, downloadCsvFile, openGoogleSheetsImportGuide } from '../../utils/exportToGoogleSheets.ts';
 
 import { ClassSettings, KasMember } from '../../types/kas.ts';
-import { Settings as SettingsIcon, MessageSquare, FileSpreadsheet, ExternalLink } from 'lucide-react';
+import { Settings as SettingsIcon, MessageSquare, FileSpreadsheet, ExternalLink, Calculator } from 'lucide-react';
 import { DoodleSelect } from '../UI/DoodleSelect.tsx';
 import { DoodleDatePicker } from '../UI/DoodleDatePicker.tsx';
 import { DoodleCurrencyInput } from '../UI/DoodleCurrencyInput.tsx';
 import { showToast, showConfirm } from '../UI/DoodleDialog.tsx';
+import { ExportPreviewModal } from './ExportPreviewModal.tsx';
 
 interface KasBookProps {
   transactions: KasTransaction[];
@@ -45,6 +46,7 @@ interface KasBookProps {
   onOpenModal: () => void;
   onOpenPrintModal?: () => void;
   onOpenWhatsAppModal?: () => void;
+  onOpenSplitBillModal?: () => void;
 }
 
 const CATEGORIES = [
@@ -69,12 +71,14 @@ export const KasBook: React.FC<KasBookProps> = ({
   onOpenModal,
   onOpenPrintModal,
   onOpenWhatsAppModal,
+  onOpenSplitBillModal,
 }) => {
   const { canEditKas, isSuperAdmin, user, role } = useAuth();
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [previewReceiptUrl, setPreviewReceiptUrl] = useState<string | null>(null);
+  const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
   const [isDuesModalOpen, setIsDuesModalOpen] = useState(false);
   const [duesForm, setDuesForm] = useState({
     weeklyDuesAmount: settings.weeklyDuesAmount,
@@ -324,30 +328,28 @@ export const KasBook: React.FC<KasBookProps> = ({
             <button
               type="button"
               onClick={() => {
-                sfx.playFileDownload();
-                const csvContent = generateGoogleSheetsCsv(transactions, members, settings);
-                downloadCsvFile(`laporan_kas_${settings.className.replace(/\s+/g, '_')}_${Date.now()}.csv`, csvContent);
-                openGoogleSheetsImportGuide();
+                sfx.playCardOpen();
+                setIsExportPreviewOpen(true);
               }}
               className="btn-doodle px-2.5 py-1 bg-sky-200 hover:bg-sky-300 text-slate-900 text-[11px] font-black rounded-md flex items-center gap-1"
-              title="Ekspor Laporan Kas & Matriks Checklist ke File CSV Siap Impor Google Sheets"
+              title="Pratinjau Data Laporan Kas Sebelum Mengunduh CSV / Google Sheets"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
               <span>Ekspor</span>
             </button>
 
-            {isSuperAdmin && (
+            {onOpenSplitBillModal && (
               <button
                 type="button"
                 onClick={() => {
-                  sfx.playCardOpen();
-                  setIsDuesModalOpen(true);
+                  sfx.playClick();
+                  onOpenSplitBillModal();
                 }}
-                className="btn-doodle px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 text-[11px] font-black rounded-md flex items-center gap-1"
-                title="Atur Nominal Iuran Kas (Khusus Super Admin)"
+                className="btn-doodle px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-slate-900 text-[11px] font-black rounded-md flex items-center gap-1"
+                title="Kalkulator Pembagian Biaya Acara (Split Bill)"
               >
-                <SettingsIcon className="w-3.5 h-3.5" />
-                <span>Atur</span>
+                <Calculator className="w-3.5 h-3.5" />
+                <span>Split Bill</span>
               </button>
             )}
 
@@ -373,8 +375,8 @@ export const KasBook: React.FC<KasBookProps> = ({
                   }}
                   className="btn-doodle px-3 py-1 bg-emerald-400 hover:bg-emerald-500 text-slate-900 text-xs font-black rounded-md flex items-center gap-1"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Catat</span>
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Catat Transaksi</span>
                 </button>
               </div>
             ) : (
@@ -1151,6 +1153,15 @@ export const KasBook: React.FC<KasBookProps> = ({
           }
         }}
         requiredAmount={pendingTxData?.amount}
+      />
+
+      {/* Export Preview Modal */}
+      <ExportPreviewModal
+        isOpen={isExportPreviewOpen}
+        onClose={() => setIsExportPreviewOpen(false)}
+        transactions={transactions}
+        members={members}
+        settings={settings}
       />
     </div>
   );

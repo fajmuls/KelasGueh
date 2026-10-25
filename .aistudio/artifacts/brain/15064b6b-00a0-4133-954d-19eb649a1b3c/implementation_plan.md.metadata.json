@@ -1,6 +1,6 @@
 {
-  "summary":  "Rencana implementasi pembaruan Kelas Gue v3.5.0 (Quality of Life & Mobile Refinement Edition): Penyatuan desain tombol doodle di seluruh aplikasi, kompresi pixel UI mobile, badge status sinkronisasi cloud realtime di navbar, filter instan siswa menunggak di Checklist Iuran, pemetaan identitas akun Google ke siswa oleh Super Admin, pembersihan copy WhatsApp laporan kas profesional, dan perapihan layout ekspor binder kas & Excel.",
-  "updatedAt":  "2026-10-24T08:32:39.647011225Z",
+  "summary":  "Implementation plan for Split Bill Event Calculator, Navigation Redirects, Export Table Preview, Printable Binder Layout Fixes, and Checklist Table Scroll & Double Balance Bug Fixes.",
+  "updatedAt":  "2026-10-25T07:11:15.971945040Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

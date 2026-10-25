@@ -10,6 +10,7 @@ import { KasAuditLog } from './components/Doodle/KasAuditLog.tsx';
 import { PrintableBinderModal } from './components/Doodle/PrintableBinderModal.tsx';
 import { WhatsAppShareModal } from './components/Doodle/WhatsAppShareModal.tsx';
 import { ClassShareModal } from './components/Doodle/ClassShareModal.tsx';
+import { SplitBillModal } from './components/Doodle/SplitBillModal.tsx';
 import { AnimatedIntroScreen } from './components/Doodle/AnimatedIntroScreen.tsx';
 import {
   LocalKasRepository,
@@ -31,6 +32,7 @@ const AppContent: React.FC = () => {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isSplitBillModalOpen, setIsSplitBillModalOpen] = useState(false);
 
   // Auto redirect from settings tab if user is read-only Anggota
   useEffect(() => {
@@ -374,6 +376,7 @@ const AppContent: React.FC = () => {
             onOpenPrintModal={() => setIsPrintModalOpen(true)}
             onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
             onOpenShareModal={() => setIsShareModalOpen(true)}
+            onOpenSplitBillModal={() => setIsSplitBillModalOpen(true)}
           />
         )}
 
@@ -390,6 +393,7 @@ const AppContent: React.FC = () => {
             onOpenModal={() => setIsAddTxModalOpen(true)}
             onOpenPrintModal={() => setIsPrintModalOpen(true)}
             onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
+            onOpenSplitBillModal={() => setIsSplitBillModalOpen(true)}
           />
         )}
 
@@ -443,6 +447,15 @@ const AppContent: React.FC = () => {
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         classNameTitle={settings.className}
+      />
+
+      {/* Kalkulator Split Bill Acara Modal */}
+      <SplitBillModal
+        isOpen={isSplitBillModalOpen}
+        onClose={() => setIsSplitBillModalOpen(false)}
+        members={members}
+        settings={settings}
+        onAddTransaction={handleAddTransaction}
       />
 
       {/* Clean Footer */}

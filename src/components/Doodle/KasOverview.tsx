@@ -13,8 +13,10 @@ import {
   MessageSquare,
   TrendingUp,
   BarChart3,
-  Share2
+  Share2,
+  Calculator
 } from 'lucide-react';
+
 import { 
   LineChart, 
   Line, 
@@ -37,6 +39,7 @@ interface KasOverviewProps {
   onOpenPrintModal?: () => void;
   onOpenWhatsAppModal?: () => void;
   onOpenShareModal?: () => void;
+  onOpenSplitBillModal?: () => void;
 }
 
 export const KasOverview: React.FC<KasOverviewProps> = ({
@@ -48,6 +51,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
   onOpenPrintModal,
   onOpenWhatsAppModal,
   onOpenShareModal,
+  onOpenSplitBillModal,
 }) => {
   const { canEditKas, isSuperAdmin } = useAuth();
 
@@ -136,6 +140,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
               <button
                 onClick={() => {
                   sfx.playClick();
+                  onNavigateTab('bukukas');
                   onOpenNewTxModal();
                 }}
                 className="btn-doodle w-full sm:w-auto px-4 py-2.5 min-h-[44px] bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black rounded-md flex items-center justify-center gap-2 text-sm shadow-[2px_2px_0px_#1E293B]"
@@ -145,11 +150,12 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
               </button>
             )}
             
-            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full sm:w-auto sm:flex sm:items-center">
               {onOpenPrintModal && (
                 <button
                   onClick={() => {
                     sfx.playPaperRustle();
+                    onNavigateTab('bukukas');
                     onOpenPrintModal();
                   }}
                   className="btn-doodle w-full sm:w-auto px-3.5 py-2.5 min-h-[44px] bg-white hover:bg-slate-50 text-slate-900 font-bold rounded-md flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-[1.5px_1.5px_0px_#1E293B]"
@@ -163,12 +169,27 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
                 <button
                   onClick={() => {
                     sfx.playCardOpen();
+                    onNavigateTab('bukukas');
                     onOpenWhatsAppModal();
                   }}
                   className="btn-doodle w-full sm:w-auto px-3.5 py-2.5 min-h-[44px] bg-emerald-100 hover:bg-emerald-200 text-slate-900 font-bold rounded-md flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-[1.5px_1.5px_0px_#1E293B]"
                 >
                   <MessageSquare className="w-4 h-4 text-emerald-800" />
                   <span>Rekap WA</span>
+                </button>
+              )}
+
+              {onOpenSplitBillModal && (
+                <button
+                  onClick={() => {
+                    sfx.playClick();
+                    onOpenSplitBillModal();
+                  }}
+                  className="btn-doodle w-full sm:w-auto px-3.5 py-2.5 min-h-[44px] bg-amber-200 hover:bg-amber-300 text-slate-900 font-black rounded-md flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-[1.5px_1.5px_0px_#1E293B]"
+                  title="Kalkulator Pembagian Biaya Acara (Split Bill)"
+                >
+                  <Calculator className="w-4 h-4 text-amber-900" />
+                  <span>Split Bill</span>
                 </button>
               )}
             </div>

@@ -11,33 +11,33 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.14.0',
-  codename: 'Mobile Ergonomics & UI/UX Polish',
-  releaseDate: '2026-10-24',
+  version: '3.15.0',
+  codename: 'Split Bill Calculator & Smart Preview Overhaul',
+  releaseDate: '2026-10-25',
   changes: [
-    'Header & Navigasi HP: Rampingkan header, tab bar otomatis auto-scroll ke tab aktif dengan scroll cue pudar, dan hamburger menu kini berupa overlay modal "Lainnya" tanpa mendorong konten.',
-    'Tata Letak Tombol & Grid: Tombol Catat Transaksi, Cetak/PDF, dan Rekap WA tersusun rata; checklist iuran menggunakan susunan grid 2x2 yang seragam dengan touch target minimal 44px.',
-    'UI Dropdown & Date Picker Kustom: Mengganti seluruh <select> dan date picker bawaan browser dengan bottom sheet & popover bergaya doodle yang konsisten.',
-    'Toast & Modal Dialog Kustom: Menghilangkan alert/confirm/prompt bawaan OS/browser dan menggantikannya dengan Doodle Toast & Modal konfirmasi.',
-    'Input Nominal & Tipografi: Input iuran dan target kas kini memiliki format ribuan otomatis (Rp 5.000, Rp 2.960.000) dengan tabular-nums, tanpa spasi renggang.',
-    'Peningkatan Checklist Iuran: Kolom nama mendukung 2 baris atau sentuhan detail, badge ALL diperbesar area sentuhnya, serta tabel dilengkapi petunjuk geser horizontal.',
-    'SEO, PWA & Pratinjau WhatsApp: Menggunakan URL absolut kelasgueh.vercel.app, menambahkan robots.txt, sitemap.xml, manifest.json, dan fallback noscript.'
+    'Fitur Baru: Kalkulator Split Bill Acara Kelas — Menghitung pembagian biaya kegiatan/perlengkapan per siswa secara otomatis, generate teks rekap WA, dan opsional 1-click simpan ke Buku Kas.',
+    'Navigasi Banner Ringkasan Kas: Tombol Catat Transaksi, Cetak/PDF, dan Rekap WA di banner utama kini otomatis berpindah ke tab Buku Kas & Nota lalu membuka modal sesuai fungsinya.',
+    'Pratinjau Ekspor CSV & Google Sheets: Tombol Ekspor di Buku Kas kini menampilkan Modal Pratinjau Tabel Rapi dengan ringkasan Debit, Kredit, Saldo Bersih, serta tombol download CSV dan panduan Google Sheets.',
+    'Pembersihan UI Buku Kas: Menghilangkan bug ikon ganda pada tombol Catat, menghapus tombol "Atur" yang redundan (sudah ada di Pengaturan), dan menambahkan tombol cepat Split Bill.',
+    'Perbaikan Bug Saldo Checklist Iuran: Mengisolasi perhitungan saldo kas bersih dari tabel transaksi utama (mencegah double-counting saldo iuran).',
+    'Perbaikan Scroll & Respon Touch Checklist: Menambahkan isolasi gesture scroll (touch-action pan-x pan-y & overscroll-contain) agar scrolling tabel tidak menggeser background halaman.',
+    'Pengesahan Dokumen Cetak/PDF: Memperbarui kolom tanda tangan dokumen binder cetak — Mengetahui & Menyetujui: Super Admin (M. Rahman FM - mrachmanfm@gmail.com) dan Dibuat dengan sebenarnya oleh: Bendahara Umum Kelas.'
   ],
   suggestedUpdates: [
     {
-      category: 'optimasi',
-      title: 'PWA Offline Background Sync Queue',
-      description: 'Menyimpan antrean transaksi lokal saat jaringan offline dan otomatis mengirim ke cloud saat koneksi internet kembali pulih.'
+      category: 'fitur',
+      title: 'Stempel Doodle Digital & Tanda Tangan QR Verification',
+      description: 'Menambahkan stempel visual bergaya doodle kelas dan kode QR unik pada laporan PDF untuk verifikasi keaslian dokumen.'
     },
     {
-      category: 'fitur',
-      title: 'Kalkulator Pembagian Biaya Acara (Split Bill)',
-      description: 'Fitur cepat bagi bendahara untuk menghitung pembagian biaya perlengkapan atau konsumsi per kelompok siswa.'
+      category: 'optimasi',
+      title: 'Auto Reminder WhatsApp H-1 Tenggat Iuran via Web Worker / Scheduled Push',
+      description: 'Pengingat otomatis H-1 tenggat iuran kas mingguan untuk siswa yang belum lunas.'
     },
     {
       category: 'keamanan',
-      title: 'Audit Log Export Multi-Format (PDF & CSV)',
-      description: 'Menambahkan opsi cetak PDF langsung untuk arsip resmi audit log kas kelas selain file spreadsheet CSV.'
+      title: 'Backup Data Otomatis ke Google Drive / Local Storage Encrypted Vault',
+      description: 'Fasilitas cadangan data berkala yang terenkripsi untuk mencegah kehilangan catatan kas jika perangkat berganti.'
     }
   ]
 };

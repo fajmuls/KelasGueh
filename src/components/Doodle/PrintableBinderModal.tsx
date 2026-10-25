@@ -311,12 +311,12 @@ export const PrintableBinderModal: React.FC<PrintableBinderModalProps> = ({
           {/* Kolom Tanda Tangan Pengesahan */}
           <div className="pt-6 border-t-2 border-dashed border-slate-300 grid grid-cols-2 gap-8 text-center text-xs">
             <div>
-              <p className="font-semibold text-slate-600">Mengetahui & Menyetujui,</p>
-              <p className="font-bold text-slate-900">Ketua Kelas / Super Admin</p>
+              <p className="font-semibold text-slate-600">Mengetahui &amp; Menyetujui,</p>
+              <p className="font-bold text-slate-900">Super Admin</p>
               <div className="h-20 flex items-end justify-center">
                 <span className="font-serif italic text-slate-400 text-sm">( Tanda Tangan Basah )</span>
               </div>
-              <p className="font-bold underline text-slate-900">M. Rachman (Super Admin)</p>
+              <p className="font-bold underline text-slate-900">M. Rahman FM</p>
               <p className="text-[10px] text-slate-500">mrachmanfm@gmail.com</p>
             </div>
 
