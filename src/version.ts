@@ -11,31 +11,25 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.11.0',
-  codename: 'Auto-Role & Excel Power-Up',
+  version: '3.12.0',
+  codename: 'Auto-Clear & Auth Resilience',
   releaseDate: '2026-10-24',
   changes: [
-    'Auto-Redirect Super Admin: Login otomatis mendeteksi email Ketua dan memberikan akses penuh.',
-    'Excel Export System: Ditambahkan sistem laporan iuran dan kas dalam format .xlsx (Excel).',
-    'Integrasi Vercel: Penyiapan konfigurasi untuk deployment cloud yang lebih lancar.',
-    'Enhanced Auth Flow: Perbaikan pada pemetaan profil user saat pertama kali login menggunakan Google.',
-    'PWA Update: Peningkatan performa aplikasi saat diinstal di perangkat mobile.'
+    'Auto-Clear Cache: Sistem sekarang otomatis membersihkan data konfigurasi lama di browser saat ada pembaruan versi (v3.12+).',
+    'Auth Resilience: Memperbaiki error "deleted_client" dengan optimalisasi pemetaan kredensial Google Cloud.',
+    'Infrastructure Refresh: Penguatan koneksi ke project Supabase baru (husymjsimolzvidunkur).',
+    'Excel Power-Up: Peningkatan performa pada sistem ekspor laporan keuangan.'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
-      title: 'Auto-Send Email Report',
-      description: 'Fitur untuk mengirim laporan Excel otomatis ke email setiap akhir bulan.'
+      title: 'Bulk Add Members',
+      description: 'Fitur untuk menambah banyak anggota sekaligus lewat copy-paste daftar nama.'
     },
     {
       category: 'optimasi',
-      title: 'Receipt Image Compression',
-      description: 'Kompresi gambar nota yang lebih efisien untuk menghemat kuota storage Supabase.'
-    },
-    {
-      category: 'keamanan',
-      title: 'Action Confirmation',
-      description: 'Pop-up konfirmasi saat ingin menghapus data transaksi yang sudah tersimpan.'
+      title: 'Email Notification',
+      description: 'Pengiriman notifikasi otomatis saat ada transaksi kas baru yang dicatat.'
     }
   ]
 };
