@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { KasTransaction, KasMember, ClassSettings } from '../types/kas.ts';
+import { getRegisteredUsers, registerOrUpdateUser, updateUserRole } from '../utils/userManagement.ts';
 
 /**
  * CORE DATABASE SERVICE - KELAS GUE v3.9.0
@@ -630,13 +631,16 @@ export class LocalKasRepository {
 
   // ---------------- USER PROFILES & ROLES ----------------
   public static async syncUserProfile(profile: { id: string; email: string; name: string; avatar?: string }): Promise<'superadmin' | 'bendahara' | 'anggota'> {
+    // Also register locally for robust fallback
+    const localRole = registerOrUpdateUser(profile);
+
     const client = getSupabaseClient();
-    if (!client) return 'anggota';
+    if (!client) return localRole;
 
     try {
       // 1. Get role from whitelist
       const { data: whitelist } = await client.from('authorized_whitelist').select('role').eq('email', profile.email.toLowerCase()).maybeSingle();
-      let role: 'superadmin' | 'bendahara' | 'anggota' = 'anggota';
+      let role: 'superadmin' | 'bendahara' | 'anggota' = localRole;
       
       if (profile.email.toLowerCase() === 'mrachmanfm@gmail.com') role = 'superadmin';
       else if (whitelist) role = whitelist.role;
@@ -653,36 +657,63 @@ export class LocalKasRepository {
       return role;
     } catch (err) {
       console.error('Error syncing profile:', err);
-      return 'anggota';
+      return localRole;
     }
   }
 
   public static async getWhitelist(): Promise<any[]> {
+    const map = new Map<string, any>();
+
+    // 1. Load local registered users first (ensures any logged-in user is always visible)
+    const localUsers = getRegisteredUsers();
+    localUsers.forEach(u => {
+      map.set(u.email.toLowerCase(), {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: u.email.toLowerCase() === 'mrachmanfm@gmail.com' ? 'superadmin' : u.role,
+        avatar: u.avatar,
+        linkedMemberId: u.linkedMemberId,
+        linkedMemberName: u.linkedMemberName
+      });
+    });
+
+    // Ensure superadmin is always present
+    if (!map.has('mrachmanfm@gmail.com')) {
+      map.set('mrachmanfm@gmail.com', {
+        id: 'usr_super',
+        email: 'mrachmanfm@gmail.com',
+        name: 'Muhammad Rachman Fajri Muliyansah',
+        role: 'superadmin'
+      });
+    }
+
     const client = getSupabaseClient();
-    if (!client) return [];
+    if (!client) return Array.from(map.values());
 
     try {
       const { data: whitelistData } = await client.from('authorized_whitelist').select('*');
       const { data: profilesData } = await client.from('user_profiles').select('*');
 
-      const map = new Map<string, any>();
-
-      // Add profiles first (all Google login users)
+      // Add profiles from Supabase
       (profilesData || []).forEach(p => {
+        const existing = map.get(p.email.toLowerCase());
         map.set(p.email.toLowerCase(), {
           id: p.id,
           email: p.email,
-          name: p.full_name || p.email.split('@')[0],
-          role: p.role || 'anggota',
-          avatar: p.avatar_url
+          name: p.full_name || existing?.name || p.email.split('@')[0],
+          role: p.email.toLowerCase() === 'mrachmanfm@gmail.com' ? 'superadmin' : (p.role || existing?.role || 'anggota'),
+          avatar: p.avatar_url || existing?.avatar,
+          linkedMemberId: existing?.linkedMemberId,
+          linkedMemberName: existing?.linkedMemberName
         });
       });
 
-      // Override / add with whitelist roles
+      // Override with whitelist roles
       (whitelistData || []).forEach(w => {
         const existing = map.get(w.email.toLowerCase());
         if (existing) {
-          existing.role = w.role;
+          existing.role = w.email.toLowerCase() === 'mrachmanfm@gmail.com' ? 'superadmin' : w.role;
         } else {
           map.set(w.email.toLowerCase(), {
             id: `wl_${w.email}`,
@@ -696,11 +727,14 @@ export class LocalKasRepository {
       return Array.from(map.values());
     } catch (err) {
       console.error('Error fetching whitelist & profiles:', err);
-      return [];
+      return Array.from(map.values());
     }
   }
 
   public static async updateWhitelist(email: string, role: 'bendahara' | 'anggota'): Promise<void> {
+    // Update locally
+    updateUserRole(email, role);
+
     const client = getSupabaseClient();
     if (!client) return;
 
