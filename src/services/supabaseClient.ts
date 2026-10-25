@@ -26,6 +26,13 @@ export const INITIAL_TRANSACTIONS: KasTransaction[] = [];
 let supabaseInstance: SupabaseClient | null = null;
 
 export const getSupabaseConfig = (): { url: string; anonKey: string } => {
+  // HARD RESET: If browser still remembers the OLD paused project, delete it immediately
+  const oldUrl = 'ireqpxgmlrsmcgidfthg.supabase.co';
+  if (localStorage.getItem('kelasgue_supabase_url')?.includes(oldUrl)) {
+    localStorage.removeItem('kelasgue_supabase_url');
+    localStorage.removeItem('kelasgue_supabase_key');
+  }
+
   const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
   const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
   const localUrl = localStorage.getItem('kelasgue_supabase_url');

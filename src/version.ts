@@ -11,7 +11,7 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.12.0',
+  version: '3.12.1',
   codename: 'Auto-Clear & Auth Resilience',
   releaseDate: '2026-10-24',
   changes: [
