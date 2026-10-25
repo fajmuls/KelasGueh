@@ -111,7 +111,10 @@ export const PrintableBinderModal: React.FC<PrintableBinderModalProps> = ({
       className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto"
     >
       {/* Container */}
-      <div className="bg-white max-w-4xl w-full rounded-lg shadow-2xl p-4 sm:p-8 relative my-6 max-h-[92vh] overflow-y-auto print:max-h-none print:shadow-none print:m-0 print:p-0 print:overflow-visible">
+      <div 
+        style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+        className="max-w-4xl w-full rounded-lg shadow-2xl p-4 sm:p-8 relative my-6 max-h-[92vh] overflow-y-auto print:max-h-none print:shadow-none print:m-0 print:p-0 print:overflow-visible"
+      >
         
         {/* PDF Toast Notification */}
         {pdfToast && (
@@ -211,7 +214,10 @@ export const PrintableBinderModal: React.FC<PrintableBinderModalProps> = ({
 
 
         {/* Printable Paper Area (Binder Document) */}
-        <div className="printable-binder-document bg-[#FFFDF9] border-2 border-slate-900 p-6 sm:p-10 rounded-sm relative text-slate-900 font-sans print:border-none print:p-0 print:bg-white shadow-[4px_4px_0px_#1E293B]">
+        <div 
+          style={{ backgroundColor: '#ffffff', color: '#0f172a' }}
+          className="printable-binder-document border-2 border-slate-900 p-6 sm:p-10 rounded-sm relative font-sans print:border-none print:p-0 print:bg-white shadow-[4px_4px_0px_#1E293B]"
+        >
           {/* Notebook Binder Rings (Left Edge) */}
           <div className="absolute left-2 top-0 bottom-0 flex flex-col justify-around py-8 pointer-events-none print:hidden">
             <div className="w-3.5 h-3.5 rounded-full bg-slate-100 border-2 border-slate-400 shadow-inner"></div>

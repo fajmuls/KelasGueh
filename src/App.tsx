@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
+import { ThemeProvider } from './context/ThemeContext.tsx';
 import { WelcomeScreen } from './components/Doodle/WelcomeScreen.tsx';
 import { DoodleNavbar } from './components/Doodle/DoodleNavbar.tsx';
 import { KasOverview } from './components/Doodle/KasOverview.tsx';
@@ -462,7 +463,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Clean Footer */}
-      <footer className="border-t-2 border-slate-900 bg-white py-4 px-6 text-center text-xs text-slate-500 font-medium print:hidden">
+      <footer className="border-t-2 border-slate-900 py-4 px-6 text-center text-xs font-medium print:hidden theme-bg-navbar theme-text-muted">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>
             <strong>{settings.className}</strong> — Transparansi Keuangan Kas Kelas
@@ -478,9 +479,11 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <DoodleDialogContainer />
-      <AppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <DoodleDialogContainer />
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

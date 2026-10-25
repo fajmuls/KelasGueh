@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
+import { useTheme, ThemeType } from '../../context/ThemeContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { DoodleCrown } from './DoodleDecorations.tsx';
 import {
@@ -15,7 +16,10 @@ import {
   VolumeX,
   Sparkles,
   ExternalLink,
-  Settings
+  Settings,
+  Sun,
+  Moon,
+  BookOpen
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWA/PWAInstallButton.tsx';
 import { subscribeCloudSync, getCloudSyncStatus, CloudSyncStatus } from '../../services/supabaseClient.ts';
@@ -36,6 +40,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   onOpenShareModal
 }) => {
   const { user, role, isSuperAdmin, isRealSuperAdmin, isBendahara, canEditKas, logout, switchRole, loginWithGooglePrompt } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [bgmPlaying, setBgmPlaying] = useState(() => sfx.getIsBgmPlaying());
   const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>(() => getCloudSyncStatus());
   const [showRoleMenu, setShowRoleMenu] = useState(false);
@@ -131,8 +136,14 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
     ...(isRealSuperAdmin || isSuperAdmin ? [{ id: 'auditlog', label: 'Laporan Audit' }] : []),
   ] as const;
 
+  const themes: { id: ThemeType; label: string; icon: any; color: string }[] = [
+    { id: 'light', label: 'Terang', icon: Sun, color: 'bg-white' },
+    { id: 'sepia', label: 'Sepia', icon: BookOpen, color: 'bg-[#F4ECD8]' },
+    { id: 'dark', label: 'Dark', icon: Moon, color: 'bg-[#1A1A1A]' },
+  ];
+
   return (
-    <header className="sticky top-0 z-50 bg-[#FAF7F2] border-b-2 border-slate-900 shadow-xs w-full overflow-visible">
+    <header className="sticky top-0 z-50 border-b-2 border-slate-900 shadow-xs w-full overflow-visible theme-bg-navbar">
       {/* Top Main Navbar Bar */}
       <div className="max-w-7xl mx-auto px-2.5 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between gap-2 relative">
         
@@ -155,7 +166,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
               </span>
             </h1>
             <div className="flex items-center gap-1.5 mt-0.5 leading-none">
-              <p className="text-[9px] sm:text-[10px] text-slate-600 font-semibold truncate shrink-0">
+              <p className="text-[9px] sm:text-[10px] text-slate-600 font-semibold truncate shrink-0 theme-text-muted">
                 Buku Kas Kelas
               </p>
               <span className="text-slate-300 text-[8px]">·</span>
@@ -424,7 +435,34 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             </div>
 
             {/* Quick Actions List */}
-            <div className="space-y-2">
+            <div className="space-y-4">
+              {/* Theme Switcher Section */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 px-1">
+                  <Sun className="w-3.5 h-3.5" />
+                  <span>Tema Visual (Kenyamanan Mata)</span>
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {themes.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        sfx.playToggle();
+                        setTheme(t.id);
+                      }}
+                      className={`flex flex-col items-center justify-center gap-1.5 p-2 rounded-lg border-2 transition-all ${
+                        theme === t.id
+                          ? 'bg-amber-300 border-slate-900 text-slate-900 shadow-[2px_2px_0px_#1E293B] -translate-y-0.5'
+                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'
+                      }`}
+                    >
+                      <t.icon className={`w-5 h-5 ${theme === t.id ? 'animate-pulse' : ''}`} />
+                      <span className="text-[10px] font-bold">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Single location for Pengaturan (All roles: Anggota, Bendahara, Super Admin) */}
               <button
                 onClick={() => {

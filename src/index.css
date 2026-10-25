@@ -5,8 +5,41 @@
   --font-display: "Bricolage Grotesque", sans-serif;
 }
 
+@layer base {
+  :root {
+    --bg-paper: #FAF7F2;
+    --bg-paper-dots: #D6CEBE;
+    --bg-card: #FFFFFF;
+    --text-main: #0f172a;
+    --border-main: #1E293B;
+    --shadow-main: #1E293B;
+    --bg-paper-lines: #E7E2D7;
+  }
+
+  .theme-sepia {
+    --bg-paper: #F4ECD8;
+    --bg-paper-dots: #D8CBB5;
+    --bg-card: #FEF9EF;
+    --text-main: #433422;
+    --border-main: #5D4037;
+    --shadow-main: #5D4037;
+    --bg-paper-lines: #D8CBB5;
+  }
+
+  .theme-dark {
+    --bg-paper: #1A1A1A;
+    --bg-paper-dots: #333333;
+    --bg-card: #242424;
+    --text-main: #E8E2D2;
+    --border-main: #404040;
+    --shadow-main: #000000;
+    --bg-paper-lines: #333333;
+  }
+}
+
 h1, h2, h3, .font-display {
   font-family: var(--font-display);
+  color: var(--text-main);
 }
 
 html,
@@ -16,6 +49,9 @@ body {
   touch-action: manipulation;
   box-sizing: border-box;
   font-family: var(--font-display);
+  background-color: var(--bg-paper);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 *, ::before, ::after {
@@ -25,56 +61,79 @@ body {
 @layer utilities {
   /* Paper notebook background pattern */
   .bg-paper-grid {
-    background-color: #FAF7F2;
-    background-image: radial-gradient(#D6CEBE 1px, transparent 1px);
+    background-color: var(--bg-paper);
+    background-image: radial-gradient(var(--bg-paper-dots) 1px, transparent 1px);
     background-size: 20px 20px;
+    transition: background-color 0.3s ease;
   }
 
   .bg-paper-lines {
-    background-color: #FFFDF9;
+    background-color: var(--bg-card);
     background-image: repeating-linear-gradient(
       transparent,
       transparent 27px,
-      #E7E2D7 28px
+      var(--bg-paper-lines) 28px
     );
+    transition: background-color 0.3s ease;
   }
 
   /* Paper cut-out card with thick offset ink shadow */
   .card-doodle {
-    background-color: #FFFFFF;
-    border: 2px solid #1E293B;
-    box-shadow: 4px 4px 0px #1E293B;
-    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    background-color: var(--bg-card);
+    color: var(--text-main);
+    border: 2px solid var(--border-main);
+    box-shadow: 4px 4px 0px var(--shadow-main);
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s ease, border-color 0.3s ease;
   }
 
   .card-doodle-yellow {
     background-color: #FEF9C3;
-    border: 2px solid #1E293B;
-    box-shadow: 4px 4px 0px #1E293B;
+    color: #0f172a;
+    border: 2px solid var(--border-main);
+    box-shadow: 4px 4px 0px var(--shadow-main);
+  }
+  .theme-dark .card-doodle-yellow {
+    background-color: #423E1C;
+    color: #E8E2D2;
   }
 
   .card-doodle-blue {
     background-color: #E0F2FE;
-    border: 2px solid #1E293B;
-    box-shadow: 4px 4px 0px #1E293B;
+    color: #0f172a;
+    border: 2px solid var(--border-main);
+    box-shadow: 4px 4px 0px var(--shadow-main);
+  }
+  .theme-dark .card-doodle-blue {
+    background-color: #1E3A5F;
+    color: #E8E2D2;
   }
 
   .card-doodle-mint {
     background-color: #D1FAE5;
-    border: 2px solid #1E293B;
-    box-shadow: 4px 4px 0px #1E293B;
+    color: #0f172a;
+    border: 2px solid var(--border-main);
+    box-shadow: 4px 4px 0px var(--shadow-main);
+  }
+  .theme-dark .card-doodle-mint {
+    background-color: #064E3B;
+    color: #E8E2D2;
   }
 
   .card-doodle-rose {
     background-color: #FFE4E6;
-    border: 2px solid #1E293B;
-    box-shadow: 4px 4px 0px #1E293B;
+    color: #0f172a;
+    border: 2px solid var(--border-main);
+    box-shadow: 4px 4px 0px var(--shadow-main);
+  }
+  .theme-dark .card-doodle-rose {
+    background-color: #4C1D1F;
+    color: #E8E2D2;
   }
 
   /* Squishy tactile doodle button with click audio feedback */
   .btn-doodle {
-    border: 2px solid #1E293B;
-    box-shadow: 3px 3px 0px #1E293B;
+    border: 2px solid var(--border-main);
+    box-shadow: 3px 3px 0px var(--shadow-main);
     transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
     user-select: none;
@@ -82,12 +141,22 @@ body {
 
   .btn-doodle:hover {
     transform: translate(-1px, -1px);
-    box-shadow: 4px 4px 0px #1E293B;
+    box-shadow: 4px 4px 0px var(--shadow-main);
   }
 
   .btn-doodle:active {
     transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0px #1E293B;
+    box-shadow: 1px 1px 0px var(--shadow-main);
+  }
+
+  .theme-bg-navbar {
+    background-color: var(--bg-paper);
+    transition: background-color 0.3s ease;
+  }
+
+  .theme-text-muted {
+    color: var(--text-main);
+    opacity: 0.6;
   }
 
   /* Scotch tape decorative element */

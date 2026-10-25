@@ -11,16 +11,15 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '3.17.0',
-  codename: 'Role Simulation Fix & Single Location Navigation',
+  version: '3.18.0',
+  codename: 'Sepia Paper & Antique Dark Mode',
   releaseDate: '2026-10-25',
   changes: [
-    'Mode Simulasi Akses Super Admin Fix: Super Admin dapat berganti simulasi peran secara langsung ke preview Bendahara dan preview Anggota tanpa ter-reset otomatis.',
-    'Tombol Keluar Akun (Logout) Single-Location: Diatur eksklusif hanya ada di dalam dropdown Profil Akun Terhubung.',
-    'Menu Lainnya & Pengaturan Semua Peran: Tombol Pengaturan dipindahkan ke menu Lainnya (Hamburger) dan kini tersedia untuk semua pengguna (Anggota, Bendahara, Super Admin).',
-    'Pembersihan Tab Strip Navigasi: Tab navigasi utama dipersingkat (Ringkasan Kas, Buku Kas, Checklist, Laporan Audit) tanpa duplikasi tombol Pengaturan.',
-    'Fitur Hapus Data Lokal: Menambahkan tombol "Hapus Data Lokal" pada Pengaturan untuk membersihkan cache browser dengan aman.',
-    'Font Versi Minimalis: Ukuran font teks nomor versi pada menu Lainnya diperkecil (text-[9px] font-mono) agar tampilan lebih bersih dan estetik.'
+    'Dukungan Multi-Tema Visual: Kini tersedia 3 pilihan tema untuk kenyamanan mata (Kertas Terang, Kertas Sepia, dan Dark Jurnal Antik).',
+    'Theme Switcher Quick Access: Pengubah tema dapat diakses dengan cepat melalui "Menu Lainnya" (Hamburger) untuk semua pengguna.',
+    'Peningkatan Kontras Malam Hari: Mode Dark Jurnal Antik dirancang khusus untuk mengurangi kelelahan mata bendahara saat mencatat kas di malam hari.',
+    'Konsistensi Cetak PDF: Dokumen PDF laporan kas tetap dipertahankan putih bersih (High Contrast) agar rapi dan hemat tinta saat dicetak fisik.',
+    'Sistem Transisi Halus: Perpindahan antar tema kini memiliki animasi transisi warna yang lembut dan nyaman.'
   ],
   suggestedUpdates: [
     {
@@ -35,8 +34,8 @@ export const CURRENT_APP_VERSION: AppVersionInfo = {
     },
     {
       category: 'optimasi',
-      title: 'Dark Mode / Sepia Antique Paper Mode',
-      description: 'Mode tema kertas sepia/krem tua bergaya buku jurnal antik untuk kenyamanan penggunaan malam hari.'
+      title: 'Virtual Scrolling Tabel Checklist Iuran',
+      description: 'Optimasi performa scroll pada daftar siswa yang sangat panjang agar tetap responsif dan ringan.'
     },
     {
       category: 'keamanan',
