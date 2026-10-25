@@ -47,6 +47,7 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
   settings,
   members = [],
   onSaveSettings,
+  onResetData,
   onAddMember,
   onAddMembers,
   onUpdateMember,
@@ -750,6 +751,53 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
           </div>
         </div>
       )}
+
+      {/* 4.5. Data Cache Management (Hapus Data Lokal) */}
+      <div className="card-doodle p-4 sm:p-5 rounded-lg bg-rose-50/60 border-2 border-slate-900 relative">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-900 pb-3 mb-3">
+          <div className="flex items-center gap-2">
+            <Trash2 className="w-5 h-5 text-rose-600" />
+            <div>
+              <h3 className="text-sm sm:text-base font-black text-slate-900">
+                Pembersihan Data Cache Lokal
+              </h3>
+              <p className="text-[11px] text-slate-600">
+                Hapus cache lokal sementara browser jika merasa data tidak up-to-date atau ingin menyegarkan ulang.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={async () => {
+              sfx.playPaperRustle();
+              const ok = await showConfirm({
+                title: 'Hapus Data Lokal?',
+                message: 'Apakah Anda yakin ingin menghapus cache data lokal browser? Data yang tersimpan di cloud (jika terhubung) akan disinkronkan kembali saat halaman dimuat ulang.',
+                confirmLabel: 'Ya, Hapus Data Lokal',
+                cancelLabel: 'Batal',
+                isDanger: true,
+              });
+
+              if (ok) {
+                localStorage.removeItem('kelasgue_active_user_v2');
+                localStorage.removeItem('doodle_kas_local_db_v1');
+                localStorage.removeItem('kelasgue_settings_cache');
+                sfx.playDeleteConfirm();
+                showToast('Data lokal berhasil dibersihkan! Memuat ulang halaman...', 'success');
+                if (onResetData) onResetData();
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1000);
+              }
+            }}
+            className="btn-doodle px-4 py-2 min-h-[44px] bg-rose-200 hover:bg-rose-300 text-rose-900 font-black text-xs rounded-md flex items-center justify-center gap-2 border-2 border-slate-900 shrink-0 shadow-[1.5px_1.5px_0px_#1E293B]"
+          >
+            <Trash2 className="w-4 h-4 text-rose-700" />
+            <span>Hapus Data Lokal</span>
+          </button>
+        </div>
+      </div>
 
       {/* 5. Patch Notes */}
       <div className="card-doodle p-6 rounded-lg bg-amber-50/80 border-2 border-slate-900">

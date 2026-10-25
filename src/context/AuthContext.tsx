@@ -12,6 +12,7 @@ interface AuthContextType {
   user: UserProfile | null;
   role: UserRole;
   isSuperAdmin: boolean;
+  isRealSuperAdmin: boolean;
   isBendahara: boolean;
   canEditKas: boolean;
   loginAs: (role: UserRole, customName?: string, customEmail?: string) => void;
@@ -102,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: `usr-${Date.now()}`,
       name,
       email,
-      role: assignedRole,
+      role: selectedRole === 'superadmin' ? 'superadmin' : assignedRole,
       isGoogleAuth: true
     };
 
@@ -138,7 +139,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!emailInput || !emailInput.trim()) return;
 
     const email = emailInput.trim();
-    loginAs('anggota', email.split('@')[0], email);
+    const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+    loginAs(isOwner ? 'superadmin' : 'anggota', email.split('@')[0], email);
     showToast(`Berhasil verifikasi login sebagai ${email.split('@')[0]}`, 'success');
     sfx.playCoinChime();
   };
@@ -161,18 +163,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('kelasgue_active_user_v2');
   };
 
-  const role = user?.role || 'anggota';
-  const isSuperAdmin = role === 'superadmin' || user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-  
-  // Ensure the role state is in sync with the email for the owner
-  useEffect(() => {
-    if (user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() && user.role !== 'superadmin') {
-      const updated: UserProfile = { ...user, role: 'superadmin' };
-      setUser(updated);
-      localStorage.setItem('kelasgue_active_user_v2', JSON.stringify(updated));
-    }
-  }, [user]);
+  // Determine if user has permanent super admin privileges for simulation switching
+  const isRealSuperAdmin = user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
+  // Active role determines actual current permissions (allows superadmin to simulate bendahara / anggota)
+  const role: UserRole = user?.role || 'anggota';
+  const isSuperAdmin = role === 'superadmin';
   const isBendahara = role === 'bendahara';
   const canEditKas = isSuperAdmin || isBendahara;
 
@@ -182,6 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         role,
         isSuperAdmin,
+        isRealSuperAdmin,
         isBendahara,
         canEditKas,
         loginAs,

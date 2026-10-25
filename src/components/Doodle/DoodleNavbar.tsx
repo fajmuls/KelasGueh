@@ -35,7 +35,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   classNameTitle,
   onOpenShareModal
 }) => {
-  const { user, role, isSuperAdmin, isBendahara, canEditKas, logout, switchRole, loginWithGooglePrompt } = useAuth();
+  const { user, role, isSuperAdmin, isRealSuperAdmin, isBendahara, canEditKas, logout, switchRole, loginWithGooglePrompt } = useAuth();
   const [bgmPlaying, setBgmPlaying] = useState(() => sfx.getIsBgmPlaying());
   const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>(() => getCloudSyncStatus());
   const [showRoleMenu, setShowRoleMenu] = useState(false);
@@ -128,8 +128,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
     { id: 'ringkasan', label: 'Ringkasan Kas' },
     { id: 'bukukas', label: 'Buku Kas & Nota' },
     { id: 'checklist', label: 'Checklist Iuran' },
-    ...(isSuperAdmin ? [{ id: 'auditlog', label: 'Laporan Audit' }] : []),
-    ...(canEditKas ? [{ id: 'pengaturan', label: 'Pengaturan' }] : []),
+    ...(isRealSuperAdmin || isSuperAdmin ? [{ id: 'auditlog', label: 'Laporan Audit' }] : []),
   ] as const;
 
   return (
@@ -236,7 +235,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             )}
           </div>
 
-          {/* Role Switcher Button (Always accessible, min 44px touch) */}
+          {/* Role Switcher Button & Profile Popover (Always accessible) */}
           <div className="relative">
             <button
               onClick={() => {
@@ -266,7 +265,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
               <span className="text-[10px] text-slate-500">▼</span>
             </button>
 
-            {/* Role Switcher Popover */}
+            {/* Role Switcher & Profile Popover */}
             {showRoleMenu && (
               <>
                 <div
@@ -287,8 +286,8 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                     </p>
                   </div>
 
-                  {isSuperAdmin && (
-                    <div className="space-y-1 mb-2.5">
+                  {isRealSuperAdmin && (
+                    <div className="space-y-1 mb-2.5 border-b border-slate-200 pb-2.5">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 mb-1">
                         Mode Simulasi Akses:
                       </p>
@@ -331,19 +330,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                     </div>
                   )}
 
-                  {canEditKas && (
-                    <button
-                      onClick={() => {
-                        onSelectTab('pengaturan');
-                        setShowRoleMenu(false);
-                      }}
-                      className="w-full btn-doodle px-3 py-2 min-h-[40px] bg-slate-100 hover:bg-amber-100 text-slate-900 font-bold text-xs rounded-md flex items-center justify-center gap-1.5 border border-slate-900 mb-2"
-                    >
-                      <Settings className="w-3.5 h-3.5 text-slate-800" />
-                      <span>Pengaturan Kelas</span>
-                    </button>
-                  )}
-
+                  {/* Single location for Logout (Keluar dari Akun) */}
                   <button
                     onClick={() => {
                       setShowRoleMenu(false);
@@ -359,23 +346,14 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             )}
           </div>
 
-          {/* Desktop Logout Button */}
-          <button
-            onClick={handleLogoutConfirm}
-            title="Keluar Akun"
-            className="hidden md:flex w-9 h-9 btn-doodle bg-rose-50 hover:bg-rose-100 text-rose-700 border-2 border-slate-900 rounded-md items-center justify-center shrink-0"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-
-          {/* Mobile Hamburger Toggle (Menu "Lainnya") */}
+          {/* Hamburger Toggle (Menu "Lainnya" & "Pengaturan" for all screen sizes) */}
           <button
             onClick={() => {
               sfx.playClick();
               setIsMobileMenuOpen(!isMobileMenuOpen);
             }}
-            className="w-9 h-9 btn-doodle bg-amber-300 md:hidden flex items-center justify-center text-slate-900 rounded-md border-2 border-slate-900 shadow-[1px_1px_0px_#1E293B] shrink-0"
-            title="Menu Lainnya"
+            className="w-9 h-9 btn-doodle bg-amber-300 flex items-center justify-center text-slate-900 rounded-md border-2 border-slate-900 shadow-[1px_1px_0px_#1E293B] shrink-0"
+            title="Menu Lainnya & Pengaturan"
             aria-label="Buka menu lainnya"
           >
             {isMobileMenuOpen ? <X className="w-5 h-5 stroke-[2.5]" /> : <Menu className="w-5 h-5 stroke-[2.5]" />}
@@ -420,9 +398,9 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
         </div>
       </div>
 
-      {/* Mobile "Lainnya" Drawer Overlay (DOES NOT push page content down) */}
+      {/* "Lainnya" Drawer Overlay (Available for mobile & desktop menu trigger) */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[1000] flex flex-col justify-end md:hidden">
+        <div className="fixed inset-0 z-[1000] flex flex-col justify-end md:justify-center items-center">
           {/* Backdrop with subtle dimming */}
           <div
             className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
@@ -430,11 +408,11 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
           />
 
           {/* Drawer Card */}
-          <div className="relative z-10 card-doodle bg-[#FFFDF9] rounded-t-2xl border-t-4 border-slate-900 shadow-2xl p-5 space-y-4 max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom duration-200">
+          <div className="relative z-10 card-doodle bg-[#FFFDF9] rounded-t-2xl md:rounded-2xl border-t-4 md:border-4 border-slate-900 shadow-2xl p-5 space-y-4 max-h-[85vh] w-full max-w-md overflow-y-auto animate-in slide-in-from-bottom duration-200">
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-600" />
-                <h3 className="text-base font-black text-slate-900">Menu Lainnya</h3>
+                <h3 className="text-base font-black text-slate-900">Menu Lainnya & Pengaturan</h3>
               </div>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -447,6 +425,28 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
 
             {/* Quick Actions List */}
             <div className="space-y-2">
+              {/* Single location for Pengaturan (All roles: Anggota, Bendahara, Super Admin) */}
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  sfx.playToggle();
+                  onSelectTab('pengaturan');
+                }}
+                className={`w-full min-h-[48px] px-4 py-2.5 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
+                  currentTab === 'pengaturan'
+                    ? 'bg-amber-300 text-slate-900 shadow-[2px_2px_0px_#1E293B]'
+                    : 'bg-white text-slate-800 hover:bg-amber-50'
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <Settings className="w-4 h-4 text-indigo-600" />
+                  <span>Pengaturan Kelas & Preferensi</span>
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded border border-slate-900 bg-indigo-100 text-indigo-900">
+                  AKSES
+                </span>
+              </button>
+
               {/* BGM Toggle in Hamburger */}
               <button
                 onClick={handleToggleBgm}
@@ -490,11 +490,11 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
               </div>
             </div>
 
-            {/* Version & Patch Notes Section */}
+            {/* Version & Patch Notes Section with Minimal Font text-[9px] */}
             <div className="p-3 bg-amber-50/80 border-2 border-slate-900 rounded-lg flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase">Versi Aplikasi</p>
-                <p className="text-xs font-mono font-black text-slate-900">
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Versi Aplikasi</p>
+                <p className="text-[9px] font-mono font-bold text-slate-800">
                   v{CURRENT_APP_VERSION.version} ({CURRENT_APP_VERSION.codename})
                 </p>
               </div>
@@ -506,17 +506,6 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                 className="btn-doodle px-2.5 py-1.5 bg-white text-slate-900 text-[10px] font-black rounded border border-slate-900"
               >
                 Catatan Rilis
-              </button>
-            </div>
-
-            {/* Logout Action */}
-            <div className="pt-2 border-t border-slate-200">
-              <button
-                onClick={handleLogoutConfirm}
-                className="w-full min-h-[48px] btn-doodle px-4 py-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border-2 border-slate-900 font-black text-xs flex items-center justify-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Keluar dari Akun</span>
               </button>
             </div>
           </div>
