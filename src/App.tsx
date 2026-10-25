@@ -123,17 +123,21 @@ const AppContent: React.FC = () => {
   // Handlers
   const handleAddTransaction = async (newTxData: Omit<KasTransaction, 'id' | 'createdAt'>) => {
     try {
+      await LocalKasRepository.addTransaction(newTxData);
       await LocalKasRepository.addAuditLog({
         action: `CATAT ${newTxData.type === 'income' ? 'PEMASUKAN' : 'PENGELUARAN'}`,
         details: `${newTxData.title}: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(newTxData.amount)}`,
         performedBy: user?.name || 'Unknown',
         userRole: role,
       });
-      // Refresh all states from cloud
-      LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
-      LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
+      // Refresh all states from cloud / local
+      const txs = await LocalKasRepository.fetchTransactionsFromSupabase();
+      setTransactions(txs);
+      const logs = await LocalKasRepository.fetchAuditLogsFromSupabase();
+      setAuditLogs(logs);
     } catch (err) {
       console.error('Add transaction handler error:', err);
+      alert('Gagal menyimpan transaksi ke database. Pastikan koneksi Supabase aktif.');
     }
   };
 
