@@ -5,6 +5,8 @@ import { ScotchTape, DoodleCrown, DoodleReceipt } from './DoodleDecorations.tsx'
 import { Shield, Search, FileSpreadsheet, RefreshCw, Filter, CheckCircle2, User, Clock, Trash2 } from 'lucide-react';
 import { downloadCsvFile } from '../../utils/exportToGoogleSheets.ts';
 
+import { showConfirm, showToast } from '../UI/DoodleDialog.tsx';
+
 interface KasAuditLogProps {
   auditLogs: AuditLogEntry[];
   onRefreshLogs?: () => void;
@@ -74,13 +76,21 @@ export const KasAuditLog: React.FC<KasAuditLogProps> = ({ auditLogs, onRefreshLo
             <button
               type="button"
               onClick={async () => {
-                if (window.confirm('Apakah Anda yakin ingin menghapus semua catatan audit log? Tindakan ini tidak dapat dibatalkan.')) {
+                const ok = await showConfirm({
+                  title: 'Hapus Semua Audit Log?',
+                  message: 'Apakah Anda yakin ingin menghapus semua catatan audit log? Tindakan ini tidak dapat dibatalkan.',
+                  confirmLabel: 'Ya, Hapus Log',
+                  cancelLabel: 'Batal',
+                  isDanger: true,
+                });
+                if (ok) {
                   sfx.playWarning();
                   await LocalKasRepository.clearAuditLogs();
                   if (onRefreshLogs) onRefreshLogs();
+                  showToast('Catatan audit log telah dibersihkan.', 'info');
                 }
               }}
-              className="btn-doodle px-3.5 py-2 bg-rose-200 hover:bg-rose-300 text-rose-950 text-xs sm:text-sm font-bold rounded-md flex items-center gap-1.5"
+              className="btn-doodle px-3.5 py-2 min-h-[44px] bg-rose-200 hover:bg-rose-300 text-rose-950 text-xs sm:text-sm font-bold rounded-md flex items-center gap-1.5"
               title="Hapus Semua Log Audit"
             >
               <Trash2 className="w-4 h-4" />

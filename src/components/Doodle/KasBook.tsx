@@ -28,6 +28,10 @@ import { generateGoogleSheetsCsv, downloadCsvFile, openGoogleSheetsImportGuide }
 
 import { ClassSettings, KasMember } from '../../types/kas.ts';
 import { Settings as SettingsIcon, MessageSquare, FileSpreadsheet, ExternalLink } from 'lucide-react';
+import { DoodleSelect } from '../UI/DoodleSelect.tsx';
+import { DoodleDatePicker } from '../UI/DoodleDatePicker.tsx';
+import { DoodleCurrencyInput } from '../UI/DoodleCurrencyInput.tsx';
+import { showToast, showConfirm } from '../UI/DoodleDialog.tsx';
 
 interface KasBookProps {
   transactions: KasTransaction[];
@@ -227,7 +231,7 @@ export const KasBook: React.FC<KasBookProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!txTitle.trim() || !txAmount || Number(txAmount) <= 0) {
-      alert('Mohon isi judul dan nominal uang kas dengan benar!');
+      showToast('Mohon isi judul dan nominal uang kas dengan benar!', 'error');
       return;
     }
 
@@ -432,20 +436,18 @@ export const KasBook: React.FC<KasBookProps> = ({
             </button>
           </div>
 
-          {/* Category Dropdown */}
-          <select
+          {/* Custom Doodle Category Dropdown */}
+          <DoodleSelect
             value={selectedCategory}
-            onChange={(e) => {
+            onChange={(val) => {
               sfx.playToggle();
-              setSelectedCategory(e.target.value);
+              setSelectedCategory(val);
             }}
-            className="w-full px-3 py-2 text-xs sm:text-sm bg-amber-50 border-2 border-slate-900 rounded-md outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] focus:bg-white"
-          >
-            <option value="all">Semua Kategori</option>
-            {CATEGORIES.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
+            options={[
+              { value: 'all', label: 'Semua Kategori' },
+              ...CATEGORIES.map(cat => ({ value: cat, label: cat }))
+            ]}
+          />
         </div>
       </div>
 
@@ -522,16 +524,24 @@ export const KasBook: React.FC<KasBookProps> = ({
                     {canEditKas && (
                       <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
                         <button
-                          onClick={() => {
-                            if (window.confirm(`Yakin ingin menghapus transaksi "${tx.title}"?`)) {
+                          onClick={async () => {
+                            const ok = await showConfirm({
+                              title: 'Hapus Transaksi?',
+                              message: `Apakah Anda yakin ingin menghapus transaksi "${tx.title}"?`,
+                              confirmLabel: 'Ya, Hapus',
+                              cancelLabel: 'Batal',
+                              isDanger: true,
+                            });
+                            if (ok) {
                               sfx.playClick();
                               onDeleteTransaction(tx.id);
+                              showToast('Transaksi berhasil dihapus.', 'info');
                             }
                           }}
-                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                          className="p-1 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
                           title="Hapus Transaksi"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </td>
                     )}
@@ -642,15 +652,11 @@ export const KasBook: React.FC<KasBookProps> = ({
                       <span>Scan Nota (OCR)</span>
                     </button>
                   </div>
-                  <input
-                    type="number"
+                  <DoodleCurrencyInput
+                    label="Nominal Rp *"
                     required
-                    min="1000"
-                    step="500"
-                    placeholder="Contoh: 35000"
                     value={txAmount}
-                    onChange={(e) => setTxAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                    className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
+                    onChange={(val) => setTxAmount(val)}
                   />
                   {/* Live Currency Formatting Badge with Dots */}
                   <div className="mt-1.5 p-1.5 bg-emerald-50 border border-emerald-400 rounded flex items-center justify-between text-xs font-mono font-black text-emerald-950">
@@ -686,31 +692,21 @@ export const KasBook: React.FC<KasBookProps> = ({
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                    Kategori
-                  </label>
-                  <select
+                  <DoodleSelect
+                    label="Kategori"
                     value={txCategory}
-                    onChange={(e) => setTxCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-sm bg-amber-50 border-2 border-slate-900 rounded-md outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] focus:bg-white"
-                  >
-                    {CATEGORIES.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setTxCategory(val)}
+                    options={CATEGORIES}
+                  />
                 </div>
               </div>
 
               {/* Tanggal Transaksi */}
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                  Tanggal Transaksi
-                </label>
-                <input
-                  type="date"
+                <DoodleDatePicker
+                  label="Tanggal Transaksi"
                   value={txDate}
-                  onChange={(e) => setTxDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
+                  onChange={(val) => setTxDate(val)}
                 />
               </div>
 

@@ -4,6 +4,7 @@ import { sfx } from '../utils/soundEffects.ts';
 import { signInWithGoogleSupabase, getSupabaseClient, LocalKasRepository } from '../services/supabaseClient.ts';
 
 import { registerOrUpdateUser } from '../utils/userManagement.ts';
+import { showPrompt, showToast } from '../components/UI/DoodleDialog.tsx';
 
 const SUPER_ADMIN_EMAIL = 'mrachmanfm@gmail.com';
 
@@ -125,14 +126,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Direct Google Email verification flow (bypasses iframe 403 block)
-    const emailInput = window.prompt(
-      'Masukkan Alamat Email Google Anda untuk verifikasi login:'
-    );
+    const emailInput = await showPrompt({
+      title: 'Masuk dengan Email Google',
+      message: 'Masukkan Alamat Email Google Anda untuk verifikasi hak akses login:',
+      placeholder: 'nama@gmail.com',
+      inputType: 'email',
+      confirmLabel: 'Verifikasi',
+      cancelLabel: 'Batal'
+    });
 
     if (!emailInput || !emailInput.trim()) return;
 
     const email = emailInput.trim();
     loginAs('anggota', email.split('@')[0], email);
+    showToast(`Berhasil verifikasi login sebagai ${email.split('@')[0]}`, 'success');
     sfx.playCoinChime();
   };
 

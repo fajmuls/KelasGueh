@@ -21,6 +21,7 @@ import {
 import { KasTransaction, KasMember, ClassSettings } from './types/kas.ts';
 import { CURRENT_APP_VERSION } from './version.ts';
 import { sfx } from './utils/soundEffects.ts';
+import { DoodleDialogContainer, showToast } from './components/UI/DoodleDialog.tsx';
 
 const AppContent: React.FC = () => {
   const { user, role, isLoggedIn, canEditKas } = useAuth();
@@ -137,7 +138,7 @@ const AppContent: React.FC = () => {
       setAuditLogs(logs);
     } catch (err) {
       console.error('Add transaction handler error:', err);
-      alert('Gagal menyimpan transaksi ke database. Pastikan koneksi Supabase aktif.');
+      showToast('Gagal menyimpan transaksi ke database. Pastikan koneksi Supabase aktif.', 'error');
     }
   };
 
@@ -462,6 +463,7 @@ const AppContent: React.FC = () => {
 export default function App() {
   return (
     <AuthProvider>
+      <DoodleDialogContainer />
       <AppContent />
     </AuthProvider>
   );

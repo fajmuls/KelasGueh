@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Kelas Gue" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
@@ -42,7 +43,7 @@
         };
       })();
     </script>
-    <title>Kelas Gue - Aplikasi Kelas Serbaguna v3.6.0</title>
+    <title>Kelas Gue - Aplikasi Kelas Serbaguna</title>
     <meta name="description" content="Aplikasi kelas serbaguna untuk kelola kegiatan, buku kas, checklist iuran, dan catatan kelas dengan gaya doodle art." />
     
     <!-- Open Graph / WhatsApp / Facebook Preview Tags -->
@@ -50,32 +51,32 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Kelas Gue - Aplikasi Kelas Serbaguna" />
     <meta property="og:description" content="Aplikasi kelas serbaguna untuk kelola kegiatan, buku kas, checklist iuran, dan catatan kelas dengan gaya doodle art." />
-    <meta property="og:url" content="https://kelasgueh-mrachmanfm-2884s-projects.vercel.app/" />
+    <meta property="og:url" content="https://kelasgueh.vercel.app/" />
     
     <!-- Primary WhatsApp Image (Ultra-light 43KB JPEG 400x400 with solid white background for 100% WhatsApp crawler compatibility) -->
-    <meta property="og:image" content="https://kelasgueh-mrachmanfm-2884s-projects.vercel.app/whatsapp-preview.jpg" />
-    <meta property="og:image:secure_url" content="https://kelasgueh-mrachmanfm-2884s-projects.vercel.app/whatsapp-preview.jpg" />
+    <meta property="og:image" content="https://kelasgueh.vercel.app/whatsapp-preview.jpg" />
+    <meta property="og:image:secure_url" content="https://kelasgueh.vercel.app/whatsapp-preview.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="400" />
     <meta property="og:image:height" content="400" />
     <meta property="og:image:alt" content="Logo Aplikasi Kelas Gue" />
 
     <!-- Secondary HD PNG Image for platforms supporting larger previews -->
-    <meta property="og:image" content="https://kelasgueh-mrachmanfm-2884s-projects.vercel.app/og-image.png" />
-    <meta property="og:image:secure_url" content="https://kelasgueh-mrachmanfm-2884s-projects.vercel.app/og-image.png" />
+    <meta property="og:image" content="https://kelasgueh.vercel.app/og-image.png" />
+    <meta property="og:image:secure_url" content="https://kelasgueh.vercel.app/og-image.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
 
     <!-- Legacy WhatsApp and Schema image hooks -->
-    <link rel="image_src" href="https://kelasgueh-mrachmanfm-2884s-projects.vercel.app/whatsapp-preview.jpg" />
-    <meta itemprop="image" content="https://kelasgueh-mrachmanfm-2884s-projects.vercel.app/whatsapp-preview.jpg" />
+    <link rel="image_src" href="https://kelasgueh.vercel.app/whatsapp-preview.jpg" />
+    <meta itemprop="image" content="https://kelasgueh.vercel.app/whatsapp-preview.jpg" />
 
     <!-- Twitter / X Card Tags -->
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Kelas Gue - Aplikasi Kelas Serbaguna" />
     <meta name="twitter:description" content="Aplikasi kelas serbaguna untuk kelola kegiatan, buku kas, checklist iuran, dan catatan kelas dengan gaya doodle art." />
-    <meta name="twitter:image" content="https://kelasgueh-mrachmanfm-2884s-projects.vercel.app/whatsapp-preview.jpg" />
+    <meta name="twitter:image" content="https://kelasgueh.vercel.app/whatsapp-preview.jpg" />
     <meta name="twitter:image:alt" content="Logo Kelas Gue" />
 
     <!-- Schema.org WebApplication structured data -->
@@ -88,11 +89,18 @@
         "applicationCategory": "EducationalApplication",
         "operatingSystem": "All",
         "browserRequirements": "Requires JavaScript",
-        "image": "https://kelasgueh-mrachmanfm-2884s-projects.vercel.app/og-image.png"
+        "image": "https://kelasgueh.vercel.app/og-image.png"
       }
     </script>
   </head>
   <body class="overflow-x-hidden max-w-full">
+    <noscript>
+      <div style="padding: 24px; text-align: center; background-color: #FAF7F2; font-family: sans-serif; color: #1e293b;">
+        <h2>Kelas Gue - Aplikasi Buku Kas &amp; Transparansi Kelas</h2>
+        <p>Aplikasi kelas serbaguna untuk mencatat pemasukan dan pengeluaran kas, checklist iuran mingguan, bukti nota kuitansi, dan audit log transparan.</p>
+        <p>Silakan aktifkan JavaScript di peramban Anda untuk menggunakan seluruh fitur interaktif Kelas Gue.</p>
+      </div>
+    </noscript>
     <div id="root" class="max-w-[100vw] overflow-x-hidden"></div>
     <script type="module" src="/src/main.tsx"></script>
     <style>

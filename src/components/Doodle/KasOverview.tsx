@@ -104,13 +104,13 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
   const unpaidCount = members.length - paidCount;
 
   const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+    return `Rp ${Number(val || 0).toLocaleString('id-ID')}`;
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Top Banner Alert / Welcome */}
-      <div className="relative card-doodle-yellow p-5 sm:p-6 rounded-lg">
+      <div className="relative card-doodle-yellow p-4 sm:p-6 rounded-lg">
         <ScotchTape className="absolute -top-3 left-8 rotate-[-2deg]" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -122,111 +122,112 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
                 Status: {canEditKas ? (isSuperAdmin ? '👑 Super Admin Mode' : '🛡️ Bendahara Aktif') : '👀 Mode Transparansi Anggota'}
               </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
+            <h2 className="text-xl sm:text-3xl font-black text-slate-900 leading-tight">
               Laporan Kas {settings.className}
             </h2>
-            <p className="text-sm text-slate-700 mt-1 max-w-xl">
+            <p className="text-xs sm:text-sm text-slate-700 mt-1 max-w-xl">
               Setiap rupiah tercatat dengan bukti nota kuitansi. Seluruh anggota berhak memantau arus kas secara terbuka.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* Action buttons: Primary action full-width on mobile, side-by-side secondary actions */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto shrink-0">
             {canEditKas && (
               <button
                 onClick={() => {
                   sfx.playClick();
                   onOpenNewTxModal();
                 }}
-                className="btn-doodle px-4 py-2.5 bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black rounded-md flex items-center gap-2 text-sm"
+                className="btn-doodle w-full sm:w-auto px-4 py-2.5 min-h-[44px] bg-emerald-300 hover:bg-emerald-400 text-slate-900 font-black rounded-md flex items-center justify-center gap-2 text-sm shadow-[2px_2px_0px_#1E293B]"
               >
                 <PlusCircle className="w-4 h-4" />
-                <span>+ Catat Transaksi</span>
+                <span>Catat Transaksi</span>
               </button>
             )}
             
-            {onOpenPrintModal && (
-              <button
-                onClick={() => {
-                  sfx.playPaperRustle();
-                  onOpenPrintModal();
-                }}
-                className="btn-doodle px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
-              >
-                <Printer className="w-4 h-4 text-slate-800" />
-                <span>Cetak / PDF</span>
-              </button>
-            )}
+            <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center">
+              {onOpenPrintModal && (
+                <button
+                  onClick={() => {
+                    sfx.playPaperRustle();
+                    onOpenPrintModal();
+                  }}
+                  className="btn-doodle w-full sm:w-auto px-3.5 py-2.5 min-h-[44px] bg-white hover:bg-slate-50 text-slate-900 font-bold rounded-md flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-[1.5px_1.5px_0px_#1E293B]"
+                >
+                  <Printer className="w-4 h-4 text-slate-800" />
+                  <span>Cetak / PDF</span>
+                </button>
+              )}
 
-
-
-            {canEditKas && onOpenWhatsAppModal && (
-              <button
-                onClick={() => {
-                  sfx.playCardOpen();
-                  onOpenWhatsAppModal();
-                }}
-                className="btn-doodle px-3.5 py-2.5 bg-emerald-100 hover:bg-emerald-200 text-slate-900 font-bold rounded-md flex items-center gap-1.5 text-xs sm:text-sm"
-              >
-                <MessageSquare className="w-4 h-4 text-emerald-800" />
-                <span>Rekap WA</span>
-              </button>
-            )}
+              {canEditKas && onOpenWhatsAppModal && (
+                <button
+                  onClick={() => {
+                    sfx.playCardOpen();
+                    onOpenWhatsAppModal();
+                  }}
+                  className="btn-doodle w-full sm:w-auto px-3.5 py-2.5 min-h-[44px] bg-emerald-100 hover:bg-emerald-200 text-slate-900 font-bold rounded-md flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-[1.5px_1.5px_0px_#1E293B]"
+                >
+                  <MessageSquare className="w-4 h-4 text-emerald-800" />
+                  <span>Rekap WA</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Primary KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <div className="relative card-doodle p-5 rounded-lg bg-white">
+      {/* Primary KPI Grid (Compacted vertical padding on mobile) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <div className="relative card-doodle p-3.5 sm:p-5 rounded-lg bg-white">
           <div className="absolute top-3 right-3">
-            <DoodleCoin className="w-7 h-7" />
+            <DoodleCoin className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Saldo Kas Bersih</p>
-          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">
+          <p className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Saldo Kas Bersih</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 sm:mt-2 font-mono [font-variant-numeric:tabular-nums]">
             {formatRupiah(currentBalance)}
           </p>
-          <div className="mt-3 pt-3 border-t-2 border-dashed border-slate-200 flex items-center justify-between text-xs font-bold text-slate-600">
+          <div className="mt-2.5 pt-2.5 border-t-2 border-dashed border-slate-200 flex items-center justify-between text-xs font-bold text-slate-600">
             <span>Tersimpan di Bendahara</span>
             <span className="text-emerald-700">Aman ✓</span>
           </div>
         </div>
 
-        <div className="relative card-doodle-mint p-5 rounded-lg">
-          <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-emerald-200 border-2 border-slate-900 flex items-center justify-center">
-            <ArrowDownRight className="w-5 h-5 text-emerald-800" />
+        <div className="relative card-doodle-mint p-3.5 sm:p-5 rounded-lg">
+          <div className="absolute top-3 right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-200 border-2 border-slate-900 flex items-center justify-center">
+            <ArrowDownRight className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-800" />
           </div>
-          <p className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Total Debit (Masuk)</p>
-          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">
+          <p className="text-[11px] sm:text-xs font-bold text-emerald-900 uppercase tracking-wider">Total Debit (Masuk)</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 sm:mt-2 font-mono [font-variant-numeric:tabular-nums]">
             {formatRupiah(totalIncome)}
           </p>
-          <div className="mt-3 pt-3 border-t-2 border-dashed border-slate-300 flex items-center justify-between text-xs font-bold text-emerald-950">
+          <div className="mt-2.5 pt-2.5 border-t-2 border-dashed border-slate-300 flex items-center justify-between text-xs font-bold text-emerald-950">
             <span>Buku Kas & Checklist:</span>
             <span>{formatRupiah(totalIncome)}</span>
           </div>
         </div>
 
-        <div className="relative card-doodle-rose p-5 rounded-lg">
-          <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-rose-200 border-2 border-slate-900 flex items-center justify-center">
-            <ArrowUpRight className="w-5 h-5 text-rose-800" />
+        <div className="relative card-doodle-rose p-3.5 sm:p-5 rounded-lg">
+          <div className="absolute top-3 right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-rose-200 border-2 border-slate-900 flex items-center justify-center">
+            <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 text-rose-800" />
           </div>
-          <p className="text-xs font-bold text-rose-900 uppercase tracking-wider">Total Kredit (Keluar)</p>
-          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">
+          <p className="text-[11px] sm:text-xs font-bold text-rose-900 uppercase tracking-wider">Total Kredit (Keluar)</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 sm:mt-2 font-mono [font-variant-numeric:tabular-nums]">
             {formatRupiah(totalExpense)}
           </p>
-          <div className="mt-3 pt-3 border-t-2 border-dashed border-slate-300 flex items-center justify-between text-xs font-bold text-rose-950">
+          <div className="mt-2.5 pt-2.5 border-t-2 border-dashed border-slate-300 flex items-center justify-between text-xs font-bold text-rose-950">
             <span>Operational & Acara</span>
             <span>- Kredit</span>
           </div>
         </div>
 
-        <div className="relative card-doodle-blue p-5 rounded-lg">
+        <div className="relative card-doodle-blue p-3.5 sm:p-5 rounded-lg">
           <div className="absolute top-3 right-3">
-            <PushPin className="w-6 h-6 text-sky-700" />
+            <PushPin className="w-5 h-5 sm:w-6 sm:h-6 text-sky-700" />
           </div>
-          <p className="text-xs font-bold text-sky-900 uppercase tracking-wider">Target Kas Semester</p>
-          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-2 font-mono tabular-nums">{targetProgress}%</p>
-          <div className="mt-3">
-            <div className="w-full h-3.5 bg-white border-2 border-slate-900 rounded-sm overflow-hidden p-0.5">
+          <p className="text-[11px] sm:text-xs font-bold text-sky-900 uppercase tracking-wider">Target Kas Semester</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-1 sm:mt-2 font-mono [font-variant-numeric:tabular-nums]">{targetProgress}%</p>
+          <div className="mt-2.5">
+            <div className="w-full h-3 bg-white border-2 border-slate-900 rounded-sm overflow-hidden p-0.5">
               <div
                 className="h-full bg-amber-400 border-r-2 border-slate-900 transition-all duration-500"
                 style={{ width: `${targetProgress}%` }}

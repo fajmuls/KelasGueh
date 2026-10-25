@@ -20,6 +20,10 @@ import {
 } from 'lucide-react';
 import { saveNewPin } from '../../utils/security.ts';
 import { requestNotificationPermission, sendLocalNotification } from '../../utils/notifications.ts';
+import { DoodleCurrencyInput } from '../UI/DoodleCurrencyInput.tsx';
+import { DoodleSelect } from '../UI/DoodleSelect.tsx';
+import { NotificationCardModal } from '../UI/NotificationCardModal.tsx';
+import { showToast } from '../UI/DoodleDialog.tsx';
 
 interface KasSettingsProps {
   settings: ClassSettings;
@@ -98,46 +102,48 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
     setTimeout(() => setSaveMessage(null), 3000);
   };
 
+  const [showNotifCard, setShowNotifCard] = useState(false);
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     sfx.playCoinChime();
     onSaveSettings(form);
-    setSaveMessage('Pengaturan iuran berhasil disimpan!');
-    setTimeout(() => setSaveMessage(null), 3000);
+    showToast('Pengaturan iuran berhasil disimpan!', 'success');
   };
 
   const handleTestNotification = async () => {
     sfx.playNotification();
-    const ok = await requestNotificationPermission();
-    if (ok) {
-      sendLocalNotification('Kelas Gue', {
-        body: 'Notifikasi PWA berhasil diaktifkan!',
-        vibrate: [200, 100, 200]
-      } as any);
-    } else {
-      alert('Izin notifikasi ditolak.');
+    showToast('Tes Notifikasi Berhasil! Sistem pengingat kas aktif.', 'success');
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      setShowNotifCard(true);
     }
   };
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-12">
+      {/* Notification Consent Modal */}
+      <NotificationCardModal
+        isOpen={showNotifCard}
+        onClose={() => setShowNotifCard(false)}
+      />
+
       {/* 1. Header & Version Info */}
-      <div className="relative card-doodle-yellow p-6 rounded-lg">
+      <div className="relative card-doodle-yellow p-5 sm:p-6 rounded-lg">
         <ScotchTape className="absolute -top-3 left-8 rotate-[-2deg]" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-amber-600" />
               <span>Pengaturan & Preferensi</span>
             </h2>
-            <p className="text-sm text-slate-700 mt-1">
+            <p className="text-xs sm:text-sm text-slate-700 mt-1">
               Kelola iuran, notifikasi, dan keamanan akses kelas.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleTestNotification}
-              className="btn-doodle px-3 py-2 bg-white text-slate-900 text-xs font-bold rounded-md flex items-center gap-1.5"
+              className="btn-doodle px-3.5 py-2 min-h-[44px] bg-white text-slate-900 text-xs font-bold rounded-md flex items-center gap-1.5 shadow-[1.5px_1.5px_0px_#1E293B]"
             >
               <Bell className="w-4 h-4 text-amber-500" />
               <span>Tes Notifikasi</span>
@@ -147,10 +153,10 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
       </div>
 
       {/* 2. Iuran Configuration Form */}
-      <div className="card-doodle p-6 rounded-lg bg-white relative">
-        <form onSubmit={handleSave} className="space-y-6">
+      <div className="card-doodle p-5 sm:p-6 rounded-lg bg-white relative">
+        <form onSubmit={handleSave} className="space-y-5">
           <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
-            <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
               <Save className="w-5 h-5 text-indigo-600" />
               <span>Pengaturan Iuran & Semester</span>
             </h3>
@@ -163,25 +169,21 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
                 type="text"
                 value={form.className}
                 onChange={(e) => setForm({ ...form, className: e.target.value })}
-                className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md outline-none"
+                className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md outline-none focus:bg-amber-50"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Nominal Iuran Mingguan</label>
-              <input
-                type="number"
+              <DoodleCurrencyInput
+                label="Nominal Iuran Mingguan"
                 value={form.weeklyDuesAmount}
-                onChange={(e) => setForm({ ...form, weeklyDuesAmount: Number(e.target.value) })}
-                className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md outline-none"
+                onChange={(val) => setForm({ ...form, weeklyDuesAmount: val })}
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Target Kas Semester</label>
-              <input
-                type="number"
+              <DoodleCurrencyInput
+                label="Target Kas Semester"
                 value={form.kasTargetAmount}
-                onChange={(e) => setForm({ ...form, kasTargetAmount: Number(e.target.value) })}
-                className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md outline-none"
+                onChange={(val) => setForm({ ...form, kasTargetAmount: val })}
               />
             </div>
             <div>
@@ -190,22 +192,21 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
                 type="text"
                 value={form.academicYear}
                 onChange={(e) => setForm({ ...form, academicYear: e.target.value })}
-                className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md outline-none"
+                className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md outline-none focus:bg-amber-50"
               />
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-2">
             <button
               type="submit"
-              className="btn-doodle px-6 py-2 bg-emerald-400 hover:bg-emerald-500 text-slate-900 text-sm font-black rounded-md flex items-center gap-2"
+              className="btn-doodle px-6 py-2.5 min-h-[44px] bg-emerald-400 hover:bg-emerald-500 text-slate-900 text-xs sm:text-sm font-black rounded-md flex items-center gap-2 shadow-[2px_2px_0px_#1E293B]"
             >
               <Save className="w-4 h-4" />
               <span>Simpan Perubahan</span>
             </button>
           </div>
         </form>
-        {saveMessage && <p className="text-xs text-emerald-700 font-bold mt-2">{saveMessage}</p>}
       </div>
 
       {/* 3. Audio Preferences */}
@@ -227,7 +228,7 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
           <button
             type="button"
             onClick={handleToggleSound}
-            className={`btn-doodle px-3 py-1.5 rounded-md text-xs font-black flex items-center gap-2 ${
+            className={`btn-doodle px-3.5 py-2 min-h-[44px] rounded-md text-xs font-black flex items-center justify-center gap-2 ${
               soundEnabled ? 'bg-emerald-300 text-slate-900' : 'bg-slate-200 text-slate-600'
             }`}
           >
@@ -277,28 +278,27 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
                   </div>
                   
                   <div className="flex items-center gap-2 pt-1 border-t border-dashed border-slate-300">
-                    <GraduationCap className="w-3 h-3 text-slate-500" />
-                    <select
-                      value={u.linkedMemberId || ''}
-                      onChange={(e) => {
-                        const selectedId = e.target.value;
-                        const selectedStudent = members.find(m => m.id === selectedId);
-                        const updated = updateUserLinkedMember(
-                          u.email,
-                          selectedId || undefined,
-                          selectedStudent ? selectedStudent.name : undefined
-                        );
-                        // Refresh the list from the repository to ensure UI consistency
-                        LocalKasRepository.getWhitelist().then(setUserList);
-                        sfx.playClick();
-                      }}
-                      className="flex-1 text-[10px] font-bold bg-amber-50 border-2 border-slate-900 rounded-md px-2 py-1 outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)]"
-                    >
-                      <option value="">-- Hubungkan ke Siswa --</option>
-                      {members.map(m => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
-                      ))}
-                    </select>
+                    <GraduationCap className="w-4 h-4 text-slate-500 shrink-0" />
+                    <div className="flex-1">
+                      <DoodleSelect
+                        value={u.linkedMemberId || ''}
+                        onChange={(selectedId) => {
+                          const selectedStudent = members.find(m => m.id === selectedId);
+                          updateUserLinkedMember(
+                            u.email,
+                            selectedId || undefined,
+                            selectedStudent ? selectedStudent.name : undefined
+                          );
+                          LocalKasRepository.getWhitelist().then(setUserList);
+                          sfx.playClick();
+                          showToast('Data tautan siswa diperbarui.', 'info');
+                        }}
+                        options={[
+                          { value: '', label: '-- Hubungkan ke Siswa --' },
+                          ...members.map(m => ({ value: m.id, label: m.name }))
+                        ]}
+                      />
+                    </div>
 
                     {u.role !== 'superadmin' && (
                       <button
