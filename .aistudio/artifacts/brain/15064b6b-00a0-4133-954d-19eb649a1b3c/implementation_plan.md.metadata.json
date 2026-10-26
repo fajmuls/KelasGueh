@@ -1,6 +1,6 @@
 {
-  "summary":  "Rencana komprehensif implementasi Hub Beranda Utama (Ranah Bendahara vs Ranah Sekretaris), Modul Sekretaris (Poin Keaktifan, Presensi, Notulensi), Tab Baru Iuran Khusus & Kolektif, Perbaikan Bug Double Transaksi Ceklis Iuran, Pengaturan Iuran Spesifik per Bulan & Rekap Semester, Sinkronisasi URL Routing, serta Pembaruan Versi v4.0.0.",
-  "updatedAt":  "2026-10-26T07:57:02.806035908Z",
+  "summary":  "Rencana arsitektur dan perbaikan komprehensif v4.1.0:\n1. Hub Navigasi Tunggal & Sub-Navigasi Presisi untuk Bendahara & Sekretaris.\n2. Modal Laporan Akhir Semester Terpadu (Kas & Keaktifan) dengan Pratinjau Visual dan Cetak/Ekspor PDF.\n3. Ceklis Iuran: Modal Loading Proses Akumulasi Massal, Cooldown Anti-Spam Klik Cepat, dan Pembersihan Mutasi Ganda.\n4. Tab Iuran Khusus & Kolektif: Pemisahan Tab Acara dan Tab Patungan Belanja serta Perbaikan Overflow Tombol Split Bill.\n5. Sekretaris 5 Sub-Modul: Keaktifan & Presensi Terintegrasi Jadwal/Mata Kuliah, Modul Inventaris Barang Kelas, dan Modul Jadwal Dosen/Tugas.\n6. Pembersihan Bug Visual: Menghapus/memperbaiki dekorasi icon yang menimpa teks/kartu dan merestrukturisasi Audio Engine (fade-out suara tumpang tindih & chime unik).\n7. Versi v4.1.0 & Rekomendasi Saran Pengembang.",
+  "updatedAt":  "2026-10-26T08:57:47.800713362Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

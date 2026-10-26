@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog, AttendanceRecord, MeetingMinute } from '../types/kas.ts';
+import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog, AttendanceRecord, MeetingMinute, ClassInventoryItem, CourseSchedule, CourseAssignment } from '../types/kas.ts';
 import { getRegisteredUsers, registerOrUpdateUser, updateUserRole } from '../utils/userManagement.ts';
 
 /**
@@ -768,7 +768,8 @@ export class LocalKasRepository {
         {
           id: 'kolektif_demo_1',
           title: 'Seminar Nasional AI & Karir 2026',
-          category: 'Acara & Lomba',
+          category: 'Acara & Seminar',
+          billType: 'acara',
           amountPerPerson: 35000,
           totalCost: 35000 * (allIds.length || 1),
           dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
@@ -777,13 +778,31 @@ export class LocalKasRepository {
           paidMemberIds: allIds.slice(0, Math.min(2, allIds.length)),
           createdAt: new Date().toISOString(),
           syncedToKas: false
+        },
+        {
+          id: 'kolektif_demo_2',
+          title: 'Patungan Konsumsi & Sound System Acara Kelas',
+          category: 'Patungan Belanja',
+          billType: 'patungan',
+          amountPerPerson: 20000,
+          totalCost: 20000 * (allIds.length || 1),
+          dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+          notes: 'Pembelian snack, air mineral, dan sewa mic portable.',
+          participantIds: allIds,
+          paidMemberIds: allIds.slice(0, Math.min(1, allIds.length)),
+          createdAt: new Date().toISOString(),
+          syncedToKas: false
         }
       ];
       localStorage.setItem(this.KEY_KOLEKTIF, JSON.stringify(sample));
       return sample;
     }
     try {
-      return JSON.parse(raw);
+      const parsed: KolektifBill[] = JSON.parse(raw);
+      return parsed.map(b => ({
+        ...b,
+        billType: b.billType || (b.category?.toLowerCase().includes('patungan') ? 'patungan' : 'acara')
+      }));
     } catch {
       return [];
     }
@@ -990,6 +1009,204 @@ export class LocalKasRepository {
   public static deleteMeetingMinute(id: string): void {
     const minutes = this.getMeetingMinutes().filter(m => m.id !== id);
     localStorage.setItem(this.KEY_MINUTES, JSON.stringify(minutes));
+  }
+
+  // ---------------- SEKRETARIAT: INVENTARIS KELAS ----------------
+  private static KEY_INVENTORY = 'kelasgue_secretary_inventory_v1';
+
+  public static getInventoryItems(): ClassInventoryItem[] {
+    const raw = localStorage.getItem(this.KEY_INVENTORY);
+    if (!raw) {
+      const sample: ClassInventoryItem[] = [
+        {
+          id: 'inv_sample_1',
+          name: 'Spidol Boardmarker & Penghapus Whiteboard',
+          quantity: 3,
+          condition: 'baik',
+          location: 'Laci Meja Dosen Kelas',
+          purchasedFromKas: true,
+          price: 25000,
+          notes: 'Dibeli dari kas bulan lalu, warna hitam dan biru.',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'inv_sample_2',
+          name: 'Kabel Terminal / Stopkontak Roll 5 Meter',
+          quantity: 1,
+          condition: 'baik',
+          location: 'Lemari Belakang Kelas',
+          purchasedFromKas: true,
+          price: 65000,
+          notes: 'Untuk keperluan presentasi laptop kelompok.',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'inv_sample_3',
+          name: 'Kotak P3K Kelas (Betadine, Plester, Paracetamol)',
+          quantity: 1,
+          condition: 'baik',
+          location: 'Dinding Samping Pintu',
+          purchasedFromKas: false,
+          notes: 'Bantuan dari klinik kampus.',
+          createdAt: new Date().toISOString()
+        }
+      ];
+      localStorage.setItem(this.KEY_INVENTORY, JSON.stringify(sample));
+      return sample;
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  public static saveInventoryItem(item: Omit<ClassInventoryItem, 'id' | 'createdAt'> & { id?: string }): ClassInventoryItem {
+    const items = this.getInventoryItems();
+    if (item.id) {
+      const idx = items.findIndex(i => i.id === item.id);
+      if (idx >= 0) {
+        items[idx] = { ...items[idx], ...item } as ClassInventoryItem;
+        localStorage.setItem(this.KEY_INVENTORY, JSON.stringify(items));
+        return items[idx];
+      }
+    }
+    const newItem: ClassInventoryItem = {
+      ...item,
+      id: generateUUID(),
+      createdAt: new Date().toISOString()
+    };
+    items.unshift(newItem);
+    localStorage.setItem(this.KEY_INVENTORY, JSON.stringify(items));
+    return newItem;
+  }
+
+  public static deleteInventoryItem(id: string): void {
+    const items = this.getInventoryItems().filter(i => i.id !== id);
+    localStorage.setItem(this.KEY_INVENTORY, JSON.stringify(items));
+  }
+
+  // ---------------- SEKRETARIAT: JADWAL KULIAH & TUGAS ----------------
+  private static KEY_COURSES = 'kelasgue_secretary_courses_v1';
+
+  public static getCourseSchedules(): CourseSchedule[] {
+    const raw = localStorage.getItem(this.KEY_COURSES);
+    if (!raw) {
+      const sample: CourseSchedule[] = [
+        {
+          id: 'course_sample_1',
+          courseName: 'Algoritma & Struktur Data',
+          lecturerName: 'Dr. Budi Santoso, M.Kom',
+          sks: 3,
+          day: 'Senin',
+          time: '08:00 - 10:30',
+          room: 'Lab Komputer 3',
+          assignments: [
+            {
+              id: 'asg_1',
+              title: 'Tugas Implementasi Binary Search Tree',
+              deadline: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
+              status: 'pending',
+              notes: 'Upload ke portal e-learning format ZIP.'
+            }
+          ],
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'course_sample_2',
+          courseName: 'Basis Data Terdistribusi',
+          lecturerName: 'Siti Rahmawati, S.T., M.T.',
+          sks: 3,
+          day: 'Rabu',
+          time: '10:00 - 12:30',
+          room: 'Ruang Teori 204',
+          assignments: [
+            {
+              id: 'asg_2',
+              title: 'Proposal Proyek Akhir Basis Data',
+              deadline: new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0],
+              status: 'pending',
+              notes: 'Kelompok maksimal 3 orang.'
+            }
+          ],
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'course_sample_3',
+          courseName: 'Rekayasa Perangkat Lunak',
+          lecturerName: 'Ir. Ahmad Hidayat, M.Eng',
+          sks: 2,
+          day: 'Kamis',
+          time: '13:00 - 14:40',
+          room: 'Ruang Teori 101',
+          assignments: [],
+          createdAt: new Date().toISOString()
+        }
+      ];
+      localStorage.setItem(this.KEY_COURSES, JSON.stringify(sample));
+      return sample;
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  public static saveCourseSchedule(course: Omit<CourseSchedule, 'id' | 'createdAt'> & { id?: string }): CourseSchedule {
+    const courses = this.getCourseSchedules();
+    if (course.id) {
+      const idx = courses.findIndex(c => c.id === course.id);
+      if (idx >= 0) {
+        courses[idx] = { ...courses[idx], ...course } as CourseSchedule;
+        localStorage.setItem(this.KEY_COURSES, JSON.stringify(courses));
+        return courses[idx];
+      }
+    }
+    const newCourse: CourseSchedule = {
+      ...course,
+      id: generateUUID(),
+      assignments: course.assignments || [],
+      createdAt: new Date().toISOString()
+    };
+    courses.push(newCourse);
+    localStorage.setItem(this.KEY_COURSES, JSON.stringify(courses));
+    return newCourse;
+  }
+
+  public static deleteCourseSchedule(id: string): void {
+    const courses = this.getCourseSchedules().filter(c => c.id !== id);
+    localStorage.setItem(this.KEY_COURSES, JSON.stringify(courses));
+  }
+
+  public static addCourseAssignment(courseId: string, assignment: Omit<CourseAssignment, 'id'>): void {
+    const courses = this.getCourseSchedules();
+    const course = courses.find(c => c.id === courseId);
+    if (!course) return;
+    const newAsg: CourseAssignment = {
+      ...assignment,
+      id: generateUUID()
+    };
+    course.assignments.push(newAsg);
+    localStorage.setItem(this.KEY_COURSES, JSON.stringify(courses));
+  }
+
+  public static toggleCourseAssignment(courseId: string, assignmentId: string): void {
+    const courses = this.getCourseSchedules();
+    const course = courses.find(c => c.id === courseId);
+    if (!course) return;
+    const asg = course.assignments.find(a => a.id === assignmentId);
+    if (!asg) return;
+    asg.status = asg.status === 'selesai' ? 'pending' : 'selesai';
+    localStorage.setItem(this.KEY_COURSES, JSON.stringify(courses));
+  }
+
+  public static deleteCourseAssignment(courseId: string, assignmentId: string): void {
+    const courses = this.getCourseSchedules();
+    const course = courses.find(c => c.id === courseId);
+    if (!course) return;
+    course.assignments = course.assignments.filter(a => a.id !== assignmentId);
+    localStorage.setItem(this.KEY_COURSES, JSON.stringify(courses));
   }
 }
 

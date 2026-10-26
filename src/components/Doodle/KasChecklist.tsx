@@ -20,7 +20,8 @@ import {
   Edit2,
   Save,
   Zap,
-  Hand
+  Hand,
+  Loader2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { showToast, showConfirm } from '../UI/DoodleDialog.tsx';
@@ -126,6 +127,48 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   const [showAllArrearsModal, setShowAllArrearsModal] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<'all' | 'arrears'>('all');
+
+  // Bulk toggle loading state & anti-spam click throttle
+  const [bulkLoadingWeek, setBulkLoadingWeek] = useState<{ weekKey: string; weekLabel: string; shouldPay: boolean } | null>(null);
+  const lastSingleClickRef = useRef<number>(0);
+
+  const handleSafeSingleToggle = (memberId: string, weekKey: string) => {
+    if (!canEditKas) return;
+    const now = Date.now();
+    if (now - lastSingleClickRef.current < 280) {
+      // Throttled to prevent fast clicking race condition
+      return;
+    }
+    lastSingleClickRef.current = now;
+    sfx.playCoinChime();
+    onToggleWeek(memberId, weekKey);
+  };
+
+  const handleSafeToggleAllWeek = (weekIdx: number) => {
+    if (!canEditKas || !onToggleAllWeek) return;
+    const wKey = getWeekKey(weekIdx);
+    const allPaid = filteredMembers.length > 0 && filteredMembers.every(m => !!m.weeklyStatus?.[wKey]);
+    const shouldPay = !allPaid;
+
+    sfx.playClick();
+    setBulkLoadingWeek({
+      weekKey: wKey,
+      weekLabel: `Minggu ke-${weekIdx + 1} (${MONTHS[selectedMonth]} ${selectedYear})`,
+      shouldPay
+    });
+
+    setTimeout(() => {
+      onToggleAllWeek(wKey, shouldPay);
+      sfx.playBulkLoadingSuccess();
+      setBulkLoadingWeek(null);
+      showToast(
+        shouldPay
+          ? `Berhasil memperbarui kas: Seluruh siswa ditandai Lunas untuk Minggu ke-${weekIdx + 1}!`
+          : `Status lunas Minggu ke-${weekIdx + 1} telah dibatalkan untuk seluruh siswa.`,
+        'success'
+      );
+    }, 650);
+  };
 
   const membersWithArrears = members.filter(m => {
     const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
@@ -526,12 +569,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
               return (
                 <div
                   key={member.id}
-                  onClick={() => {
-                    if (canEditKas) {
-                      sfx.playCoinChime();
-                      onToggleWeek(member.id, currentWKey);
-                    }
-                  }}
+                  onClick={() => handleSafeSingleToggle(member.id, currentWKey)}
                   className={`p-3 rounded-lg border-2 border-slate-900 transition-all cursor-pointer flex flex-col justify-between select-none ${
                     isPaid
                       ? 'bg-emerald-300 shadow-[2px_2px_0px_#1E293B] scale-[1.01]'
@@ -589,14 +627,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                         {canEditKas && (
                           <button
                             type="button"
-                            onClick={() => {
-                              const wKey = getWeekKey(idx);
-                              const allPaid = filteredMembers.length > 0 && filteredMembers.every(m => !!m.weeklyStatus?.[wKey]);
-                              if (onToggleAllWeek) {
-                                onToggleAllWeek(wKey, !allPaid);
-                                sfx.playLevelUp();
-                              }
-                            }}
+                            onClick={() => handleSafeToggleAllWeek(idx)}
                             className="min-h-[44px] min-w-[36px] flex items-center justify-center p-1 -my-1.5"
                             title="Pilih Semua / Batal Semua Minggu Ini"
                           >
@@ -661,7 +692,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                             {canEditKas ? (
                               <button
                                 type="button"
-                                onClick={() => { sfx.playCoinChime(); onToggleWeek(member.id, wKey); }}
+                                onClick={() => handleSafeSingleToggle(member.id, wKey)}
                                 className={`w-6 h-6 mx-auto rounded border-2 border-slate-800 flex items-center justify-center transition-transform active:scale-90 touch-manipulation cursor-pointer ${
                                   isPaid ? 'bg-emerald-400 text-slate-900 shadow-[1px_1px_0px_#1E293B]' : 'bg-white hover:bg-amber-100'
                                 }`}
@@ -829,6 +860,28 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Processing Loading Modal Overlay */}
+      {bulkLoadingWeek && (
+        <div className="fixed inset-0 z-[1200] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="card-doodle bg-white max-w-sm w-full rounded-2xl p-6 border-3 border-slate-900 shadow-[5px_5px_0px_#1E293B] text-center space-y-4 animate-in zoom-in-95">
+            <div className="w-16 h-16 mx-auto rounded-full bg-amber-100 border-2 border-slate-900 flex items-center justify-center shadow-[2px_2px_0px_#000]">
+              <Loader2 className="w-9 h-9 text-amber-600 animate-spin" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-slate-900">
+                {bulkLoadingWeek.shouldPay ? 'Sedang Memproses Lunas Massal...' : 'Membatalkan Lunas Massal...'}
+              </h3>
+              <p className="text-xs font-bold text-slate-700">
+                {bulkLoadingWeek.weekLabel}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-2 bg-amber-50/80 p-2.5 rounded-xl border border-amber-300">
+                Mengalkulasi mutasi kas, memperbarui saldo riil kelas, dan memastikan sinkronisasi data bebas duplikasi...
+              </p>
             </div>
           </div>
         </div>

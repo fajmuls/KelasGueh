@@ -1,163 +1,149 @@
-# Kelas Gueh: Dual Hub Bendahara & Sekretaris, Kolektif Bill, & Core Polish (v4.0.0)
+# Rencana Implementasi: Laporan Akhir Semester Terpadu, Navigasi Presisi, Modul Akademik & Inventaris (v4.1.0)
 
-Pembaruan besar arsitektur aplikasi Kelas Gueh: menghadirkan Hub Beranda Utama dengan dua ranah besar (Bendahara dan Sekretaris), modul Sekretaris lengkap (Poin Keaktifan, Presensi Kelas/Rapat, Notulensi Surat), Tab baru Iuran Khusus & Kolektif di samping Ceklis Iuran, penyelesaian bug race-condition transaksi ganda pada ceklis iuran, pengaturan iuran spesifik per bulan beserta rekap semester, sinkronisasi URL router, dan pembaruan versi v4.0.0.
+Pembaruan arsitektur besar-besaran untuk menyelaraskan antarmuka pengguna antara ranah Bendahara dan Sekretaris, menambahkan laporan visual akhir semester terpadu dengan ekspor PDF, menyelesaikan masalah tumpang tindih ikon dan luapan tombol split bill, menambahkan modul Inventaris Kelas & Jadwal Kuliah/Tugas, serta mengoptimalkan sound engine dan loading state ceklis iuran.
+
+---
 
 ### User Review & Critical Decisions
 
 > [!IMPORTANT]
-> - **Hub Beranda Utama**: Dikonfirmasi sebagai portal awal aplikasi dengan 2 kartu besar doodle: **Ranah Bendahara** (Administrasi Kas & Keuangan) dan **Ranah Sekretaris** (Sekretariat, Presensi & Akademik), dengan tombol "Ganti Modul" di Navbar untuk navigasi instan.
-> - **Modul Sekretaris Prioritas**: Dikonfirmasi berfokus pada 3 pilar: **Poin Keaktifan Siswa** (sistem skor, badge keaktifan & leaderboard), **Presensi Rapat & Kelas** (Hadir, Sakit, Izin, Alpa dengan rekap kehadiran), dan **Notulensi Rapat & Format Surat** (catatan keputusan rapat & generator template surat resmi kelas).
-> - **Tab Iuran Khusus & Kolektif**: Ditempatkan di samping Ceklis Iuran. Berisi manajemen tagihan non-rutin (seminar, patungan, seragam, dll.) dengan filter peserta (bisa cari, pilih semua / batal semua), status lunas per siswa, dan sinkronisasi otomatis ke Buku Kas.
-> - **Anti Double-Entry Ceklis Iuran**: Mencegah transaksi ganda dengan in-memory processing lock (debounce tombol massal) dan pengecekan idempoten tag `LINKED_IURAN` sebelum penambahan transaksi ke kas. Jika checklist kosong, dipastikan tidak ada uang kas yang masuk.
-> - **Iuran Fleksibel per Bulan**: Dukungan override besaran iuran per minggu untuk bulan spesifik (misal bulan tertentu nominalnya berbeda) serta tab Rekap Kas per Bulan dan per Semester.
-> - **Quality of Life URL Routing**: Sinkronisasi URL browser (HTML5 History API) seperti `/administrasi/buku-kas`, `/administrasi/iuran-kolektif`, `/sekretaris/keaktifan` tanpa merusak Single Page Application (SPA).
-> - **Versi Aplikasi & Saran**: Pembaruan versi ke `v4.0.0` di `src/version.ts` dan menampilkan detail versi serta saran update di menu pengaturan.
+> Berdasarkan sesi klarifikasi interaktif (Phase 1), berikut keputusan desain utama yang dikonfirmasi pengguna:
+> - **Top Bar & Navigasi Utama:** Top bar hanya mempertahankan tombol **🏠 Hub** utama. Navigasi tab spesifik dipindahkan ke sub-navigasi di dalam masing-masing ranah (diselaraskan antara Bendahara dan Sekretaris).
+> - **Laporan Akhir Semester:** Diwujudkan dalam bentuk **Modal Pratinjau Visual Terpadu Siap Cetak dan Ekspor PDF** yang menggabungkan neraca keuangan kas semester dan skor rekapitulasi keaktifan serta kehadiran siswa.
+> - **Iuran Khusus & Kolektif:** Dibagi secara terpisah menggunakan tab: **Tagihan Acara** (seminar, seragam, dll.) dan **Patungan Belanja** (kolektif split bill pengadaan barang bersama).
 
 ---
 
-### 1. Overview & Core Concept
+## 1. Overview & Core Concept
 
-1. **Hub Beranda Kelas**:
-   - Membagi ekosistem kelas menjadi 2 ranah kerja yang terarah: **Bendahara** (fokus perputaran uang, kas, nota, dan audit) dan **Sekretaris** (fokus pencatatan akademik, keaktifan, presensi, notulensi).
-2. **Tab Iuran Khusus & Kolektif**:
-   - Memfasilitasi pembayaran acara seminar atau patungan kolektif. Menghitung biaya per siswa, melacak siapa yang ikut dan siapa yang sudah lunas, menyalin format rekap WhatsApp, dan mencatatnya ke Buku Kas.
-3. **Penyempurnaan Integritas Ceklis Iuran**:
-   - Memastikan tidak ada duplikasi transaksi saat jaringan lambat atau tombol ditekan beruntun. Menambahkan utilitas perbaikan/rekonsiliasi otomatis bila ada data lampau yang anomali.
-4. **Iuran Spesifik Bulan & Rekap**:
-   - Memungkinkan bendahara menetapkan nominal iuran yang berbeda pada bulan-bulan tertentu tanpa mengubah histori bulan lainnya, disertai laporan visual per bulan dan semester.
-
----
-
-### 2. User Experience & Visual Design
-
-#### A. Hub Beranda Utama
-- **Kartu 1 - Ranah Bendahara**: Kartu doodle bergambar brankas & buku kas, kartu statistik ringkas (Saldo Kas Saat Ini, % Iuran Minggu Ini), tombol CTA *"Masuk ke Administrasi Kas"*.
-- **Kartu 2 - Ranah Sekretaris**: Kartu doodle bergambar buku notula & pena, statistik ringkas (Total Siswa Terdaftar, Poin Keaktifan Tertinggi, Notula Terakhir), tombol CTA *"Masuk ke Sekretariat Kelas"*.
-- **Navigasi Atas**: Badge modul aktif dengan tombol cepat *"Ganti Ranah"* untuk beralih antara Bendahara dan Sekretaris tanpa harus logout.
-
-#### B. Tab Iuran Khusus & Kolektif (Ranah Bendahara)
-- Berada di posisi: `Ringkasan Kas` | `Buku Kas & Nota` | `Ceklis Iuran` | **`Iuran Khusus & Kolektif`** | `Rekap Kas` | `Pengaturan`.
-- **Daftar Tagihan Kolektif**: Kartu-kartu kegiatan aktif (misal: "Seminar Nasional AI", "Patungan Kaos Angkatan", "Dana Sosial Peduli Bencana").
-- **Pembuat Tagihan Kolektif**:
-  - Modal input: Judul kegiatan, kategori acara, tanggal tenggat, metode perhitungan (Total Biaya dibagi peserta atau Biaya Tetap per Orang).
-  - Pemilih peserta interaktif: Input pencarian nama/NIM, tombol *"Pilih Semua"*, tombol *"Batal Semua"*, dan indikator jumlah siswa terpilih.
-- **Tabel Checklist Pembayaran Acara**:
-  - Menampilkan nama peserta, status pembayaran (*Belum Bayar* / *Lunas*), tanggal bayar, tombol centang cepat.
-  - Tombol aksi: *"Salin Rekap WhatsApp"*, *"Catat ke Buku Kas"* (mencatat total pembayaran yang terkumpul sebagai pemasukan resmi).
-
-#### C. Modul Ranah Sekretaris
-- **Tab 1: Poin Keaktifan Siswa**:
-  - Papan Peringkat (Leaderboard) Siswa Paling Aktif dengan avatar doodle & lencana apresiasi.
-  - Tombol *"Tambah Poin Keaktifan"*: Pilih siswa, pilih kategori aktivitas (+5 Bertanya di Kelas, +10 Presentasi Mandiri, +5 Menjawab Kuis, +10 Inisiatif Diskusi, -5 Terlambat Hadir), tanggal, dan catatan pengingat.
-  - Riwayat log keaktifan per siswa dengan opsi filter dan hapus log.
-- **Tab 2: Presensi Rapat & Kelas**:
-  - Pemilih tanggal dan jenis pertemuan (Kuliah / Rapat Kelas / Kerja Kelompok).
-  - Status kehadiran per siswa: Hadir (H), Izin (I), Sakit (S), Alpa (A).
-  - Ringkasan otomatis: Total Hadir, Sakit, Izin, Alpa. Tombol *"Salin Laporan Presensi WA"*.
-- **Tab 3: Notulensi Rapat & Format Surat**:
-  - **Notulensi**: Judul rapat, tanggal, pimpinan rapat, notulis, poin pembahasan, poin keputusan, dan daftar tindak lanjut (*action items*).
-  - **Generator Surat Resmi**: Pembuat surat siap pakai (Surat Keterangan Izin Kuliah Bersama, Undangan Rapat Orang Tua/Kelas, Surat Pengantar Kegiatan) dengan format formal yang bisa langsung di-copy atau dicetak.
-
-#### D. Pengaturan Iuran Spesifik Bulan & Rekap Semester
-- Di Pengaturan Kas: Bagian *"Penyesuaian Nominal per Bulan"* di mana bendahara dapat mengatur misal `Januari 2026 = Rp 5.000`, `Februari 2026 = Rp 10.000`, sementara bulan lainnya mengikuti nominal standar.
-- Tab *"Rekap Kas"*: Menampilkan ringkasan pemasukan & pengeluaran bulanan sepanjang tahun serta komparasi Semester Ganjil vs Semester Genap.
+### What It Does
+1. **Laporan Akhir Semester Terpadu (PDF & Visual):** Menyajikan dokumen laporan akhir semester resmi kelas yang mencakup ringkasan keuangan (pemasukan, pengeluaran, surplus kas, status iuran siswa) bersanding dengan rekapitulasi poin keaktifan dan persentase kehadiran per mahasiswa/siswa, dilengkapi lembar KOP kelas dan kolom tanda tangan resmi (Wali Kelas / Dosen Pembina, Ketua Kelas, Bendahara, dan Sekretaris) siap ekspor PDF via cetak browser.
+2. **Harmonisasi Sub-Navigasi & Top Bar:** Menyederhanakan Top Bar menjadi satu tombol akses Hub utama. Menu Bendahara kini memiliki sub-header navigasi yang elegan (`<- Beranda Hub | Administrasi Kas & Keuangan`) setara dengan Sekretaris, menghilangkan tombol-tombol yang tidak dapat diklik atau membingungkan.
+3. **Ceklis Iuran Anti-Spam & Loading UX:** Menerapkan dialog animasi loading interaktif saat bendahara menekan tombol *Centang Semua* agar proses pembukuan saldo kas terhitung tuntas sebelum layar diperbarui, disertai audio chime khusus dan proteksi jeda klik cepat (cooldown) untuk mencegah pengetukan manual beruntun yang tidak wajar.
+4. **Pemisahan Iuran Khusus:** Menata tab Iuran Khusus menjadi dua bagian terfokus: *Tagihan Acara Bersama* dan *Patungan Belanja*. Tombol pada modal Split Bill diperbaiki agar tidak pernah keluar dari batas frame (overflow).
+5. **Ekspansi Modul Sekretaris (5 Sub-Menu):**
+   - *Poin Keaktifan Siswa:* Terintegrasi dengan pilihan Mata Kuliah/Pelajaran.
+   - *Presensi Rapat & Kelas:* Terintegrasi dengan jadwal dan mata kuliah.
+   - *Notulensi & Format Surat:* Template surat resmi dan risalah musyawarah.
+   - *Inventaris Kelas (Baru):* Pencatatan aset barang kelas (kondisi, jumlah, lokasi, sumber kas).
+   - *Jadwal & Tugas Kuliah (Baru):* Pengelolaan mata kuliah/pelajaran, nama dosen/guru, SKS, jadwal jam kuliah, dan deadline tugas kelas.
+6. **Audio Concurrency & Bug Icon Overlap:** Mengatur sound engine agar suara lama otomatis fade-out ketika efek baru dimainkan, serta menyingkirkan elemen pin/marker lokasi dekoratif yang menimpa teks judul dan lapisan banner.
 
 ---
 
-### 3. Key Product Decisions & Trade-Offs
+## 2. User Experience & Visual Design
 
-- **Decision 1: Single SPA dengan Synchronized URL Routing**
-  - *Chosen Approach*: Memanfaatkan HTML5 History API (`window.history.pushState` & `popstate`) di `App.tsx` agar setiap tab merefleksikan path URL bersih (misal `/administrasi/buku-kas`, `/sekretaris/keaktifan`).
-  - *Why*: Memenuhi kebutuhan navigasi pengguna tanpa memerlukan dependency router berat tambahan atau konfigurasi server SSR yang rumit.
-- **Decision 2: Pencegahan Transaksi Ganda pada Ceklis Iuran**
-  - *Chosen Approach*: Menyediakan lock `isProcessingBulk` selama eksekusi toggle, verifikasi idempoten sebelum insert dengan `notes === LINKED_IURAN:${m.id}:${weekKey}`, dan routine sanitasi integritas jika toggle dibatalkan.
-  - *Why*: Menyelesaikan akar masalah bug race-condition di mana tombol ditekan berulang sebelum Supabase/local storage selesai merespons.
-- **Decision 3: Penyimpanan Data Kolektif & Sekretaris**
-  - *Chosen Approach*: Menambahkan tabel/koleksi di `supabaseClient.ts` dan `LocalKasRepository` untuk `kolektifBills`, `keaktifanPoints`, `presensiRecords`, dan `notulensiRecords` dengan fallback local storage instan.
-  - *Why*: Data tersimpan aman secara offline-first dan tetap sinkron jika Supabase aktif.
-
----
-
-### 4. Technical Architecture & Data Strategy
-
+### Key User Flows
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                       Hub Beranda                           │
-│           (Pilihan: Bendahara vs Sekretaris)                │
-└──────────────┬──────────────────────────────┬───────────────┘
-               │                              │
-               ▼                              ▼
-┌───────────────────────────────┐ ┌───────────────────────────┐
-│       Ranah Bendahara         │ │      Ranah Sekretaris     │
-├───────────────────────────────┤ ├───────────────────────────┤
-│ • Ringkasan Kas               │ │ • Poin Keaktifan Siswa    │
-│ • Buku Kas & Nota             │ │ • Presensi Rapat & Kelas  │
-│ • Ceklis Iuran Mingguan       │ │ • Notulensi & Format Surat│
-│ • Iuran Khusus & Kolektif NEW │ │ • Rekap Sekretariat       │
-│ • Rekap Bulanan & Semester    │ └───────────────────────────┘
-│ • Pengaturan & Audit Log      │
-└───────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│        Data Repository & Integrity Enforcement              │
-│ • Idempotent Iuran Auto-Linker (Anti-Duplicate Guard)       │
-│ • Monthly Dues Overrides (`monthlyDuesOverrides`)           │
-│ • Collective Bills Store & Payment Statuses                 │
-│ • Secretary Data (Points, Attendance, Minutes)              │
-│ • HTML5 History Router Sync (`/administrasi/*`, etc.)       │
-└─────────────────────────────────────────────────────────────┘
+                           ┌────────────────────────┐
+                           │    🏠 HUB BERANDA      │
+                           │  (Portal Pilihan Ranah)│
+                           └───────────┬────────────┘
+                                       │
+                ┌──────────────────────┴──────────────────────┐
+                ▼                                             ▼
+ ┌─────────────────────────────┐               ┌─────────────────────────────┐
+ │       RANAH BENDAHARA       │               │       RANAH SEKRETARIS      │
+ │  Sub-nav: Hub | Bendahara   │               │  Sub-nav: Hub | Sekretariat │
+ ├─────────────────────────────┤               ├─────────────────────────────┤
+ │ • Ringkasan Kas             │               │ • Poin Keaktifan (Filter MK)│
+ │ • Buku Kas & Nota           │               │ • Presensi Kelas (Filter MK)│
+ │ • Ceklis Iuran (Loading UX) │               │ • Notulensi & Format Surat  │
+ │ • Iuran Khusus (Acara/Split)│               │ • Inventaris Kelas (Baru)   │
+ │ • Rekap Kas 12 Bln & Smt    │               │ • Jadwal MK & Tugas (Baru)  │
+ ├─────────────────────────────┤               ├─────────────────────────────┤
+ │ 🖨️ [Laporan Akhir Semester] │               │ 🖨️ [Laporan Akhir Semester] │
+ └──────────────┬──────────────┘               └──────────────┬──────────────┘
+                └──────────────────────┬──────────────────────┘
+                                       ▼
+                       ┌───────────────────────────────┐
+                       │   MODAL LAPORAN SEMESTER      │
+                       │ • Rangkuman Kas & Neraca      │
+                       │ • Skor Keaktifan & Kehadiran  │
+                       │ • KOP Kelas & Lembar TTD      │
+                       │ • Tombol Cetak / Simpan PDF   │
+                       └───────────────────────────────┘
 ```
 
-#### Struktur Data Baru:
-1. `KolektifBill`:
-   ```ts
-   interface KolektifBill {
-     id: string;
-     title: string;
-     category: string;
-     amountPerPerson: number;
-     totalCost?: number;
-     dueDate: string;
-     notes?: string;
-     participantIds: string[];
-     paidMemberIds: string[];
-     createdAt: string;
-     syncedToKas?: boolean;
-   }
-   ```
-2. `SecretaryState`:
-   - `StudentPoint`: id, memberId, pointValue, category, reason, date.
-   - `ClassAttendance`: id, date, sessionType, records: Record<memberId, 'hadir' | 'sakit' | 'izin' | 'alpa'>, notes.
-   - `ClassMeetingNote`: id, date, title, leader, noteTaker, agenda, discussions, decisions, actionItems.
-3. `ClassSettings`:
-   - Penambahan `monthlyDuesOverrides?: Record<string, number>` (key: `YYYY_M`, contoh `2026_1: 5000`).
+### Visual Identity & Theme
+- **Gaya Desain:** Neo-Brutalism Doodle yang bersih, bergaris tepi tegas (`border-slate-900`), bayangan balok berkarakter (`shadow-[2px_2px_0px_#1E293B]`), aksen warna fungsional (Amber untuk Bendahara, Sky untuk Sekretaris, Emerald untuk Transaksi Lunas & Kehadiran).
+- **Anti-Slop & Zero-Pill:** Metadata disajikan dengan tipografi bersih tanpa kapsul bertingkat yang berlebihan.
+- **Pembersihan Icon Menimpa:** Semua `PushPin` yang melayang sembarangan dan menutupi teks dihapus atau diposisikan ke zona aman tanpa `pointer-events`.
 
 ---
 
-### 5. Step-by-Step Implementation Strategy
+## 3. Data Strategy & Architecture
 
-1. **Phase 1: Types & Data Repositories**
-   - Perbarui `src/types/kas.ts` dengan tipe `KolektifBill`, `StudentPoint`, `ClassAttendance`, `ClassMeetingNote`, dan `monthlyDuesOverrides`.
-   - Perluas `src/services/supabaseClient.ts` untuk mendukung penyimpanan lokal dan cloud untuk data kolektif dan sekretaris.
-2. **Phase 2: Fix Ceklis Iuran Bug (Anti-Duplikasi & Idempoten)**
-   - Perbaiki `handleToggleWeek` dan `handleToggleAllWeek` di `App.tsx` dengan guards idempoten, state debounce/loading, dan fungsi pemeriksa integritas.
-   - Sesuaikan kalkulasi tunggakan/iuran mingguan agar membaca `monthlyDuesOverrides` jika ada.
-3. **Phase 3: Tab Iuran Khusus & Kolektif**
-   - Buat komponen `src/components/Doodle/KolektifBillTab.tsx` lengkap dengan pencarian, pemilih peserta, toggle lunas, copy teks WhatsApp, dan opsi sinkronisasi kas.
-   - Hubungkan modal Split Bill agar dapat langsung dikonversi menjadi tagihan kolektif baru.
-4. **Phase 4: Modul Ranah Sekretaris**
-   - Buat komponen induk `src/components/Doodle/SecretaryHub.tsx` dan sub-komponen:
-     - `KeaktifanTab.tsx`: Leaderboard, pencatatan poin, filter log.
-     - `PresensiTab.tsx`: Presensi per sesi, filter riwayat, rekap kehadiran.
-     - `NotulensiTab.tsx`: Notulensi rapat, form keputusan, generator format surat kelas.
-5. **Phase 5: Hub Beranda Utama & Sinkronisasi URL Routing**
-   - Buat `src/components/Doodle/MainPortalHub.tsx` dengan visual doodle dua ranah.
-   - Tambahkan router sync di `App.tsx` menggunakan `window.history.pushState` dan listener `popstate` untuk navigasi URL bersih.
-6. **Phase 6: Rekap Kas Bulanan & Semester + Pengaturan Spesifik Bulan**
-   - Tambahkan view rekap di `KasOverview.tsx` atau tab terpisah dengan tabel 12 bulan dan semester ganjil/genap.
-   - Tambahkan UI override nominal iuran per bulan di `KasSettings.tsx`.
-7. **Phase 7: Pembaruan Versi & Saran Update**
-   - Perbarui `src/version.ts` ke versi `v4.0.0` beserta changelog lengkap dan saran update fitur mendatang.
-8. **Phase 8: Verifikasi & Kompilasi**
-   - Uji kompilasi dengan `compile_applet`, pastikan nol linting error dan semua alur interaktif berfungsi optimal.
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        LocalKasRepository / Supabase                   │
+├────────────────────────────────────────────────────────────────────────┤
+│ • classSettings (mataKuliahList, inventoryList, monthlyDuesOverrides) │
+│ • kasTransactions (kas masuk, keluar, link iuran)                     │
+│ • kasMembers (nama, nim/nis, status bayar mingguan)                   │
+│ • kolektifBills (type: 'acara' | 'patungan', peserta, status)         │
+│ • studentPointLogs (memberId, courseId, points, category, notes)      │
+│ • attendanceRecords (date, courseId, type, statuses: H/I/S/A)         │
+│ • meetingMinutes (agenda, hasil, action items)                         │
+│ • classInventory (id, name, qty, condition, location, purchasedFromKas)│
+│ • courseSchedules (id, name, lecturer, sks, day, time, assignments)   │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Penambahan Tipe Data Baru (`src/types/kas.ts`):
+1. `ClassInventoryItem`:
+   - `id: string`, `name: string`, `quantity: number`, `condition: 'baik' | 'rusak_ringan' | 'rusak_berat'`, `location: string`, `purchasedFromKas: boolean`, `price?: number`, `notes?: string`.
+2. `CourseSchedule`:
+   - `id: string`, `courseName: string`, `lecturerName: string`, `sks: number`, `day: string`, `time: string`, `room?: string`.
+   - `assignments: CourseAssignment[]` (`id: string`, `title: string`, `deadline: string`, `status: 'pending' | 'selesai'`).
+3. Pembaruan `StudentPointLog` & `AttendanceRecord`:
+   - Menambahkan field opsional `courseId?: string` untuk klasifikasi per mata kuliah.
+4. Pembaruan `KolektifBill`:
+   - Menambahkan field `billType: 'acara' | 'patungan'` untuk segregasi tab.
+
+---
+
+## 4. Rincian Langkah Pengerjaan
+
+### Tahap 1: Penguatan Tipe Data & Repositori Lokal
+- Tambahkan interface `ClassInventoryItem`, `CourseSchedule`, dan perbarui tipe kolektif bill serta point/attendance logs.
+- Tambahkan metode CRUD di `src/services/supabaseClient.ts` untuk inventaris dan jadwal kuliah dengan persistensi aman ke localStorage.
+
+### Tahap 2: Sound Engine & Loading State Ceklis
+- Modifikasi `src/utils/soundEffects.ts`:
+  - Tambahkan tracking instance audio yang sedang aktif; lakukan `fade-out` atau `pause()` pada efek sebelumnya sebelum memutar efek baru agar tidak bising saat ada banyak interaksi.
+  - Tambahkan metode `playBulkLoadingSuccess()`.
+- Modifikasi `src/components/Doodle/KasChecklist.tsx`:
+  - Saat tombol *Centang Semua* diklik, munculkan overlay loading doodle putar dengan pesan edukatif (*"Sedang mengalkulasi data kas & mencatat pembukuan..."*).
+  - Terapkan cooldown debouncing pada tombol centang satuan siswa untuk mencegah spam kilat (20 klik dalam 5 detik).
+
+### Tahap 3: Restrukturisasi Navigasi & Pembersihan Bug Ikon
+- Update `src/components/Doodle/DoodleNavbar.tsx`:
+  - Sederhanakan tombol navigasi atas: Hanya tampilkan tombol **🏠 Hub** di top bar. Hilangkan tombol quick switch B/S atau tab-tab yang duplikat dan tidak bisa diklik.
+- Buat sub-navigasi di ranah Bendahara (sama seperti di Sekretaris):
+  - Banner baris rapi dengan `<- Beranda Hub | Administrasi Kas & Keuangan` dan tab-tab aktif yang dapat diklik langsung.
+- Periksa seluruh file komponen (`MainPortalHub.tsx`, `PresensiTab.tsx`, `KeaktifanTab.tsx`, `KasRecapView.tsx`) dan bersihkan ikon `PushPin` yang menimpa teks.
+
+### Tahap 4: Tab Iuran Khusus & Perbaikan Split Bill Modal
+- Perbarui `KolektifBillTab.tsx`:
+  - Tambahkan sub-tab: **Tagihan Acara** vs **Patungan Belanja**.
+- Perbaiki `SplitBillModal.tsx`:
+  - Sesuaikan ukuran tombol, gunakan layout responsif (`flex-wrap sm:flex-nowrap`, padding proporsional) agar tidak ada tombol yang meluap keluar dari batas frame.
+
+### Tahap 5: Modul Inventaris & Jadwal Kuliah di Ranah Sekretaris
+- Buat komponen `src/components/Doodle/Secretary/InventarisTab.tsx`:
+  - Tabel dan kartu inventaris barang kelas (Jumlah, Kondisi dengan lencana warna, Lokasi simpan, Filter kondisi, Tambah/Edit/Hapus barang).
+- Buat komponen `src/components/Doodle/Secretary/JadwalTugasTab.tsx`:
+  - Jadwal kuliah per hari, nama dosen, SKS, dan kartu checklist tugas deadline.
+- Hubungkan daftar mata kuliah ke dropdown filter di `KeaktifanTab.tsx` dan `PresensiTab.tsx`.
+
+### Tahap 6: Modal Laporan Akhir Semester Terpadu (Kas & Keaktifan)
+- Buat komponen `src/components/Doodle/SemesterReportModal.tsx`:
+  - Pratinjau visual formal nan rapi (KOP Kelas, Rangkuman Semester, Statistik Saldo & Iuran Siswa, Top Siswa Teraktif & Persentase Kehadiran).
+  - Kolom tanda tangan resmi 4 pihak (Dosen/Wali Kelas, Ketua Kelas, Bendahara, Sekretaris).
+  - Tombol **Cetak / Simpan PDF** yang memicu `window.print()` dengan CSS print terisolasi rapi.
+  - Tombol **Salin Ringkasan WA** untuk pengumuman di grup kelas.
+
+### Tahap 7: Versi v4.1.0, Saran Pengembang & Verifikasi
+- Perbarui `src/version.ts` ke versi `v4.1.0` beserta changelog dan rekomendasi saran pembaruan.
+- Jalankan `compile_applet` dan `lint_applet` untuk menjamin 0 error sebelum verifikasi tuntas.

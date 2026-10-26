@@ -130,7 +130,7 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[1000] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="card-doodle bg-[#FFFDF9] max-w-lg w-full rounded-xl p-4 sm:p-6 relative border-2 border-slate-900 shadow-[4px_4px_0px_#1E293B] animate-in zoom-in-95 duration-150 my-auto">
+      <div className="card-doodle bg-[#FFFDF9] max-w-lg sm:max-w-xl w-full max-h-[92vh] overflow-y-auto rounded-xl p-4 sm:p-6 relative border-2 border-slate-900 shadow-[4px_4px_0px_#1E293B] animate-in zoom-in-95 duration-150 my-auto">
         <ScotchTape className="absolute -top-3 left-10 rotate-[-1deg]" />
 
         {/* Header */}
@@ -266,24 +266,9 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
         </div>
 
         {/* Modal Actions */}
-        <div className="mt-5 pt-3 border-t-2 border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={handleCopyRecap}
-            className="btn-doodle w-full sm:w-auto px-3.5 py-2 min-h-[44px] bg-white hover:bg-slate-100 text-slate-900 text-xs font-bold rounded-md flex items-center justify-center gap-1.5 border-2 border-slate-900"
-          >
-            {copiedText ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-700" />}
-            <span>Salin Rekap WA</span>
-          </button>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-doodle flex-1 sm:flex-none px-3.5 py-2 min-h-[44px] bg-slate-100 text-slate-800 text-xs font-bold rounded-md border-2 border-slate-900"
-            >
-              Tutup
-            </button>
+        <div className="mt-5 pt-3 border-t-2 border-slate-900 space-y-2">
+          {/* Main Action Buttons Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {onConvertToKolektif && (
               <button
                 type="button"
@@ -302,23 +287,42 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
                   });
                   onClose();
                 }}
-                className="btn-doodle flex-1 sm:flex-none px-3.5 py-2 min-h-[44px] bg-amber-200 hover:bg-amber-300 text-slate-900 text-xs font-bold rounded-md border-2 border-slate-900 flex items-center justify-center gap-1.5 shadow-[1px_1px_0px_#1E293B]"
+                className="btn-doodle w-full px-3 py-2.5 min-h-[42px] bg-amber-200 hover:bg-amber-300 text-slate-900 text-xs font-bold rounded-lg border-2 border-slate-900 flex items-center justify-center gap-1.5 shadow-[1.5px_1.5px_0px_#1E293B]"
                 title="Jadikan tagihan kolektif dengan checklist pembayaran per siswa"
               >
-                <Receipt className="w-4 h-4 text-amber-800" />
-                <span>+ Tagihan Kolektif</span>
+                <Receipt className="w-4 h-4 text-amber-800 shrink-0" />
+                <span className="truncate">+ Jadi Iuran Kolektif</span>
               </button>
             )}
             {onAddTransaction && (
               <button
                 type="button"
                 onClick={handleSaveToKas}
-                className="btn-doodle flex-1 sm:flex-none px-4 py-2 min-h-[44px] bg-emerald-300 hover:bg-emerald-400 text-slate-900 text-xs font-black rounded-md border-2 border-slate-900 flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
+                className="btn-doodle w-full px-3 py-2.5 min-h-[42px] bg-emerald-300 hover:bg-emerald-400 text-slate-900 text-xs font-black rounded-lg border-2 border-slate-900 flex items-center justify-center gap-1.5 shadow-[1.5px_1.5px_0px_#1E293B]"
               >
-                <Save className="w-4 h-4" />
-                <span>Simpan ke Kas</span>
+                <Save className="w-4 h-4 shrink-0" />
+                <span className="truncate">Simpan Pengeluaran Kas</span>
               </button>
             )}
+          </div>
+
+          {/* Secondary Utilities: Salin WA & Tutup */}
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleCopyRecap}
+              className="btn-doodle flex-1 px-3 py-2 min-h-[38px] bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 border-2 border-slate-900"
+            >
+              {copiedText ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-700" />}
+              <span>Salin Rekap WA</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-doodle px-5 py-2 min-h-[38px] bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg border-2 border-slate-900"
+            >
+              Tutup
+            </button>
           </div>
         </div>
       </div>

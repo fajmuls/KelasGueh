@@ -1,7 +1,7 @@
 import React from 'react';
 import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog, AttendanceRecord, MeetingMinute } from '../../types/kas.ts';
 import { sfx } from '../../utils/soundEffects.ts';
-import { ScotchTape, PushPin, DoodleCrown } from './DoodleDecorations.tsx';
+import { ScotchTape, DoodleCrown } from './DoodleDecorations.tsx';
 import {
   Wallet,
   Coins,
@@ -85,7 +85,6 @@ export const MainPortalHub: React.FC<MainPortalHubProps> = ({
       {/* Header Banner */}
       <div className="card-doodle bg-white p-5 sm:p-6 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative overflow-hidden">
         <ScotchTape className="-top-3 left-8 rotate-1 hidden sm:block" />
-        <PushPin className="top-3 right-4 absolute" />
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">

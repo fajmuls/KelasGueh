@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AttendanceRecord, KasMember, ClassSettings } from '../../../types/kas.ts';
 import { sfx } from '../../../utils/soundEffects.ts';
-import { ScotchTape, PushPin } from '../DoodleDecorations.tsx';
+import { ScotchTape } from '../DoodleDecorations.tsx';
 import { showToast, showConfirm } from '../../UI/DoodleDialog.tsx';
 import {
   ClipboardCheck,
@@ -189,7 +189,6 @@ export const PresensiTab: React.FC<PresensiTabProps> = ({
       {/* Top Banner */}
       <div className="card-doodle bg-white p-5 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
         <ScotchTape className="-top-3 left-6 rotate-1" />
-        <PushPin className="top-3 right-4 absolute" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">

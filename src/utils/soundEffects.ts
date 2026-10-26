@@ -123,15 +123,44 @@ class SoundEngine {
     localStorage.setItem('kelasgue_bgm', 'false');
   }
 
+  private activeAudios: HTMLAudioElement[] = [];
+
   /**
-   * Helper to play audio file with volume and Web Audio API synthesizer fallback
+   * Helper to play audio file with volume, fade-out for overlapping SFX, and Web Audio fallback
    */
   private playAudio(path: string, volume = 0.45, fallbackSynth?: () => void): void {
     if (!this.soundEnabled) return;
+
+    // Gently fade out and clean up previous active sound effects to prevent jarring sound stacks
+    if (this.activeAudios.length > 0) {
+      this.activeAudios.forEach(prevAudio => {
+        try {
+          const fadeInterval = setInterval(() => {
+            if (prevAudio.volume > 0.08) {
+              prevAudio.volume = Math.max(0, prevAudio.volume - 0.08);
+            } else {
+              clearInterval(fadeInterval);
+              prevAudio.pause();
+            }
+          }, 20);
+        } catch {
+          prevAudio.pause();
+        }
+      });
+      this.activeAudios = [];
+    }
+
     try {
       const audio = new Audio(path);
       audio.volume = volume;
+      this.activeAudios.push(audio);
+
+      audio.onended = () => {
+        this.activeAudios = this.activeAudios.filter(a => a !== audio);
+      };
+
       audio.play().catch(() => {
+        this.activeAudios = this.activeAudios.filter(a => a !== audio);
         if (fallbackSynth) fallbackSynth();
       });
     } catch {
@@ -200,6 +229,15 @@ class SoundEngine {
   public playPaymentConfirmed(): void {
     this.playAudio('/audio/20_payment_confirmed.mp3', 0.45, () => {
       this.playAudio('/audio/02_success_chime.mp3', 0.4);
+    });
+  }
+
+  /**
+   * 02_success_chime.mp3 - Notifikasi sukses akumulasi loading ceklis iuran massal
+   */
+  public playBulkLoadingSuccess(): void {
+    this.playAudio('/audio/02_success_chime.mp3', 0.6, () => {
+      this.playAudio('/audio/17_money_ching.mp3', 0.5);
     });
   }
 

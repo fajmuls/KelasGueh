@@ -1,25 +1,45 @@
 import React, { useState } from 'react';
-import { KasMember, ClassSettings, StudentPointLog, AttendanceRecord, MeetingMinute } from '../../../types/kas.ts';
+import {
+  KasMember,
+  ClassSettings,
+  StudentPointLog,
+  AttendanceRecord,
+  MeetingMinute,
+  ClassInventoryItem,
+  CourseSchedule,
+  CourseAssignment
+} from '../../../types/kas.ts';
 import { KeaktifanTab } from './KeaktifanTab.tsx';
 import { PresensiTab } from './PresensiTab.tsx';
 import { NotulensiTab } from './NotulensiTab.tsx';
+import { InventarisTab } from './InventarisTab.tsx';
+import { JadwalTugasTab } from './JadwalTugasTab.tsx';
 import { sfx } from '../../../utils/soundEffects.ts';
-import { Award, ClipboardCheck, FileText, ArrowLeft, Users } from 'lucide-react';
+import { Award, ClipboardCheck, FileText, ArrowLeft, Package, Calendar } from 'lucide-react';
 
 interface SecretaryHubProps {
-  initialSubTab?: 'keaktifan' | 'presensi' | 'notulensi';
+  initialSubTab?: 'keaktifan' | 'presensi' | 'notulensi' | 'inventaris' | 'jadwal';
   members: KasMember[];
   settings: ClassSettings;
   canEdit: boolean;
   pointLogs: StudentPointLog[];
   attendanceRecords: AttendanceRecord[];
   meetingMinutes: MeetingMinute[];
+  inventoryItems?: ClassInventoryItem[];
+  courseSchedules?: CourseSchedule[];
   onAddPointLog: (log: Omit<StudentPointLog, 'id' | 'createdAt'>) => void;
   onDeletePointLog: (id: string) => void;
   onSaveAttendanceRecord: (rec: Omit<AttendanceRecord, 'id' | 'createdAt'> & { id?: string }) => void;
   onDeleteAttendanceRecord: (id: string) => void;
   onSaveMeetingMinute: (minute: Omit<MeetingMinute, 'id' | 'createdAt'> & { id?: string }) => void;
   onDeleteMeetingMinute: (id: string) => void;
+  onSaveInventoryItem?: (item: Omit<ClassInventoryItem, 'id' | 'createdAt'> & { id?: string }) => void;
+  onDeleteInventoryItem?: (id: string) => void;
+  onSaveCourseSchedule?: (course: Omit<CourseSchedule, 'id' | 'createdAt'> & { id?: string }) => void;
+  onDeleteCourseSchedule?: (id: string) => void;
+  onAddAssignment?: (courseId: string, assignment: Omit<CourseAssignment, 'id'>) => void;
+  onToggleAssignment?: (courseId: string, assignmentId: string) => void;
+  onDeleteAssignment?: (courseId: string, assignmentId: string) => void;
   onBackToHub: () => void;
 }
 
@@ -31,20 +51,31 @@ export const SecretaryHub: React.FC<SecretaryHubProps> = ({
   pointLogs,
   attendanceRecords,
   meetingMinutes,
+  inventoryItems = [],
+  courseSchedules = [],
   onAddPointLog,
   onDeletePointLog,
   onSaveAttendanceRecord,
   onDeleteAttendanceRecord,
   onSaveMeetingMinute,
   onDeleteMeetingMinute,
+  onSaveInventoryItem,
+  onDeleteInventoryItem,
+  onSaveCourseSchedule,
+  onDeleteCourseSchedule,
+  onAddAssignment,
+  onToggleAssignment,
+  onDeleteAssignment,
   onBackToHub
 }) => {
-  const [currentSubTab, setCurrentSubTab] = useState<'keaktifan' | 'presensi' | 'notulensi'>(initialSubTab);
+  const [currentSubTab, setCurrentSubTab] = useState<'keaktifan' | 'presensi' | 'notulensi' | 'inventaris' | 'jadwal'>(initialSubTab);
 
   const tabs = [
-    { id: 'keaktifan', label: 'Poin Keaktifan Siswa', icon: Award, count: pointLogs.length },
-    { id: 'presensi', label: 'Presensi Rapat & Kelas', icon: ClipboardCheck, count: attendanceRecords.length },
-    { id: 'notulensi', label: 'Notulensi & Format Surat', icon: FileText, count: meetingMinutes.length }
+    { id: 'keaktifan', label: 'Poin Keaktifan', icon: Award, count: pointLogs.length },
+    { id: 'presensi', label: 'Presensi', icon: ClipboardCheck, count: attendanceRecords.length },
+    { id: 'notulensi', label: 'Notulensi', icon: FileText, count: meetingMinutes.length },
+    { id: 'inventaris', label: 'Inventaris Barang', icon: Package, count: inventoryItems.length },
+    { id: 'jadwal', label: 'Jadwal & Tugas', icon: Calendar, count: courseSchedules.length }
   ] as const;
 
   return (
@@ -57,14 +88,14 @@ export const SecretaryHub: React.FC<SecretaryHubProps> = ({
               sfx.playClick();
               onBackToHub();
             }}
-            className="btn-doodle px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg border border-slate-900 text-xs font-bold flex items-center gap-1"
+            className="btn-doodle px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg border border-slate-900 text-xs font-bold flex items-center gap-1 shrink-0"
             title="Kembali ke Beranda Hub"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Beranda Hub</span>
           </button>
-          <span className="text-slate-300">|</span>
-          <span className="text-xs font-black text-slate-900">
+          <span className="text-slate-300 hidden sm:inline">|</span>
+          <span className="text-xs font-black text-slate-900 hidden sm:inline">
             Sekretariat & Akademik
           </span>
         </div>
@@ -102,6 +133,7 @@ export const SecretaryHub: React.FC<SecretaryHubProps> = ({
           members={members}
           settings={settings}
           canEdit={canEdit}
+          courseSchedules={courseSchedules}
           onAddPointLog={onAddPointLog}
           onDeletePointLog={onDeletePointLog}
         />
@@ -126,6 +158,29 @@ export const SecretaryHub: React.FC<SecretaryHubProps> = ({
           canEdit={canEdit}
           onSaveMinute={onSaveMeetingMinute}
           onDeleteMinute={onDeleteMeetingMinute}
+        />
+      )}
+
+      {currentSubTab === 'inventaris' && (
+        <InventarisTab
+          items={inventoryItems}
+          settings={settings}
+          canEdit={canEdit}
+          onSaveItem={onSaveInventoryItem || (() => {})}
+          onDeleteItem={onDeleteInventoryItem || (() => {})}
+        />
+      )}
+
+      {currentSubTab === 'jadwal' && (
+        <JadwalTugasTab
+          schedules={courseSchedules}
+          settings={settings}
+          canEdit={canEdit}
+          onSaveCourse={onSaveCourseSchedule || (() => {})}
+          onDeleteCourse={onDeleteCourseSchedule || (() => {})}
+          onAddAssignment={onAddAssignment || (() => {})}
+          onToggleAssignment={onToggleAssignment || (() => {})}
+          onDeleteAssignment={onDeleteAssignment || (() => {})}
         />
       )}
     </div>

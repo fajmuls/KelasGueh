@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { KolektifBill, KasMember, KasTransaction, ClassSettings } from '../../types/kas.ts';
 import { sfx } from '../../utils/soundEffects.ts';
-import { ScotchTape, PushPin } from './DoodleDecorations.tsx';
+import { ScotchTape } from './DoodleDecorations.tsx';
 import { DoodleCurrencyInput } from '../UI/DoodleCurrencyInput.tsx';
 import { DoodleSelect } from '../UI/DoodleSelect.tsx';
 import { showToast, showConfirm } from '../UI/DoodleDialog.tsx';
@@ -60,6 +60,7 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
   onSyncToKas,
   onOpenSplitBillModal
 }) => {
+  const [billTabType, setBillTabType] = useState<'acara' | 'patungan'>('acara');
   const [selectedBillId, setSelectedBillId] = useState<string>(bills[0]?.id || '');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
@@ -67,6 +68,7 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
   // Form state for creating new bill
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]);
+  const [billTypeField, setBillTypeField] = useState<'acara' | 'patungan'>('acara');
   const [calcMode, setCalcMode] = useState<'fixed_per_person' | 'split_total'>('fixed_per_person');
   const [amountValue, setAmountValue] = useState<number | ''>(35000);
   const [dueDate, setDueDate] = useState<string>(() => {
@@ -80,7 +82,12 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
   );
   const [modalSearchFilter, setModalSearchFilter] = useState('');
 
-  const activeBill = bills.find(b => b.id === selectedBillId) || bills[0];
+  const displayedBills = bills.filter(b => {
+    const type = b.billType || (b.category?.toLowerCase().includes('patungan') ? 'patungan' : 'acara');
+    return type === billTabType;
+  });
+
+  const activeBill = displayedBills.find(b => b.id === selectedBillId) || displayedBills[0];
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -136,6 +143,7 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
     onAddBill({
       title: title.trim(),
       category,
+      billType: billTypeField,
       amountPerPerson: finalAmount,
       totalCost: calcMode === 'split_total' && typeof amountValue === 'number' ? amountValue : finalAmount * selectedParticipantIds.length,
       dueDate,
@@ -285,7 +293,6 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
       {/* Top Header Card */}
       <div className="card-doodle bg-white p-5 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
         <ScotchTape className="-top-3 left-6 rotate-1" />
-        <PushPin className="top-3 right-4 absolute" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -316,7 +323,7 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
                 className="btn-doodle px-3.5 py-2 bg-amber-100 hover:bg-amber-200 text-slate-900 font-bold text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
               >
                 <Calculator className="w-4 h-4 text-amber-700" />
-                <span>Kalkulator Cepat</span>
+                <span>Kalkulator Split Bill</span>
               </button>
             )}
 
@@ -324,22 +331,60 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
               <button
                 onClick={() => {
                   sfx.playClick();
+                  setBillTypeField(billTabType);
                   setIsCreateModalOpen(true);
                 }}
                 className="btn-doodle px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
-                <span>+ Buat Tagihan Acara</span>
+                <span>+ Buat {billTabType === 'acara' ? 'Tagihan Acara' : 'Patungan Belanja'}</span>
               </button>
             )}
           </div>
         </div>
       </div>
 
+      {/* Sub-Tab Switcher: Tagihan Acara vs Patungan Belanja */}
+      <div className="flex items-center gap-2 border-b-2 border-slate-900 pb-2">
+        <button
+          onClick={() => {
+            sfx.playToggle();
+            setBillTabType('acara');
+            const first = bills.find(b => (b.billType || 'acara') === 'acara');
+            if (first) setSelectedBillId(first.id);
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-black border-2 transition-all flex items-center gap-2 ${
+            billTabType === 'acara'
+              ? 'bg-amber-300 border-slate-900 text-slate-900 shadow-[2px_2px_0px_#000] -translate-y-0.5'
+              : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>Tagihan Acara ({bills.filter(b => (b.billType || 'acara') === 'acara').length})</span>
+        </button>
+
+        <button
+          onClick={() => {
+            sfx.playToggle();
+            setBillTabType('patungan');
+            const first = bills.find(b => b.billType === 'patungan' || b.category?.toLowerCase().includes('patungan'));
+            if (first) setSelectedBillId(first.id);
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-black border-2 transition-all flex items-center gap-2 ${
+            billTabType === 'patungan'
+              ? 'bg-emerald-300 border-slate-900 text-slate-900 shadow-[2px_2px_0px_#000] -translate-y-0.5'
+              : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Patungan Belanja ({bills.filter(b => b.billType === 'patungan' || b.category?.toLowerCase().includes('patungan')).length})</span>
+        </button>
+      </div>
+
       {/* Campaign Selector Pills / Strip */}
-      {bills.length > 0 ? (
+      {displayedBills.length > 0 ? (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {bills.map(b => {
+          {displayedBills.map(b => {
             const isSelected = activeBill?.id === b.id;
             const paidCount = b.paidMemberIds.length;
             const totalCount = b.participantIds.length;
@@ -623,6 +668,34 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
             </div>
 
             <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Jenis Iuran Khusus</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBillTypeField('acara')}
+                    className={`py-1.5 px-3 rounded-lg border-2 text-center font-bold ${
+                      billTypeField === 'acara'
+                        ? 'bg-amber-300 border-slate-900 text-slate-900 shadow-[1px_1px_0px_#000]'
+                        : 'bg-slate-50 border-slate-300 text-slate-600'
+                    }`}
+                  >
+                    Tagihan Acara
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBillTypeField('patungan')}
+                    className={`py-1.5 px-3 rounded-lg border-2 text-center font-bold ${
+                      billTypeField === 'patungan'
+                        ? 'bg-emerald-300 border-slate-900 text-slate-900 shadow-[1px_1px_0px_#000]'
+                        : 'bg-slate-50 border-slate-300 text-slate-600'
+                    }`}
+                  >
+                    Patungan Belanja
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
                   Nama Acara / Tagihan <span className="text-rose-500">*</span>

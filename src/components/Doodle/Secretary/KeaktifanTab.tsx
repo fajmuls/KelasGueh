@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StudentPointLog, KasMember, ClassSettings } from '../../../types/kas.ts';
+import { StudentPointLog, KasMember, ClassSettings, CourseSchedule } from '../../../types/kas.ts';
 import { sfx } from '../../../utils/soundEffects.ts';
 import { ScotchTape, DoodleCrown } from '../DoodleDecorations.tsx';
 import { showToast, showConfirm } from '../../UI/DoodleDialog.tsx';
@@ -14,7 +14,8 @@ import {
   CheckCircle,
   AlertCircle,
   Calendar,
-  UserCheck
+  UserCheck,
+  BookOpen
 } from 'lucide-react';
 
 interface KeaktifanTabProps {
@@ -22,6 +23,7 @@ interface KeaktifanTabProps {
   members: KasMember[];
   settings: ClassSettings;
   canEdit: boolean;
+  courseSchedules?: CourseSchedule[];
   onAddPointLog: (log: Omit<StudentPointLog, 'id' | 'createdAt'>) => void;
   onDeletePointLog: (id: string) => void;
 }
@@ -41,23 +43,30 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
   members,
   settings,
   canEdit,
+  courseSchedules = [],
   onAddPointLog,
   onDeletePointLog
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [activeSubView, setActiveSubView] = useState<'leaderboard' | 'logs'>('leaderboard');
+  const [selectedCourseFilter, setSelectedCourseFilter] = useState<string>('all');
 
   // Form State
   const [selectedMemberId, setSelectedMemberId] = useState<string>(members[0]?.id || '');
   const [selectedCategory, setSelectedCategory] = useState<typeof PRESET_CATEGORIES[number]['key']>('tanya');
+  const [formCourseId, setFormCourseId] = useState<string>('');
   const [customPoints, setCustomPoints] = useState<number>(5);
   const [reason, setReason] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  // Aggregate points per member
+  // Aggregate points per member (filtered by course if selected)
   const memberScores = members.map(m => {
-    const logs = pointLogs.filter(l => l.memberId === m.id);
+    const logs = pointLogs.filter(l => {
+      const matchMember = l.memberId === m.id;
+      const matchCourse = selectedCourseFilter === 'all' || l.courseId === selectedCourseFilter;
+      return matchMember && matchCourse;
+    });
     const totalPoints = logs.reduce((sum, l) => sum + l.points, 0);
     return {
       member: m,
@@ -95,6 +104,7 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
       memberId: selectedMemberId,
       points: customPoints,
       category: selectedCategory,
+      courseId: formCourseId || undefined,
       reason: reason.trim(),
       date,
       recordedBy: 'Sekretaris'
@@ -248,9 +258,9 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
         </div>
       )}
 
-      {/* Sub-view switcher: Leaderboard vs Riwayat Log */}
-      <div className="flex items-center justify-between gap-3 border-b-2 border-slate-900 pb-2">
-        <div className="flex items-center gap-2">
+      {/* Sub-view switcher & Course Filter */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b-2 border-slate-900 pb-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => {
               sfx.playToggle();
@@ -280,6 +290,26 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
               {pointLogs.length}
             </span>
           </button>
+
+          {/* Course filter if schedules exist */}
+          {courseSchedules.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 border border-slate-900 rounded-lg">
+              <BookOpen className="w-3.5 h-3.5 text-slate-600 ml-1" />
+              <select
+                value={selectedCourseFilter}
+                onChange={e => {
+                  sfx.playClick();
+                  setSelectedCourseFilter(e.target.value);
+                }}
+                className="bg-transparent font-bold text-xs text-slate-800 focus:outline-hidden pr-2 cursor-pointer"
+              >
+                <option value="all">Semua Mata Kuliah</option>
+                {courseSchedules.map(c => (
+                  <option key={c.id} value={c.id}>{c.courseName}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {activeSubView === 'leaderboard' && (
@@ -428,7 +458,7 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
 
             <form onSubmit={handleAddSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Pilih Siswa</label>
+                <label className="font-bold text-slate-700 block mb-1">Pilih Siswa <span className="text-rose-500">*</span></label>
                 <select
                   value={selectedMemberId}
                   onChange={e => setSelectedMemberId(e.target.value)}
@@ -441,6 +471,24 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
                   ))}
                 </select>
               </div>
+
+              {courseSchedules.length > 0 && (
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Terkait Mata Kuliah (Opsional)</label>
+                  <select
+                    value={formCourseId}
+                    onChange={e => setFormCourseId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border-2 border-slate-900 font-bold bg-white"
+                  >
+                    <option value="">Umum / Tidak Terikat Matkul Khusus</option>
+                    {courseSchedules.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.courseName} ({c.lecturerName})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1.5">Kategori Aktivitas</label>

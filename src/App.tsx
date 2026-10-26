@@ -32,7 +32,10 @@ import {
   KolektifBill,
   StudentPointLog,
   AttendanceRecord,
-  MeetingMinute
+  MeetingMinute,
+  ClassInventoryItem,
+  CourseSchedule,
+  CourseAssignment
 } from './types/kas.ts';
 import { CURRENT_APP_VERSION } from './version.ts';
 import { sfx } from './utils/soundEffects.ts';
@@ -167,6 +170,8 @@ const AppContent: React.FC = () => {
   const [pointLogs, setPointLogs] = useState<StudentPointLog[]>(() => LocalKasRepository.getPointLogs());
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => LocalKasRepository.getAttendanceRecords());
   const [meetingMinutes, setMeetingMinutes] = useState<MeetingMinute[]>(() => LocalKasRepository.getMeetingMinutes());
+  const [inventoryItems, setInventoryItems] = useState<ClassInventoryItem[]>(() => LocalKasRepository.getInventoryItems());
+  const [courseSchedules, setCourseSchedules] = useState<CourseSchedule[]>(() => LocalKasRepository.getCourseSchedules());
 
   // Fetch initial data on mount
   useEffect(() => {
@@ -622,6 +627,41 @@ const AppContent: React.FC = () => {
     setMeetingMinutes(LocalKasRepository.getMeetingMinutes());
   };
 
+  const handleSaveInventoryItem = (item: Omit<ClassInventoryItem, 'id' | 'createdAt'> & { id?: string }) => {
+    LocalKasRepository.saveInventoryItem(item);
+    setInventoryItems(LocalKasRepository.getInventoryItems());
+  };
+
+  const handleDeleteInventoryItem = (id: string) => {
+    LocalKasRepository.deleteInventoryItem(id);
+    setInventoryItems(LocalKasRepository.getInventoryItems());
+  };
+
+  const handleSaveCourseSchedule = (course: Omit<CourseSchedule, 'id' | 'createdAt'> & { id?: string }) => {
+    LocalKasRepository.saveCourseSchedule(course);
+    setCourseSchedules(LocalKasRepository.getCourseSchedules());
+  };
+
+  const handleDeleteCourseSchedule = (id: string) => {
+    LocalKasRepository.deleteCourseSchedule(id);
+    setCourseSchedules(LocalKasRepository.getCourseSchedules());
+  };
+
+  const handleAddAssignment = (courseId: string, assignment: Omit<CourseAssignment, 'id'>) => {
+    LocalKasRepository.addCourseAssignment(courseId, assignment);
+    setCourseSchedules(LocalKasRepository.getCourseSchedules());
+  };
+
+  const handleToggleAssignment = (courseId: string, assignmentId: string) => {
+    LocalKasRepository.toggleCourseAssignment(courseId, assignmentId);
+    setCourseSchedules(LocalKasRepository.getCourseSchedules());
+  };
+
+  const handleDeleteAssignment = (courseId: string, assignmentId: string) => {
+    LocalKasRepository.deleteCourseAssignment(courseId, assignmentId);
+    setCourseSchedules(LocalKasRepository.getCourseSchedules());
+  };
+
   // If user is not logged in or hasn't selected a role, show the doodle welcome screen
   if (!isLoggedIn) {
     return <WelcomeScreen />;
@@ -676,12 +716,21 @@ const AppContent: React.FC = () => {
             pointLogs={pointLogs}
             attendanceRecords={attendanceRecords}
             meetingMinutes={meetingMinutes}
+            inventoryItems={inventoryItems}
+            courseSchedules={courseSchedules}
             onAddPointLog={handleAddPointLog}
             onDeletePointLog={handleDeletePointLog}
             onSaveAttendanceRecord={handleSaveAttendanceRecord}
             onDeleteAttendanceRecord={handleDeleteAttendanceRecord}
             onSaveMeetingMinute={handleSaveMeetingMinute}
             onDeleteMeetingMinute={handleDeleteMeetingMinute}
+            onSaveInventoryItem={handleSaveInventoryItem}
+            onDeleteInventoryItem={handleDeleteInventoryItem}
+            onSaveCourseSchedule={handleSaveCourseSchedule}
+            onDeleteCourseSchedule={handleDeleteCourseSchedule}
+            onAddAssignment={handleAddAssignment}
+            onToggleAssignment={handleToggleAssignment}
+            onDeleteAssignment={handleDeleteAssignment}
             onBackToHub={() => handleSelectDomain('hub', 'beranda')}
           />
         )}

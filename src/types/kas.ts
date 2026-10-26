@@ -44,6 +44,8 @@ export interface ClassSettings {
   supabaseAnonKey: string;
   siteUrl?: string;
   monthlyDuesOverrides?: Record<string, number>; // key: "YYYY_M", e.g. "2026_1": 5000, "2026_2": 10000
+  inventoryList?: ClassInventoryItem[];
+  courseSchedules?: CourseSchedule[];
 }
 
 export interface KolektifBill {
@@ -58,6 +60,7 @@ export interface KolektifBill {
   paidMemberIds: string[]; // member IDs that have paid
   createdAt: string;
   syncedToKas?: boolean;
+  billType?: 'acara' | 'patungan'; // New: distinguish event bills from group purchases
 }
 
 export interface StudentPointLog {
@@ -69,6 +72,7 @@ export interface StudentPointLog {
   date: string; // YYYY-MM-DD
   recordedBy: string;
   createdAt: string;
+  courseId?: string; // New: associated course/subject
 }
 
 export interface AttendanceRecord {
@@ -80,6 +84,7 @@ export interface AttendanceRecord {
   notes?: string;
   recordedBy: string;
   createdAt: string;
+  courseId?: string; // New: associated course/subject
 }
 
 export interface MeetingMinute {
@@ -94,3 +99,36 @@ export interface MeetingMinute {
   actionItems: { id: string; task: string; assignee: string; done: boolean }[];
   createdAt: string;
 }
+
+export interface ClassInventoryItem {
+  id: string;
+  name: string;
+  quantity: number;
+  condition: 'baik' | 'rusak_ringan' | 'rusak_berat';
+  location: string;
+  purchasedFromKas: boolean;
+  price?: number;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface CourseAssignment {
+  id: string;
+  title: string;
+  deadline: string; // YYYY-MM-DD
+  status: 'pending' | 'selesai';
+  notes?: string;
+}
+
+export interface CourseSchedule {
+  id: string;
+  courseName: string;
+  lecturerName: string;
+  sks: number;
+  day: string; // Senin, Selasa, etc.
+  time: string; // e.g. "08:00 - 09:40"
+  room?: string;
+  assignments: CourseAssignment[];
+  createdAt: string;
+}
+
