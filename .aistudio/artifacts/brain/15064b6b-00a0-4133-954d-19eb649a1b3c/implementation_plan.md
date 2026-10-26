@@ -1,85 +1,57 @@
-# Implementation Plan - Doodle UI Total Overhaul & Dedicated Admin Settings View (v4.3.0)
+# Implementation Plan - Kelas Gue v4.3.3
 
-Penyelarasan komprehensif tampilan visual aplikasi **Kelas Gue** ke gaya **Full Hand-Drawn Doodle**, pemindahan menu Pengaturan Admin dari modal pop-up menjadi **Tab View Mandiri**, isolasi manajemen anggota/whitelist ke ranah Master Admin dengan dropdown pencarian otomatis (Nama & NIM), reset data awal (Inventaris, Jadwal, Keaktifan) menjadi kosong, serta penegakan format Title Case untuk seluruh penulisan nama mahasiswa.
-
-> [!IMPORTANT]
-> **Keputusan Utama yang Telah Dikonfirmasi (Phase 1 Confirmation)**
-> - **Navigasi Pengaturan Admin**: Dibuka sebagai **Tab View tersendiri** (`admin_settings`) dengan header doodle, pita/badge doodle, dan sub-tab navigasi lengkap (Whitelist Roll, Manajemen Siswa, Audit Log, PIN Keamanan, Pembersihan Cache, Catatan Pembaruan).
-> - **Reset Data Awal**: Inisialisasi awal data *Inventaris Barang*, *Jadwal & Tugas*, dan *Poin Keaktifan* dikosongkan secara total (`[]`), sehingga data bersih hingga diisi manual oleh pengurus/admin.
-> - **Input & Whitelist Siswa Auto-complete**: Penambahan siswa dan whitelist di Pengaturan Admin menggunakan dropdown pencarian doodle yang secara otomatis mencocokkan nama dan NIM siswa.
-> - **Kerapihan Penulisan Nama**: Semua tampilan nama siswa di Presensi, Keaktifan, Notulensi, Inventaris, dan Kelompok diwajibkan menggunakan format **Title Case** (contoh: "Ahmad Budi Pratama").
-> - **Pembaruan Versi Aplikasi**: Pengkinian versi aplikasi ke `v4.3.0` di file `src/version.ts` beserta catatan pembaruan dan saran update fitur/keamanan sesuai instruksi sistem.
-
----
-
-## 1. Overview & Core Concept
-
-Aplikasi **Kelas Gue** akan ditingkatkan ke versi `v4.3.0` ("Doodle UI Total & Admin Tab Alignment") dengan penyempurnaan menyeluruh pada estetika doodle hand-drawn dan perbaikan arsitektur navigasi menu Pengaturan Admin.
-
-### Target Pengguna & Fitur Utama:
-- **Admin / SuperAdmin**: Memiliki hak akses khusus ke Tab View **Pengaturan Admin** tersendiri untuk mengelola Whitelist Roll (Super Admin, Bendahara, Sekretaris), mengimpor/menambah data siswa dengan gender, melihat Audit Log lintas modul, mengatur PIN keamanan, serta mengelola cache lokal.
-- **Sekretaris Kelas**: Mengelola presensi, notulensi, jadwal/tugas, inventaris barang, poin keaktifan, dan pembagian kelompok siswa dengan data yang bersih serta nama berformat Title Case.
-- **Bendahara Kelas**: Mengelola kas, ringkasan kas, buku kas, checklist iuran, dan iuran kolektif melalui menu Pengaturan Kas yang khusus mengatur iuran dan semester saja (tanpa manajemen anggota siswa).
+## 1. Overview & Objectives
+This plan covers the comprehensive enhancements requested by the owner for **Kelas Gue v4.3.3**:
+1. **Master Admin & Security:** Hide Super Admin menu from non-admin roles; update Hamburger menu to "Pengaturan Pengurus" with sub-options; add Sekretaris role assignment & distinct icons; fix overlapping title text layer on "Ranah Master Admin" banner; add Whitelist table mobile horizontal scroll; unify student management & gender configuration with active/inactive status and database persistence.
+2. **Secretary Module & Group Generation:** Replace WhatsApp copy buttons with direct `kirim WA` buttons for staff; upgrade Group Division to connect with Master Admin student DB (respecting active/inactive status and L/P gender); place shuffle button below distribution mode; support 3 to 10 groups; screen-first generation with permanent lock after first generate + reset button.
+3. **Kas & Financials:** Minimize top banner padding/spacing across Kas and Secretary views; unify year dropdown in Kas Recap with `DoodleSelect`; ensure monthly/semester dues edits correctly save to database; fix sound effect spamming on Kas Checklist "All" button (play once with unique sound); ensure loading screen waits until database sync is fully complete; compress receipt images for long-term persistence and print binder recap visibility.
+4. **Interactive Guided Tour (Onboarding):** Implement a step-by-step interactive onboarding tour with a welcome dialog on first login, guiding users from Hub to Kas to Secretary with skip/start options.
+5. **Super Admin Settings & Volume Control:** Add configurable settings (e.g., activity points default = 1 instead of 5, student active status toggle, highlight styling for Audit Log, BGM & SFX volume slider from 0% to 100% stored in localStorage).
+6. **UI/Typography Alignment:** Improve font consistency across Hub KPI boxes and headers.
 
 ---
 
-## 2. User Experience & Visual Design
+## 2. Proposed Changes & File Modifications
 
-### Estetika Full Doodle Hand-Drawn:
-1. **Garis Tepi & Bayangan Khas Doodle**:
-   - Setiap tombol, kartu, input, select, dan badge menggunakan `border-2 border-slate-900 shadow-[2px_2px_0px_#000]` atau `border-3 border-slate-900 shadow-[4px_4px_0px_#000]`.
-   - Latar belakang bertema kertas bergaris/kertas doodle (`bg-amber-50/90`, `bg-yellow-100`, `bg-white`).
-   - Aksesori visual seperti isolasi/selotip doodle (`tape-decoration`), stempel doodle (`stamp-badge`), dan ikon bertema sketsa pensil.
-2. **Kerapihan Penulisan Nama (Title Case)**:
-   - Fungsi pembantu `toTitleCase` akan memformat setiap nama yang ditampilkan di seluruh tabel dan kartu (misal: `"AHMAD BUDI"` atau `"ahmad budi"` -> `"Ahmad Budi"`).
-3. **Bentuk Tab Dedicated Pengaturan Admin**:
-   - Pengaturan Admin tidak lagi tampil sebagai modal overlay sederhana, melainkan berupa **Tab Utama** dengan header doodle besar, stempel "ADMINISTRATOR ONLY", dan 6 sub-tab internal yang rapi.
+### A. Version & Audio Configuration (`src/version.ts`, `src/utils/soundEffects.ts`)
+- Bump version to **v4.3.3**.
+- Add volume control settings (BGM volume & SFX volume) persisted in `localStorage` and applied to Web Audio API gain nodes.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  [★ PENGATURAN MASTER ADMIN]                    [Versi App v4.3.0 - Doodle]     │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌─────────────┐ ┌──────────┐ │
-│  │ Whitelist Roll│ │Manajemen Siswa│ │ Audit Log    │ │ PIN & Cache │ │ Ver Notes│ │
-│  └──────────────┘ └──────────────┘ └──────────────┘ └─────────────┘ └──────────┘ │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                 │
-│   Cari / Auto-complete Nama Siswa & NIM:                                        │
-│   ┌─────────────────────────────────────────────────┬────────────────────────┐  │
-│   │ 🔍 Ketik Nama atau NIM...                       │ [ Dropdown Matching ]  │  │
-│   └─────────────────────────────────────────────────┴────────────────────────┘  │
-│                                                                                 │
-│   Pilih Role Hak Akses: [ Bendahara Kelas  ▼ ]                                  │
-│   [ + Tambahkan Ke Whitelist Roll ]                                              │
-│                                                                                 │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
+### B. Navigation & Auth (`src/context/AuthContext.tsx`, `src/components/Doodle/DoodleNavbar.tsx`, `src/App.tsx`)
+- Ensure Super Admin view/menu is strictly restricted to Super Admin (`isSuperAdmin`).
+- Update Hamburger menu ("Pengaturan Pengurus") with clear links to Bendahara, Sekretaris, and Master Admin settings.
+- Update Role Switcher and Account Popover icons and role options.
 
----
+### C. Master Admin & Student DB (`src/components/Doodle/AdminSettingsView.tsx`, `src/types/kas.ts`)
+- Fix CSS layer overlap on "Ranah Master Admin" banner (`relative z-10`).
+- Make Whitelist table scrollable horizontally on mobile (`overflow-x-auto`).
+- Unify Student Management & Gender settings with active/inactive toggle and database persistence (`isActive` boolean on `KasMember`).
+- Expand Super Admin settings: default point value (1 point), audit log color-coding/highlighting, and volume controls.
 
-## 3. Key Product Decisions & Trade-Offs
+### D. Secretary & Group Generation (`src/components/Doodle/Secretary/KelompokTab.tsx`, `src/components/Doodle/Secretary/SecretaryHub.tsx`)
+- Connect Group Division directly with Master Admin student database (`members`), filtering out inactive students.
+- Support group count from 3 to 10.
+- Place shuffle button below distribution mode.
+- Implement screen-first generation with a permanent lock after first generate and a dedicated reset button.
+- Replace WhatsApp copy buttons with direct `kirim WA` action links.
 
-1. **Tab View Dedicated vs Modal Overlay untuk Admin**:
-   - *Pilihan*: Mengganti `AdminSettingsModal` dengan `AdminSettingsView.tsx` yang di-render sebagai halaman/tab penuh (`currentTab === 'admin_settings'`).
-   - *Alasan*: Memberikan ruang yang luas untuk filter Audit Log, tabel Whitelist, serta Form Import & Input Siswa tanpa terasa sesak.
+### E. Kas & Financial Modules (`src/components/Doodle/KasOverview.tsx`, `src/components/Doodle/KasBook.tsx`, `src/components/Doodle/KasChecklist.tsx`, `src/components/Doodle/KasRecapView.tsx`, `src/utils/receiptOcr.ts`)
+- Reduce top spacing/padding in banner boxes across Kas and Secretary views.
+- Unify year dropdown in Kas Recap with `DoodleSelect`.
+- Ensure monthly/semester dues updates correctly save to database (`LocalKasRepository.saveSettings`).
+- Fix sound effect spamming on Kas Checklist "All" button (play once with unique sound) and ensure loading screen awaits full database sync before closing.
+- Compress receipt images (`canvas` downscaling to max 800px width/height, JPEG quality 0.7) for long-term database storage and print binder visibility.
 
-2. **Isolasi Manajemen Siswa ke Admin**:
-   - *Pilihan*: Menghapus opsi *Import Siswa* dan *Tambah Siswa* dari `KasSettings.tsx` milik Bendahara dan memindahkannya secara total ke `AdminSettingsView.tsx`.
-   - *Alasan*: Mengikuti spesifikasi pengguna di mana pengaturan Bendahara difokuskan khusus pada Kas & Semester, sedangkan data siswa merupakan wewenang Master Admin.
-
-3. **Reset Inisialisasi Data Inventaris, Jadwal, dan Keaktifan**:
-   - *Pilihan*: Mengubah nilai default di `src/services/supabaseClient.ts` dari array sampel contoh menjadi array kosong (`[]`).
-   - *Alasan*: Menjamin bahwa pengguna baru memulai aplikasi dari keadaan bersih tanpa data placeholder dummy.
-
-4. **Pembaharuan Versi (v4.3.0)**:
-   - *Pilihan*: Memperbarui `src/version.ts` dengan changelog lengkap dan menyajikan opsi saran pembaruan (fitur, optimasi, keamanan) pada bagian Pengaturan.
+### F. Interactive Guided Tour (`src/components/Doodle/DoodleWalkthrough.tsx`, `src/App.tsx`)
+- Implement welcome dialog on first login with option to start interactive tour or skip.
+- Step-by-step guidance highlighting Hub, Kas, and Secretary modules.
 
 ---
 
-## 5. Summary of Verification & Testing Plan
-
-1. **Kompilasi & Linting**: Build aplikasi menggunakan `compile_applet` untuk memastikan tidak ada kesalahan TypeScript atau sintaksis.
-2. **Pengujian Tampilan Doodle**: Verifikasi bahwa seluruh komponen pada `KelompokTab` dan `AdminSettingsView` memiliki border hitam tebal hand-drawn (`border-2/3 border-slate-900`) dan shadow offset khas doodle.
-3. **Pengujian Navigasi Admin**: Buka Pengaturan Admin melalui Hamburger Menu dan pastikan ia terbuka sebagai Tab View tersendiri dengan sub-navigasi yang berfungsi penuh.
-4. **Pengujian Auto-complete & Whitelist**: Coba ketik Nama atau NIM pada form penambahan Whitelist dan pastikan pencarian otomatis memberikan saran pilihan siswa yang sesuai.
-5. **Pengujian Formatting Nama**: Pastikan nama-nama siswa yang tampil di seluruh tabel menggunakan huruf kapital di awal setiap kata (Title Case).
+## 3. Verification Plan
+1. **Compilation & Linting:** Run `compile_applet` and `lint_applet` to ensure zero TypeScript or syntax errors.
+2. **Behavioral Checks:**
+   - Verify Super Admin menu restriction.
+   - Verify group generation locking and 3-10 group count.
+   - Verify receipt compression and long-term storage.
+   - Verify BGM & SFX volume slider persistence.
