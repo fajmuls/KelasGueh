@@ -26,9 +26,26 @@ import { subscribeCloudSync, getCloudSyncStatus, CloudSyncStatus } from '../../s
 import { CURRENT_APP_VERSION } from '../../version.ts';
 import { showConfirm, showToast } from '../UI/DoodleDialog.tsx';
 
+export type AppNavTab =
+  | 'beranda'
+  | 'ringkasan'
+  | 'bukukas'
+  | 'checklist'
+  | 'kolektif'
+  | 'rekap'
+  | 'pengaturan'
+  | 'auditlog'
+  | 'keaktifan'
+  | 'presensi'
+  | 'notulensi';
+
+export type AppDomain = 'hub' | 'bendahara' | 'sekretaris';
+
 interface DoodleNavbarProps {
-  currentTab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog';
-  onSelectTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog') => void;
+  currentTab: AppNavTab;
+  activeDomain: AppDomain;
+  onSelectTab: (tab: AppNavTab) => void;
+  onSelectDomain: (domain: AppDomain, defaultTab?: AppNavTab) => void;
   classNameTitle: string;
   onOpenShareModal?: () => void;
   onOpenWalkthrough?: () => void;
@@ -36,7 +53,9 @@ interface DoodleNavbarProps {
 
 export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   currentTab,
+  activeDomain,
   onSelectTab,
+  onSelectDomain,
   classNameTitle,
   onOpenShareModal,
   onOpenWalkthrough
@@ -138,12 +157,24 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
     }
   };
 
-  const navItems = [
-    { id: 'ringkasan', label: 'Ringkasan Kas' },
-    { id: 'bukukas', label: 'Buku Kas & Nota' },
-    { id: 'checklist', label: 'Checklist Iuran' },
-    ...(isRealSuperAdmin || isSuperAdmin ? [{ id: 'auditlog', label: 'Laporan Audit' }] : []),
-  ] as const;
+  const navItems = activeDomain === 'sekretaris'
+    ? [
+        { id: 'keaktifan' as const, label: 'Poin Keaktifan' },
+        { id: 'presensi' as const, label: 'Presensi Kelas' },
+        { id: 'notulensi' as const, label: 'Notulensi & Surat' },
+      ]
+    : activeDomain === 'bendahara'
+    ? [
+        { id: 'ringkasan' as const, label: 'Ringkasan Kas' },
+        { id: 'bukukas' as const, label: 'Buku Kas & Nota' },
+        { id: 'checklist' as const, label: 'Checklist Iuran' },
+        { id: 'kolektif' as const, label: 'Iuran Kolektif' },
+        { id: 'rekap' as const, label: 'Rekap Kas' },
+        ...(isRealSuperAdmin || isSuperAdmin ? [{ id: 'auditlog' as const, label: 'Laporan Audit' }] : []),
+      ]
+    : [
+        { id: 'beranda' as const, label: 'Beranda Portal' },
+      ];
 
   const themes: { id: ThemeType; label: string; icon: any; color: string }[] = [
     { id: 'light', label: 'Terang', icon: Sun, color: 'bg-white' },
@@ -158,7 +189,11 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
         
         {/* Zone 1: Brand Wordmark with SVG Logo & Cloud Sync */}
         <div className="flex items-center gap-2 min-w-0 shrink">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] overflow-hidden p-1 flex items-center justify-center shrink-0">
+          <div
+            onClick={() => onSelectDomain('hub', 'beranda')}
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B] overflow-hidden p-1 flex items-center justify-center shrink-0 cursor-pointer hover:rotate-3 transition-transform"
+            title="Ke Beranda Hub"
+          >
             <img 
               src="/logo/Kelas_Gueh_Logo_Static.svg" 
               alt="Logo Kelas Gue" 
@@ -171,12 +206,12 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             <h1 className="text-xs sm:text-base font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5 truncate">
               <span className="truncate">{classNameTitle || 'Kelas Gue'}</span>
               <span className="hidden lg:inline-block text-[9px] bg-emerald-200 border border-slate-900 px-1 py-0.2 rounded-xs font-bold text-slate-900 shrink-0">
-                Transparan
+                {activeDomain === 'sekretaris' ? 'Sekretariat' : 'Bendahara'}
               </span>
             </h1>
             <div className="flex items-center gap-1.5 mt-0.5 leading-none">
               <p className="text-[9px] sm:text-[10px] text-slate-600 font-semibold truncate shrink-0 theme-text-muted">
-                Buku Kas Kelas
+                {activeDomain === 'sekretaris' ? 'Sekretariat & Presensi' : 'Buku Kas Kelas'}
               </p>
               <span className="text-slate-300 text-[8px]">·</span>
               {syncStatus === 'synced' && (
@@ -197,6 +232,53 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                   <span>Lokal</span>
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* Quick Hub and Domain Switcher */}
+          <div className="flex items-center gap-1 shrink-0 ml-1">
+            <button
+              onClick={() => {
+                sfx.playClick();
+                onSelectDomain('hub', 'beranda');
+              }}
+              className={`btn-doodle px-2 py-1 text-[10px] sm:text-xs font-black rounded-md border-2 border-slate-900 transition-all ${
+                activeDomain === 'hub'
+                  ? 'bg-amber-300 text-slate-900 shadow-[1px_1px_0px_#000]'
+                  : 'bg-white text-slate-700 hover:bg-amber-50'
+              }`}
+              title="Kembali ke Beranda Pilihan Modul"
+            >
+              <span>🏠 Hub</span>
+            </button>
+
+            <div className="hidden sm:flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-md border-2 border-slate-900">
+              <button
+                onClick={() => {
+                  sfx.playClick();
+                  onSelectDomain('bendahara', 'ringkasan');
+                }}
+                className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                  activeDomain === 'bendahara'
+                    ? 'bg-amber-300 text-slate-900 font-black shadow-[1px_1px_0px_#000]'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Bendahara
+              </button>
+              <button
+                onClick={() => {
+                  sfx.playClick();
+                  onSelectDomain('sekretaris', 'keaktifan');
+                }}
+                className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${
+                  activeDomain === 'sekretaris'
+                    ? 'bg-sky-200 text-slate-900 font-black shadow-[1px_1px_0px_#000]'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Sekretaris
+              </button>
             </div>
           </div>
         </div>
@@ -469,6 +551,57 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                       <span className="text-[10px] font-bold">{t.label}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Modul & Ranah Switcher Section */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 px-1">
+                  <span>Pilihan Ranah & Portal Kelas</span>
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      sfx.playClick();
+                      onSelectDomain('hub', 'beranda');
+                    }}
+                    className={`p-2.5 rounded-lg border-2 text-center text-xs font-bold transition-all ${
+                      activeDomain === 'hub'
+                        ? 'bg-amber-300 border-slate-900 text-slate-900 shadow-[1.5px_1.5px_0px_#000]'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    🏠 Beranda Hub
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      sfx.playClick();
+                      onSelectDomain('bendahara', 'ringkasan');
+                    }}
+                    className={`p-2.5 rounded-lg border-2 text-center text-xs font-bold transition-all ${
+                      activeDomain === 'bendahara'
+                        ? 'bg-amber-300 border-slate-900 text-slate-900 shadow-[1.5px_1.5px_0px_#000]'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    💰 Bendahara
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      sfx.playClick();
+                      onSelectDomain('sekretaris', 'keaktifan');
+                    }}
+                    className={`p-2.5 rounded-lg border-2 text-center text-xs font-bold transition-all ${
+                      activeDomain === 'sekretaris'
+                        ? 'bg-sky-200 border-slate-900 text-slate-900 shadow-[1.5px_1.5px_0px_#000]'
+                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    📝 Sekretaris
+                  </button>
                 </div>
               </div>
 

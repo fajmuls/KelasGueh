@@ -13,6 +13,14 @@ interface SplitBillModalProps {
   members: KasMember[];
   settings: ClassSettings;
   onAddTransaction?: (tx: Omit<KasTransaction, 'id' | 'createdAt'>) => void;
+  onConvertToKolektif?: (bill: {
+    title: string;
+    category: string;
+    amountPerPerson: number;
+    totalCost: number;
+    participantIds: string[];
+    notes: string;
+  }) => void;
 }
 
 const EVENT_CATEGORIES = [
@@ -30,6 +38,7 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
   members,
   settings,
   onAddTransaction,
+  onConvertToKolektif,
 }) => {
   const [eventName, setEventName] = useState('');
   const [totalCost, setTotalCost] = useState<number | ''>(50000);
@@ -275,6 +284,31 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
             >
               Tutup
             </button>
+            {onConvertToKolektif && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!eventName.trim()) {
+                    showToast('Mohon beri nama acara terlebih dahulu.', 'error');
+                    return;
+                  }
+                  onConvertToKolektif({
+                    title: eventName.trim(),
+                    category: selectedCategory,
+                    amountPerPerson: sharePerStudent,
+                    totalCost: costNumber,
+                    participantIds: selectedMemberIds,
+                    notes: notes.trim()
+                  });
+                  onClose();
+                }}
+                className="btn-doodle flex-1 sm:flex-none px-3.5 py-2 min-h-[44px] bg-amber-200 hover:bg-amber-300 text-slate-900 text-xs font-bold rounded-md border-2 border-slate-900 flex items-center justify-center gap-1.5 shadow-[1px_1px_0px_#1E293B]"
+                title="Jadikan tagihan kolektif dengan checklist pembayaran per siswa"
+              >
+                <Receipt className="w-4 h-4 text-amber-800" />
+                <span>+ Tagihan Kolektif</span>
+              </button>
+            )}
             {onAddTransaction && (
               <button
                 type="button"

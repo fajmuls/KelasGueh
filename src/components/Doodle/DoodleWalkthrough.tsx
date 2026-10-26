@@ -17,7 +17,7 @@ import {
 interface DoodleWalkthroughProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectTab?: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog') => void;
+  onSelectTab?: (tab: any) => void;
 }
 
 export const DoodleWalkthrough: React.FC<DoodleWalkthroughProps> = ({

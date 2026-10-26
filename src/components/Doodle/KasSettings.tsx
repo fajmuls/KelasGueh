@@ -57,6 +57,11 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => sfx.isEnabled());
 
+  // Monthly Dues Overrides State
+  const [overrideYear, setOverrideYear] = useState<number>(() => new Date().getFullYear());
+  const [overrideMonth, setOverrideMonth] = useState<number>(() => new Date().getMonth() + 1);
+  const [overrideAmount, setOverrideAmount] = useState<number | ''>(settings.weeklyDuesAmount || 5000);
+
   // User Role Management state for Super Admin
   const [userList, setUserList] = useState<any[]>([]);
   const [manualEmail, setManualEmail] = useState('');
@@ -352,6 +357,103 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
                 className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md outline-none focus:bg-amber-50"
               />
             </div>
+          </div>
+
+          {/* Penyesuaian Iuran Spesifik Bulan Tertentu */}
+          <div className="p-4 rounded-xl border-2 border-slate-900 bg-amber-50/60 space-y-3">
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                <span>Pengaturan Iuran Spesifik Bulan Tertentu (Opsional)</span>
+              </h4>
+              <p className="text-[11px] text-slate-600 mt-0.5">
+                Atur nominal iuran yang berbeda khusus untuk bulan tertentu (misalnya bulan-bulan lampau atau promo kegiatan).
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={overrideMonth}
+                onChange={e => setOverrideMonth(parseInt(e.target.value))}
+                className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-900 bg-white"
+              >
+                {[
+                  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+                ].map((mName, idx) => (
+                  <option key={idx + 1} value={idx + 1}>{mName}</option>
+                ))}
+              </select>
+
+              <select
+                value={overrideYear}
+                onChange={e => setOverrideYear(parseInt(e.target.value))}
+                className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-900 bg-white"
+              >
+                {[2025, 2026, 2027].map(yr => (
+                  <option key={yr} value={yr}>Tahun {yr}</option>
+                ))}
+              </select>
+
+              <div className="w-36">
+                <DoodleCurrencyInput
+                  value={overrideAmount}
+                  onChange={setOverrideAmount}
+                  placeholder="Nominal"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const num = typeof overrideAmount === 'number' ? overrideAmount : 0;
+                  const key = `${overrideYear}_${overrideMonth}`;
+                  setForm(prev => ({
+                    ...prev,
+                    monthlyDuesOverrides: {
+                      ...(prev.monthlyDuesOverrides || {}),
+                      [key]: num
+                    }
+                  }));
+                  sfx.playClick();
+                  showToast(`Tarif bulan ${overrideMonth}/${overrideYear} diset Rp ${new Intl.NumberFormat('id-ID').format(num)}! Klik Simpan Perubahan untuk menerapkan.`, 'info');
+                }}
+                className="btn-doodle px-3 py-1.5 bg-amber-300 hover:bg-amber-200 text-slate-900 font-black text-xs rounded-lg border-2 border-slate-900 shadow-[1px_1px_0px_#000]"
+              >
+                + Terapkan Bulan Ini
+              </button>
+            </div>
+
+            {/* Active overrides list */}
+            {form.monthlyDuesOverrides && Object.keys(form.monthlyDuesOverrides).length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-300">
+                {Object.entries(form.monthlyDuesOverrides).map(([key, amount]) => {
+                  const [yr, mo] = key.split('_');
+                  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                  const label = `${monthNames[parseInt(mo) - 1]} ${yr}`;
+
+                  return (
+                    <div key={key} className="px-2.5 py-1 rounded-md bg-white border border-slate-900 shadow-[1px_1px_0px_#000] flex items-center gap-2 text-xs">
+                      <span className="font-bold text-slate-800">{label}:</span>
+                      <span className="font-mono font-black text-emerald-700">Rp {new Intl.NumberFormat('id-ID').format(Number(amount))}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...(form.monthlyDuesOverrides || {}) };
+                          delete updated[key];
+                          setForm(prev => ({ ...prev, monthlyDuesOverrides: updated }));
+                          sfx.playClick();
+                        }}
+                        className="text-rose-600 font-bold hover:text-rose-800 ml-1 text-sm"
+                        title="Hapus penyesuaian bulan ini"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end pt-2">
@@ -773,20 +875,53 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
         </div>
       </div>
 
-      {/* 5. Patch Notes */}
-      <div className="card-doodle p-6 rounded-lg bg-amber-50/80 border-2 border-slate-900">
-        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
-          <h3 className="text-base font-black text-slate-900">Catatan Pembaruan v{CURRENT_APP_VERSION.version}</h3>
-          <span className="text-[10px] font-mono text-slate-500 italic">{CURRENT_APP_VERSION.releaseDate}</span>
+      {/* 5. Patch Notes & Suggested Updates */}
+      <div className="card-doodle p-6 rounded-lg bg-amber-50/80 border-2 border-slate-900 space-y-5">
+        <div>
+          <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-3">
+            <div>
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-600" />
+                <span>Catatan Pembaruan v{CURRENT_APP_VERSION.version} ({CURRENT_APP_VERSION.codename})</span>
+              </h3>
+            </div>
+            <span className="text-[10px] font-mono text-slate-500 italic">{CURRENT_APP_VERSION.releaseDate}</span>
+          </div>
+          <ul className="space-y-1.5">
+            {CURRENT_APP_VERSION.changes.map((c, i) => (
+              <li key={i} className="text-xs text-slate-700 flex gap-2">
+                <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                <span>{c}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-        <ul className="space-y-1.5">
-          {CURRENT_APP_VERSION.changes.map((c, i) => (
-            <li key={i} className="text-xs text-slate-700 flex gap-2">
-              <span className="text-emerald-600 font-bold shrink-0">✓</span>
-              <span>{c}</span>
-            </li>
-          ))}
-        </ul>
+
+        {/* Saran Update dari Developer Engine */}
+        {CURRENT_APP_VERSION.suggestedUpdates && CURRENT_APP_VERSION.suggestedUpdates.length > 0 && (
+          <div className="pt-4 border-t-2 border-slate-900/10">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-1.5">
+              <span>💡 Saran Pembaruan & Rekomendasi Fitur Mendatang</span>
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {CURRENT_APP_VERSION.suggestedUpdates.map((sug, i) => (
+                <div key={i} className="bg-white p-3 rounded-xl border border-slate-900 shadow-[1px_1px_0px_#000] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                      {sug.category}
+                    </span>
+                  </div>
+                  <p className="text-xs font-black text-slate-900 leading-snug">
+                    {sug.title}
+                  </p>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    {sug.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -62,6 +62,13 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   const [selectedFastTapWeek, setSelectedFastTapWeek] = useState(0); // 0..3
   
   // Helpers for month-week logic
+  const currentMonthDues = (() => {
+    const mKey = `${selectedYear}_${selectedMonth + 1}`;
+    return settings.monthlyDuesOverrides?.[mKey] !== undefined
+      ? settings.monthlyDuesOverrides[mKey]
+      : settings.weeklyDuesAmount;
+  })();
+
   const getWeekKey = (weekIndex: number) => {
     return `${selectedYear}_${(selectedMonth + 1).toString().padStart(2, '0')}_W${weekIndex + 1}`;
   };
@@ -311,7 +318,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
     const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
     const unpaidWeeks = monthWeekKeys.filter(key => !member.weeklyStatus?.[key]);
     const unpaidLabels = unpaidWeeks.map(k => `Minggu ${k.split('-W')[1] || k}`).join(', ');
-    const totalUnpaid = unpaidWeeks.length * settings.weeklyDuesAmount;
+    const totalUnpaid = unpaidWeeks.length * currentMonthDues;
 
     return `*LAPORAN IURAN KAS KELAS*\n` +
       `*${settings.className}* · Periode *${MONTHS[selectedMonth]} ${selectedYear}*\n\n` +
@@ -319,7 +326,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
       `Berikut rincian transparansi status iuran kas kelas Anda:\n` +
       `• *Total Kas Terkumpul:* ${formatRupiah(currentBalance)}\n` +
       `• *Pengeluaran Bulan Ini:* ${formatRupiah(monthExpenses)}\n` +
-      `• *Iuran Kas Mingguan:* ${formatRupiah(settings.weeklyDuesAmount)}\n` +
+      `• *Iuran Kas Mingguan:* ${formatRupiah(currentMonthDues)}\n` +
       `• *Tunggakan Belum Bayar:* ${unpaidWeeks.length} Minggu (${unpaidLabels})\n` +
       `• *Total Tagihan Iuran:* *${formatRupiah(totalUnpaid)}*\n\n` +
       `Mohon dapat segera menyelesaikan pembayaran iuran kas melalui Bendahara Kelas.\n` +
@@ -349,7 +356,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
               <span>Matriks Checklist Iuran Mingguan</span>
             </h2>
             <p className="text-[10px] sm:text-xs text-slate-600">
-              Tarif Iuran: <strong className="text-slate-900">{formatRupiah(settings.weeklyDuesAmount)}/mgg</strong> · Saldo Kas: <strong className="text-emerald-700">{formatRupiah(currentBalance)}</strong>
+              Tarif Iuran: <strong className="text-slate-900">{formatRupiah(currentMonthDues)}/mgg</strong> · Saldo Kas: <strong className="text-emerald-700">{formatRupiah(currentBalance)}</strong>
             </p>
           </div>
           {/* Action buttons: Compact Mode Kartu and Tagih WA */}
@@ -548,7 +555,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                       {isPaid ? '✓ Lunas' : 'Belum Bayar'}
                     </span>
                     <span className={isPaid ? 'text-slate-900' : 'text-slate-500'}>
-                      {formatRupiah(settings.weeklyDuesAmount)}
+                      {formatRupiah(currentMonthDues)}
                     </span>
                   </div>
                 </div>
@@ -614,7 +621,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                   filteredMembers.map((member, index) => {
                     const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
                     const paidWeeksInMonth = monthWeekKeys.filter(key => !!member.weeklyStatus?.[key]).length;
-                    const totalPaid = paidWeeksInMonth * settings.weeklyDuesAmount;
+                    const totalPaid = paidWeeksInMonth * currentMonthDues;
                     const hasArrears = paidWeeksInMonth < 4;
                     const isEditing = editingId === member.id;
 

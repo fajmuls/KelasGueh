@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { KasTransaction, KasMember, ClassSettings } from '../types/kas.ts';
+import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog, AttendanceRecord, MeetingMinute } from '../types/kas.ts';
 import { getRegisteredUsers, registerOrUpdateUser, updateUserRole } from '../utils/userManagement.ts';
 
 /**
@@ -753,6 +753,243 @@ export class LocalKasRepository {
     
     // Also update existing profile if any
     await client.from('user_profiles').update({ role }).eq('email', email.toLowerCase());
+  }
+
+  // ---------------- KOLEKTIF BILLS (IURAN KHUSUS / ACARA) ----------------
+  private static KEY_KOLEKTIF = 'kelasgue_kolektif_bills_v1';
+
+  public static getKolektifBills(): KolektifBill[] {
+    const raw = localStorage.getItem(this.KEY_KOLEKTIF);
+    if (!raw) {
+      // Seed default demo campaign if empty
+      const members = this.getMembers();
+      const allIds = members.map(m => m.id);
+      const sample: KolektifBill[] = [
+        {
+          id: 'kolektif_demo_1',
+          title: 'Seminar Nasional AI & Karir 2026',
+          category: 'Acara & Lomba',
+          amountPerPerson: 35000,
+          totalCost: 35000 * (allIds.length || 1),
+          dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+          notes: 'Registrasi kolektif sertifikat & konsumsi seminar.',
+          participantIds: allIds,
+          paidMemberIds: allIds.slice(0, Math.min(2, allIds.length)),
+          createdAt: new Date().toISOString(),
+          syncedToKas: false
+        }
+      ];
+      localStorage.setItem(this.KEY_KOLEKTIF, JSON.stringify(sample));
+      return sample;
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  public static saveKolektifBills(bills: KolektifBill[]): void {
+    localStorage.setItem(this.KEY_KOLEKTIF, JSON.stringify(bills));
+  }
+
+  public static addKolektifBill(bill: Omit<KolektifBill, 'id' | 'createdAt'>): KolektifBill {
+    const bills = this.getKolektifBills();
+    const newBill: KolektifBill = {
+      ...bill,
+      id: generateUUID(),
+      createdAt: new Date().toISOString()
+    };
+    bills.unshift(newBill);
+    this.saveKolektifBills(bills);
+    return newBill;
+  }
+
+  public static updateKolektifBill(id: string, updates: Partial<KolektifBill>): void {
+    const bills = this.getKolektifBills().map(b => b.id === id ? { ...b, ...updates } : b);
+    this.saveKolektifBills(bills);
+  }
+
+  public static deleteKolektifBill(id: string): void {
+    const bills = this.getKolektifBills().filter(b => b.id !== id);
+    this.saveKolektifBills(bills);
+  }
+
+  public static toggleKolektifPayment(billId: string, memberId: string): { isPaid: boolean } {
+    const bills = this.getKolektifBills();
+    const target = bills.find(b => b.id === billId);
+    if (!target) return { isPaid: false };
+
+    let isPaid = false;
+    if (target.paidMemberIds.includes(memberId)) {
+      target.paidMemberIds = target.paidMemberIds.filter(id => id !== memberId);
+      isPaid = false;
+    } else {
+      target.paidMemberIds.push(memberId);
+      isPaid = true;
+    }
+    this.saveKolektifBills(bills);
+    return { isPaid };
+  }
+
+  // ---------------- SEKRETARIAT: POIN KEAKTIFAN ----------------
+  private static KEY_POINTS = 'kelasgue_secretary_points_v1';
+
+  public static getPointLogs(): StudentPointLog[] {
+    const raw = localStorage.getItem(this.KEY_POINTS);
+    if (!raw) {
+      const members = this.getMembers();
+      const sample: StudentPointLog[] = members.slice(0, 3).map((m, idx) => ({
+        id: `point_sample_${idx}`,
+        memberId: m.id,
+        points: idx === 0 ? 10 : 5,
+        category: idx === 0 ? 'presentasi' : 'tanya',
+        reason: idx === 0 ? 'Presentasi materi kelompok dengan lugas' : 'Aktif mengajukan pertanyaan kritis',
+        date: new Date().toISOString().split('T')[0],
+        recordedBy: 'Sekretaris',
+        createdAt: new Date().toISOString()
+      }));
+      localStorage.setItem(this.KEY_POINTS, JSON.stringify(sample));
+      return sample;
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  public static addPointLog(log: Omit<StudentPointLog, 'id' | 'createdAt'>): StudentPointLog {
+    const logs = this.getPointLogs();
+    const newLog: StudentPointLog = {
+      ...log,
+      id: generateUUID(),
+      createdAt: new Date().toISOString()
+    };
+    logs.unshift(newLog);
+    localStorage.setItem(this.KEY_POINTS, JSON.stringify(logs));
+    return newLog;
+  }
+
+  public static deletePointLog(id: string): void {
+    const logs = this.getPointLogs().filter(l => l.id !== id);
+    localStorage.setItem(this.KEY_POINTS, JSON.stringify(logs));
+  }
+
+  // ---------------- SEKRETARIAT: PRESENSI KELAS & RAPAT ----------------
+  private static KEY_ATTENDANCE = 'kelasgue_secretary_attendance_v1';
+
+  public static getAttendanceRecords(): AttendanceRecord[] {
+    const raw = localStorage.getItem(this.KEY_ATTENDANCE);
+    if (!raw) {
+      const members = this.getMembers();
+      const initialStatuses: Record<string, 'hadir' | 'sakit' | 'izin' | 'alpa'> = {};
+      members.forEach((m, idx) => {
+        initialStatuses[m.id] = idx === 0 ? 'izin' : 'hadir';
+      });
+      const sample: AttendanceRecord[] = [
+        {
+          id: 'att_sample_1',
+          date: new Date().toISOString().split('T')[0],
+          title: 'Perkuliahan Sesi Diskusi & Rapat Internal Kelas',
+          type: 'rapat',
+          statuses: initialStatuses,
+          notes: 'Dihadiri mayoritas anggota kelas, persiapan agenda bulanan.',
+          recordedBy: 'Sekretaris',
+          createdAt: new Date().toISOString()
+        }
+      ];
+      localStorage.setItem(this.KEY_ATTENDANCE, JSON.stringify(sample));
+      return sample;
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  public static saveAttendanceRecord(rec: Omit<AttendanceRecord, 'id' | 'createdAt'> & { id?: string }): AttendanceRecord {
+    const records = this.getAttendanceRecords();
+    if (rec.id) {
+      const idx = records.findIndex(r => r.id === rec.id);
+      if (idx >= 0) {
+        records[idx] = { ...records[idx], ...rec } as AttendanceRecord;
+        localStorage.setItem(this.KEY_ATTENDANCE, JSON.stringify(records));
+        return records[idx];
+      }
+    }
+    const newRec: AttendanceRecord = {
+      ...rec,
+      id: generateUUID(),
+      createdAt: new Date().toISOString()
+    };
+    records.unshift(newRec);
+    localStorage.setItem(this.KEY_ATTENDANCE, JSON.stringify(records));
+    return newRec;
+  }
+
+  public static deleteAttendanceRecord(id: string): void {
+    const records = this.getAttendanceRecords().filter(r => r.id !== id);
+    localStorage.setItem(this.KEY_ATTENDANCE, JSON.stringify(records));
+  }
+
+  // ---------------- SEKRETARIAT: NOTULENSI RAPAT & FORMAT SURAT ----------------
+  private static KEY_MINUTES = 'kelasgue_secretary_minutes_v1';
+
+  public static getMeetingMinutes(): MeetingMinute[] {
+    const raw = localStorage.getItem(this.KEY_MINUTES);
+    if (!raw) {
+      const sample: MeetingMinute[] = [
+        {
+          id: 'minute_sample_1',
+          title: 'Rapat Koordinasi Rencana Studi Tur & Acara Kelas',
+          date: new Date().toISOString().split('T')[0],
+          leader: 'Ketua Kelas',
+          noteTaker: 'Sekretaris',
+          agenda: 'Pembahasan destinasi studi tur, estimasi biaya, dan pembagian panitia kecil.',
+          discussion: 'Disepakati lokasi studi tur ke Balai Riset Informatika. Pengurus kelas mengumpulkan biaya transport secara kolektif.',
+          decisions: '1. Biaya partisipasi disepakati Rp 35.000 per orang.\n2. Pembayaran ditutup H-3 kegiatan.\n3. Presensi kehadiran wajib bagi seluruh pengurus.',
+          actionItems: [
+            { id: 'act_1', task: 'Kirim surat permohonan kunjungan', assignee: 'Sekretaris', done: false },
+            { id: 'act_2', task: 'Mulai buka posko pembayaran kolektif', assignee: 'Bendahara', done: true }
+          ],
+          createdAt: new Date().toISOString()
+        }
+      ];
+      localStorage.setItem(this.KEY_MINUTES, JSON.stringify(sample));
+      return sample;
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  public static saveMeetingMinute(minute: Omit<MeetingMinute, 'id' | 'createdAt'> & { id?: string }): MeetingMinute {
+    const minutes = this.getMeetingMinutes();
+    if (minute.id) {
+      const idx = minutes.findIndex(m => m.id === minute.id);
+      if (idx >= 0) {
+        minutes[idx] = { ...minutes[idx], ...minute } as MeetingMinute;
+        localStorage.setItem(this.KEY_MINUTES, JSON.stringify(minutes));
+        return minutes[idx];
+      }
+    }
+    const newMinute: MeetingMinute = {
+      ...minute,
+      id: generateUUID(),
+      createdAt: new Date().toISOString()
+    };
+    minutes.unshift(newMinute);
+    localStorage.setItem(this.KEY_MINUTES, JSON.stringify(minutes));
+    return newMinute;
+  }
+
+  public static deleteMeetingMinute(id: string): void {
+    const minutes = this.getMeetingMinutes().filter(m => m.id !== id);
+    localStorage.setItem(this.KEY_MINUTES, JSON.stringify(minutes));
   }
 }
 

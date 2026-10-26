@@ -34,7 +34,7 @@ interface KasOverviewProps {
   transactions: KasTransaction[];
   settings: ClassSettings;
   members: KasMember[];
-  onNavigateTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog') => void;
+  onNavigateTab: (tab: 'ringkasan' | 'bukukas' | 'checklist' | 'kolektif' | 'rekap' | 'pengaturan' | 'auditlog') => void;
   onOpenNewTxModal: () => void;
   onOpenPrintModal?: () => void;
   onOpenWhatsAppModal?: () => void;

@@ -252,6 +252,22 @@ class SoundEngine {
     this.playAudio('/audio/32_sync_complete.mp3', 0.45);
   }
 
+  /**
+   * 29_delete_confirm.mp3 - Menghapus item
+   */
+  public playDelete(): void {
+    this.playDeleteConfirm();
+  }
+
+  /**
+   * 04_page_switch_whoosh.mp3 - Transisi halaman atau hub
+   */
+  public playPageSwitch(): void {
+    this.playAudio('/audio/04_page_switch_whoosh.mp3', 0.45, () => {
+      this.playOptionSelect();
+    });
+  }
+
   private isIntroPlaying: boolean = false;
   private lastIntroPlay: number = 0;
   /**

@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { ThemeProvider } from './context/ThemeContext.tsx';
 import { WelcomeScreen } from './components/Doodle/WelcomeScreen.tsx';
-import { DoodleNavbar } from './components/Doodle/DoodleNavbar.tsx';
+import { DoodleNavbar, AppNavTab, AppDomain } from './components/Doodle/DoodleNavbar.tsx';
+import { MainPortalHub } from './components/Doodle/MainPortalHub.tsx';
 import { KasOverview } from './components/Doodle/KasOverview.tsx';
 import { KasBook } from './components/Doodle/KasBook.tsx';
 import { KasChecklist } from './components/Doodle/KasChecklist.tsx';
+import { KolektifBillTab } from './components/Doodle/KolektifBillTab.tsx';
+import { KasRecapView } from './components/Doodle/KasRecapView.tsx';
 import { KasSettings } from './components/Doodle/KasSettings.tsx';
 import { KasAuditLog } from './components/Doodle/KasAuditLog.tsx';
+import { SecretaryHub } from './components/Doodle/Secretary/SecretaryHub.tsx';
 import { PrintableBinderModal } from './components/Doodle/PrintableBinderModal.tsx';
 import { WhatsAppShareModal } from './components/Doodle/WhatsAppShareModal.tsx';
 import { ClassShareModal } from './components/Doodle/ClassShareModal.tsx';
@@ -21,21 +25,118 @@ import {
   DEFAULT_SETTINGS,
   subscribeToRealtimeKas
 } from './services/supabaseClient.ts';
-import { KasTransaction, KasMember, ClassSettings } from './types/kas.ts';
+import {
+  KasTransaction,
+  KasMember,
+  ClassSettings,
+  KolektifBill,
+  StudentPointLog,
+  AttendanceRecord,
+  MeetingMinute
+} from './types/kas.ts';
 import { CURRENT_APP_VERSION } from './version.ts';
 import { sfx } from './utils/soundEffects.ts';
 import { DoodleDialogContainer, showToast } from './components/UI/DoodleDialog.tsx';
 
+// URL Routing helpers using HTML5 History API
+const getRouteFromPath = (path: string): { domain: AppDomain; tab: AppNavTab } => {
+  const clean = path.replace(/\/+$/, '') || '/';
+  if (clean === '/' || clean === '/beranda' || clean === '/hub') {
+    return { domain: 'hub', tab: 'beranda' };
+  }
+  if (clean === '/administrasi/ringkasan-kas') return { domain: 'bendahara', tab: 'ringkasan' };
+  if (clean === '/administrasi/buku-kas') return { domain: 'bendahara', tab: 'bukukas' };
+  if (clean === '/administrasi/ceklis-iuran') return { domain: 'bendahara', tab: 'checklist' };
+  if (clean === '/administrasi/iuran-kolektif') return { domain: 'bendahara', tab: 'kolektif' };
+  if (clean === '/administrasi/rekap-kas') return { domain: 'bendahara', tab: 'rekap' };
+  if (clean === '/administrasi/pengaturan') return { domain: 'bendahara', tab: 'pengaturan' };
+  if (clean === '/administrasi/audit-log') return { domain: 'bendahara', tab: 'auditlog' };
+
+  if (clean === '/sekretaris/keaktifan') return { domain: 'sekretaris', tab: 'keaktifan' };
+  if (clean === '/sekretaris/presensi') return { domain: 'sekretaris', tab: 'presensi' };
+  if (clean === '/sekretaris/notulensi') return { domain: 'sekretaris', tab: 'notulensi' };
+
+  if (clean.startsWith('/sekretaris')) return { domain: 'sekretaris', tab: 'keaktifan' };
+  if (clean.startsWith('/administrasi')) return { domain: 'bendahara', tab: 'ringkasan' };
+  return { domain: 'hub', tab: 'beranda' };
+};
+
+const getPathFromRoute = (domain: AppDomain, tab: AppNavTab): string => {
+  if (domain === 'hub' || tab === 'beranda') return '/';
+  if (domain === 'sekretaris') {
+    if (tab === 'presensi') return '/sekretaris/presensi';
+    if (tab === 'notulensi') return '/sekretaris/notulensi';
+    return '/sekretaris/keaktifan';
+  }
+  // domain === 'bendahara'
+  if (tab === 'bukukas') return '/administrasi/buku-kas';
+  if (tab === 'checklist') return '/administrasi/ceklis-iuran';
+  if (tab === 'kolektif') return '/administrasi/iuran-kolektif';
+  if (tab === 'rekap') return '/administrasi/rekap-kas';
+  if (tab === 'pengaturan') return '/administrasi/pengaturan';
+  if (tab === 'auditlog') return '/administrasi/audit-log';
+  return '/administrasi/ringkasan-kas';
+};
+
 const AppContent: React.FC = () => {
   const { user, role, isLoggedIn, canEditKas } = useAuth();
   const [showIntro, setShowIntro] = useState(true);
-  const [currentTab, setCurrentTab] = useState<'ringkasan' | 'bukukas' | 'checklist' | 'pengaturan' | 'auditlog'>('ringkasan');
+
+  // Initialize Route & Domain from browser URL
+  const initialRoute = getRouteFromPath(typeof window !== 'undefined' ? window.location.pathname : '/');
+  const [activeDomain, setActiveDomain] = useState<AppDomain>(initialRoute.domain);
+  const [currentTab, setCurrentTab] = useState<AppNavTab>(initialRoute.tab);
+
+  // Modals state
   const [isAddTxModalOpen, setIsAddTxModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSplitBillModalOpen, setIsSplitBillModalOpen] = useState(false);
   const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
+
+  // Synchronized Navigation Handler with HTML5 history.pushState
+  const navigateTo = (newDomain: AppDomain, newTab: AppNavTab) => {
+    setActiveDomain(newDomain);
+    setCurrentTab(newTab);
+    const targetPath = getPathFromRoute(newDomain, newTab);
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({ domain: newDomain, tab: newTab }, '', targetPath);
+    }
+  };
+
+  const handleSelectTab = (tab: AppNavTab) => {
+    let domain: AppDomain = activeDomain;
+    if (['ringkasan', 'bukukas', 'checklist', 'kolektif', 'rekap', 'pengaturan', 'auditlog'].includes(tab)) {
+      domain = 'bendahara';
+    } else if (['keaktifan', 'presensi', 'notulensi'].includes(tab)) {
+      domain = 'sekretaris';
+    } else if (tab === 'beranda') {
+      domain = 'hub';
+    }
+    navigateTo(domain, tab);
+  };
+
+  const handleSelectDomain = (domain: AppDomain, defaultTab?: AppNavTab) => {
+    if (domain === 'hub') {
+      navigateTo('hub', 'beranda');
+    } else if (domain === 'sekretaris') {
+      navigateTo('sekretaris', defaultTab || 'keaktifan');
+    } else {
+      navigateTo('bendahara', defaultTab || 'ringkasan');
+    }
+  };
+
+  // Listen to browser Back / Forward buttons (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = getRouteFromPath(window.location.pathname);
+      setActiveDomain(route.domain);
+      setCurrentTab(route.tab);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Auto trigger walkthrough on first visit after intro
   useEffect(() => {
@@ -51,17 +152,23 @@ const AppContent: React.FC = () => {
   // Auto redirect from settings tab if user is read-only Anggota
   useEffect(() => {
     if (!canEditKas && (currentTab === 'pengaturan' || currentTab === 'auditlog')) {
-      setCurrentTab('ringkasan');
+      navigateTo('bendahara', 'ringkasan');
     }
   }, [canEditKas, currentTab]);
 
-  // State
+  // State: Financial Data
   const [transactions, setTransactions] = useState<KasTransaction[]>(() => LocalKasRepository.getTransactions());
   const [members, setMembers] = useState<KasMember[]>(() => LocalKasRepository.getMembers());
   const [settings, setSettings] = useState<ClassSettings>(() => LocalKasRepository.getSettings());
   const [auditLogs, setAuditLogs] = useState(() => LocalKasRepository.getAuditLogs());
 
-  // Fetch initial data from Supabase on mount
+  // State: Kolektif & Secretary Data
+  const [kolektifBills, setKolektifBills] = useState<KolektifBill[]>(() => LocalKasRepository.getKolektifBills());
+  const [pointLogs, setPointLogs] = useState<StudentPointLog[]>(() => LocalKasRepository.getPointLogs());
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => LocalKasRepository.getAttendanceRecords());
+  const [meetingMinutes, setMeetingMinutes] = useState<MeetingMinute[]>(() => LocalKasRepository.getMeetingMinutes());
+
+  // Fetch initial data on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -75,6 +182,9 @@ const AppContent: React.FC = () => {
         setMembers(ms);
         if (st) setSettings(st);
         setAuditLogs(logs);
+
+        // Run self-healing integrity sanitize to ensure no orphan/duplicate linked transactions exist
+        await handleSanitizeLinkedTransactions(txs, ms);
       } catch (err) {
         console.warn('Initial fetch error:', err);
       }
@@ -108,18 +218,15 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
-  // Autoplay BGM automatically on first user gesture (Click / Touch / Keypress)
+  // Autoplay BGM automatically on first user gesture
   useEffect(() => {
     let initialized = false;
     const handleFirstGesture = () => {
       if (initialized) return;
-      
-      // Check both sfx state and localStorage to be absolutely sure
       const savedBgm = localStorage.getItem('kelasgue_bgm');
       if (!sfx.getIsBgmPlaying() && savedBgm !== 'false') {
         sfx.startBgm();
       }
-      
       initialized = true;
       window.removeEventListener('mousedown', handleFirstGesture);
       window.removeEventListener('touchstart', handleFirstGesture);
@@ -137,7 +244,44 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
-  // Handlers
+  // ---------------- INTEGRITY RECONCILIATION ROUTINE ----------------
+  // Guarantees that if a member is not checked for a week, no money enters the cashbook
+  const handleSanitizeLinkedTransactions = async (currentTxs?: KasTransaction[], currentMembers?: KasMember[]) => {
+    const txList = currentTxs || transactions;
+    const mList = currentMembers || members;
+    let cleanedCount = 0;
+
+    // Track seen linked tags to prevent duplicates
+    const seenLinkedTags = new Set<string>();
+
+    for (const tx of txList) {
+      if (tx.notes?.startsWith('LINKED_IURAN:')) {
+        const parts = tx.notes.split(':');
+        if (parts.length >= 3) {
+          const memberId = parts[1];
+          const weekKey = parts[2];
+          const member = mList.find(m => m.id === memberId);
+          const isPaidInChecklist = !!member?.weeklyStatus?.[weekKey];
+
+          // If member does not exist, or checklist is false, or tag is duplicate:
+          if (!member || !isPaidInChecklist || seenLinkedTags.has(tx.notes)) {
+            await LocalKasRepository.deleteTransaction(tx.id);
+            cleanedCount++;
+          } else {
+            seenLinkedTags.add(tx.notes);
+          }
+        }
+      }
+    }
+
+    if (cleanedCount > 0) {
+      const freshTxs = await LocalKasRepository.fetchTransactionsFromSupabase();
+      setTransactions(freshTxs);
+      console.log(`[Kelas Gue Integrity] Dibersihkan ${cleanedCount} transaksi iuran duplikat/anomali.`);
+    }
+  };
+
+  // ---------------- FINANCIAL TRANSACTION HANDLERS ----------------
   const handleAddTransaction = async (newTxData: Omit<KasTransaction, 'id' | 'createdAt'>) => {
     try {
       await LocalKasRepository.addTransaction(newTxData);
@@ -147,14 +291,13 @@ const AppContent: React.FC = () => {
         performedBy: user?.name || 'Unknown',
         userRole: role,
       });
-      // Refresh all states from cloud / local
       const txs = await LocalKasRepository.fetchTransactionsFromSupabase();
       setTransactions(txs);
       const logs = await LocalKasRepository.fetchAuditLogsFromSupabase();
       setAuditLogs(logs);
     } catch (err) {
       console.error('Add transaction handler error:', err);
-      showToast('Gagal menyimpan transaksi ke database. Pastikan koneksi Supabase aktif.', 'error');
+      showToast('Gagal menyimpan transaksi ke database. Pastikan koneksi aktif.', 'error');
     }
   };
 
@@ -162,7 +305,6 @@ const AppContent: React.FC = () => {
     const tx = transactions.find(t => t.id === id);
     if (!tx) return;
 
-    // Check if it's a linked iuran transaction and update checklist status
     if (!skipLinkedSync && tx.notes?.startsWith('LINKED_IURAN:')) {
       const parts = tx.notes.split(':');
       if (parts.length >= 3) {
@@ -194,55 +336,164 @@ const AppContent: React.FC = () => {
     LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
   };
 
+  // ---------------- CHECKLIST TOGGLE WITH MUTEX & IDEMPOTENT GUARDS ----------------
+  const isTogglingRef = useRef(false);
+
   const handleToggleWeek = async (memberId: string, weekKey: string) => {
-    const targetMember = members.find(m => m.id === memberId);
-    if (!targetMember) return;
+    if (isTogglingRef.current) return;
+    isTogglingRef.current = true;
 
-    const isNowPaid = !targetMember.weeklyStatus?.[weekKey];
-    const linkedTag = `LINKED_IURAN:${memberId}:${weekKey}`;
+    try {
+      const targetMember = members.find(m => m.id === memberId);
+      if (!targetMember) return;
 
-    // Perform the checklist toggle first
-    await LocalKasRepository.toggleMemberWeek(memberId, weekKey);
+      const isNowPaid = !targetMember.weeklyStatus?.[weekKey];
+      const linkedTag = `LINKED_IURAN:${memberId}:${weekKey}`;
 
-    // Auto-Link Logic
-    if (isNowPaid) {
-      // Create transaction record automatically
+      // Update state optimistically first for immediate UI responsiveness
+      setMembers(prev => prev.map(m => {
+        if (m.id === memberId) {
+          return {
+            ...m,
+            weeklyStatus: { ...(m.weeklyStatus || {}), [weekKey]: isNowPaid }
+          };
+        }
+        return m;
+      }));
+
+      // Update repository
+      await LocalKasRepository.setMemberWeekStatus(memberId, weekKey, isNowPaid);
+
+      if (isNowPaid) {
+        // IDEMPOTENCY CHECK: Ensure not already in state
+        const currentTxs = LocalKasRepository.getTransactions();
+        const alreadyExists = currentTxs.some(t => t.notes === linkedTag);
+
+        if (!alreadyExists) {
+          const year = weekKey.split('_')[0];
+          const month = weekKey.split('_')[1];
+          const weekNum = weekKey.split('_W')[1];
+          const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][parseInt(month) - 1];
+          const weekLabel = `Mgg ${weekNum} ${monthName} ${year}`;
+
+          // Check monthly dues override
+          const monthKey = `${year}_${parseInt(month)}`;
+          const duesAmount = settings.monthlyDuesOverrides?.[monthKey] !== undefined
+            ? settings.monthlyDuesOverrides[monthKey]
+            : settings.weeklyDuesAmount;
+
+          const newTx: Omit<KasTransaction, 'id' | 'createdAt'> = {
+            type: 'income',
+            title: `Iuran: ${targetMember.name} (${weekLabel})`,
+            amount: duesAmount,
+            category: 'Iuran Kas',
+            date: new Date().toISOString().split('T')[0],
+            recordedBy: user?.name || 'Sistem',
+            notes: linkedTag
+          };
+          await handleAddTransaction(newTx);
+        }
+      } else {
+        // Delete all matching linked transactions for this student week
+        const currentTxs = LocalKasRepository.getTransactions();
+        const txsToDelete = currentTxs.filter(t => t.notes === linkedTag);
+        for (const tx of txsToDelete) {
+          await handleDeleteTransaction(tx.id, true);
+        }
+      }
+
+      await LocalKasRepository.addAuditLog({
+        action: 'IURAN MINGGUAN',
+        details: `${isNowPaid ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Iuran ${weekKey} untuk ${targetMember.name}`,
+        performedBy: user?.name || 'Unknown',
+        userRole: role,
+      });
+
+      // Refresh data
+      const [freshTxs, freshMembers] = await Promise.all([
+        LocalKasRepository.fetchTransactionsFromSupabase(),
+        LocalKasRepository.fetchMembersFromSupabase()
+      ]);
+      setTransactions(freshTxs);
+      setMembers(freshMembers);
+    } finally {
+      isTogglingRef.current = false;
+    }
+  };
+
+  const handleToggleAllWeek = async (weekKey: string, shouldPay: boolean) => {
+    if (isTogglingRef.current) return;
+    isTogglingRef.current = true;
+
+    try {
+      // Optimistic update
+      setMembers(prev => prev.map(m => ({
+        ...m,
+        weeklyStatus: { ...(m.weeklyStatus || {}), [weekKey]: shouldPay }
+      })));
+
+      await LocalKasRepository.toggleAllMembersWeek(weekKey, shouldPay);
+
       const year = weekKey.split('_')[0];
       const month = weekKey.split('_')[1];
       const weekNum = weekKey.split('_W')[1];
       const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][parseInt(month) - 1];
       const weekLabel = `Mgg ${weekNum} ${monthName} ${year}`;
-      
-      const newTx: Omit<KasTransaction, 'id' | 'createdAt'> = {
-        type: 'income',
-        title: `Iuran: ${targetMember.name} (${weekLabel})`,
-        amount: settings.weeklyDuesAmount,
-        category: 'Iuran Kas',
-        date: new Date().toISOString().split('T')[0],
-        recordedBy: user?.name || 'Sistem',
-        notes: linkedTag
-      };
-      await handleAddTransaction(newTx);
-    } else {
-      // Find and delete linked transaction record automatically
-      const txToDelete = transactions.find(t => t.notes === linkedTag);
-      if (txToDelete) {
-        await handleDeleteTransaction(txToDelete.id, true); // true to skip re-syncing checklist
-      }
-    }
 
-    await LocalKasRepository.addAuditLog({
-      action: 'IURAN MINGGUAN',
-      details: `${isNowPaid ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Iuran ${weekKey} untuk ${targetMember.name}`,
-      performedBy: user?.name || 'Unknown',
-      userRole: role,
-    });
-    
-    LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
-    LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
-    LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
+      const monthKey = `${year}_${parseInt(month)}`;
+      const duesAmount = settings.monthlyDuesOverrides?.[monthKey] !== undefined
+        ? settings.monthlyDuesOverrides[monthKey]
+        : settings.weeklyDuesAmount;
+
+      const currentTxs = LocalKasRepository.getTransactions();
+
+      if (shouldPay) {
+        for (const m of members) {
+          const linkedTag = `LINKED_IURAN:${m.id}:${weekKey}`;
+          const alreadyExists = currentTxs.some(t => t.notes === linkedTag);
+
+          if (!alreadyExists) {
+            const newTx: Omit<KasTransaction, 'id' | 'createdAt'> = {
+              type: 'income',
+              title: `Iuran: ${m.name} (${weekLabel})`,
+              amount: duesAmount,
+              category: 'Iuran Kas',
+              date: new Date().toISOString().split('T')[0],
+              recordedBy: user?.name || 'Sistem',
+              notes: linkedTag
+            };
+            await LocalKasRepository.addTransaction(newTx);
+          }
+        }
+      } else {
+        // Delete all linked transactions for this specific week
+        const prefix = `LINKED_IURAN:`;
+        const suffix = `:${weekKey}`;
+        const txsToDelete = currentTxs.filter(t => t.notes?.startsWith(prefix) && t.notes?.endsWith(suffix));
+        for (const tx of txsToDelete) {
+          await LocalKasRepository.deleteTransaction(tx.id);
+        }
+      }
+
+      LocalKasRepository.addAuditLog({
+        action: 'IURAN MASSAL',
+        details: `${shouldPay ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Seluruh Siswa untuk ${weekKey}`,
+        performedBy: user?.name || 'Unknown',
+        userRole: role,
+      });
+
+      const [freshTxs, freshMembers] = await Promise.all([
+        LocalKasRepository.fetchTransactionsFromSupabase(),
+        LocalKasRepository.fetchMembersFromSupabase()
+      ]);
+      setTransactions(freshTxs);
+      setMembers(freshMembers);
+    } finally {
+      isTogglingRef.current = false;
+    }
   };
 
+  // ---------------- MEMBERS & SETTINGS ----------------
   const handleAddMember = async (name: string, studentId: string, phone?: string) => {
     const newM = await LocalKasRepository.addMember(name, studentId, phone);
     LocalKasRepository.addAuditLog({
@@ -251,7 +502,6 @@ const AppContent: React.FC = () => {
       performedBy: user?.name || 'Unknown',
       userRole: role,
     });
-    setAuditLogs(LocalKasRepository.getAuditLogs());
     setMembers(prev => [...prev, newM]);
     LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };
@@ -264,79 +514,12 @@ const AppContent: React.FC = () => {
       performedBy: user?.name || 'Unknown',
       userRole: role,
     });
-    LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
     setMembers(prev => [...prev, ...created]);
     LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };
 
-  const handleToggleAllWeek = async (weekKey: string, shouldPay: boolean) => {
-    // Perform bulk checklist update
-    await LocalKasRepository.toggleAllMembersWeek(weekKey, shouldPay);
-
-    // Auto-Link Logic for Bulk
-    if (shouldPay) {
-      const year = weekKey.split('_')[0];
-      const month = weekKey.split('_')[1];
-      const weekNum = weekKey.split('_W')[1];
-      const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][parseInt(month) - 1];
-      const weekLabel = `Mgg ${weekNum} ${monthName} ${year}`;
-
-      // Create transactions for all members who weren't paid yet
-      for (const m of members) {
-        if (!m.weeklyStatus?.[weekKey]) {
-          const linkedTag = `LINKED_IURAN:${m.id}:${weekKey}`;
-          const newTx: Omit<KasTransaction, 'id' | 'createdAt'> = {
-            type: 'income',
-            title: `Iuran: ${m.name} (${weekLabel})`,
-            amount: settings.weeklyDuesAmount,
-            category: 'Iuran Kas',
-            date: new Date().toISOString().split('T')[0],
-            recordedBy: user?.name || 'Sistem',
-            notes: linkedTag
-          };
-          await LocalKasRepository.addTransaction(newTx);
-        }
-      }
-    } else {
-      // Delete all linked transactions for this week
-      const prefix = `LINKED_IURAN:`;
-      const suffix = `:${weekKey}`;
-      const txsToDelete = transactions.filter(t => t.notes?.startsWith(prefix) && t.notes?.endsWith(suffix));
-      for (const tx of txsToDelete) {
-        await LocalKasRepository.deleteTransaction(tx.id);
-      }
-    }
-
-    LocalKasRepository.addAuditLog({
-      action: 'IURAN MASSAL',
-      details: `${shouldPay ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Seluruh Siswa untuk ${weekKey}`,
-      performedBy: user?.name || 'Unknown',
-      userRole: role,
-    });
-    setAuditLogs(LocalKasRepository.getAuditLogs());
-
-    // Refresh state
-    const [freshTxs, freshMembers] = await Promise.all([
-      LocalKasRepository.fetchTransactionsFromSupabase(),
-      LocalKasRepository.fetchMembersFromSupabase()
-    ]);
-    setTransactions(freshTxs);
-    setMembers(freshMembers);
-  };
-
-
   const handleUpdateMember = async (memberId: string, updates: Partial<KasMember>) => {
     LocalKasRepository.updateMember(memberId, updates);
-    const oldM = members.find(m => m.id === memberId);
-    if (oldM) {
-      LocalKasRepository.addAuditLog({
-        action: 'UPDATE ANGGOTA',
-        details: `Mengubah data ${oldM.name}: ${JSON.stringify(updates)}`,
-        performedBy: user?.name || 'Unknown',
-        userRole: role,
-      });
-      setAuditLogs(LocalKasRepository.getAuditLogs());
-    }
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, ...updates } : m));
     LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
   };
@@ -356,6 +539,89 @@ const AppContent: React.FC = () => {
     setSettings(DEFAULT_SETTINGS);
   };
 
+  // ---------------- KOLEKTIF BILLS HANDLERS ----------------
+  const handleAddKolektifBill = (bill: Omit<KolektifBill, 'id' | 'createdAt'>) => {
+    const created = LocalKasRepository.addKolektifBill(bill);
+    setKolektifBills(LocalKasRepository.getKolektifBills());
+    LocalKasRepository.addAuditLog({
+      action: 'BUAT KOLEKTIF',
+      details: `Membuat tagihan kolektif baru: ${bill.title} (${bill.participantIds.length} peserta)`,
+      performedBy: user?.name || 'Bendahara',
+      userRole: role,
+    });
+  };
+
+  const handleUpdateKolektifBill = (id: string, updates: Partial<KolektifBill>) => {
+    LocalKasRepository.updateKolektifBill(id, updates);
+    setKolektifBills(LocalKasRepository.getKolektifBills());
+  };
+
+  const handleDeleteKolektifBill = (id: string) => {
+    LocalKasRepository.deleteKolektifBill(id);
+    setKolektifBills(LocalKasRepository.getKolektifBills());
+  };
+
+  const handleToggleKolektifPayment = (billId: string, memberId: string) => {
+    LocalKasRepository.toggleKolektifPayment(billId, memberId);
+    setKolektifBills(LocalKasRepository.getKolektifBills());
+  };
+
+  const handleConvertSplitBillToKolektif = (bill: {
+    title: string;
+    category: string;
+    amountPerPerson: number;
+    totalCost: number;
+    participantIds: string[];
+    notes: string;
+  }) => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    handleAddKolektifBill({
+      title: bill.title,
+      category: bill.category,
+      amountPerPerson: bill.amountPerPerson,
+      totalCost: bill.totalCost,
+      dueDate: d.toISOString().split('T')[0],
+      participantIds: bill.participantIds,
+      paidMemberIds: [],
+      notes: bill.notes,
+      syncedToKas: false
+    });
+    navigateTo('bendahara', 'kolektif');
+    showToast(`Berhasil dikonversi menjadi Tagihan Kolektif "${bill.title}"!`, 'success');
+  };
+
+  // ---------------- SECRETARY HANDLERS ----------------
+  const handleAddPointLog = (log: Omit<StudentPointLog, 'id' | 'createdAt'>) => {
+    LocalKasRepository.addPointLog(log);
+    setPointLogs(LocalKasRepository.getPointLogs());
+  };
+
+  const handleDeletePointLog = (id: string) => {
+    LocalKasRepository.deletePointLog(id);
+    setPointLogs(LocalKasRepository.getPointLogs());
+  };
+
+  const handleSaveAttendanceRecord = (rec: Omit<AttendanceRecord, 'id' | 'createdAt'> & { id?: string }) => {
+    LocalKasRepository.saveAttendanceRecord(rec);
+    setAttendanceRecords(LocalKasRepository.getAttendanceRecords());
+  };
+
+  const handleDeleteAttendanceRecord = (id: string) => {
+    LocalKasRepository.deleteAttendanceRecord(id);
+    setAttendanceRecords(LocalKasRepository.getAttendanceRecords());
+  };
+
+  const handleSaveMeetingMinute = (minute: Omit<MeetingMinute, 'id' | 'createdAt'> & { id?: string }) => {
+    LocalKasRepository.saveMeetingMinute(minute);
+    setMeetingMinutes(LocalKasRepository.getMeetingMinutes());
+  };
+
+  const handleDeleteMeetingMinute = (id: string) => {
+    LocalKasRepository.deleteMeetingMinute(id);
+    setMeetingMinutes(LocalKasRepository.getMeetingMinutes());
+  };
+
   // If user is not logged in or hasn't selected a role, show the doodle welcome screen
   if (!isLoggedIn) {
     return <WelcomeScreen />;
@@ -363,30 +629,70 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-paper-grid flex flex-col text-slate-900 font-sans selection:bg-amber-200 selection:text-slate-900 max-w-full overflow-x-hidden">
-      {/* Animated Intro Screen (Plays on open or when replayed from navbar) */}
+      {/* Animated Intro Screen */}
       {showIntro && (
         <AnimatedIntroScreen onFinish={() => setShowIntro(false)} />
       )}
 
-      {/* Doodle Navbar with User SVG Logo & BGM controls - Only show after intro */}
+      {/* Doodle Navbar */}
       {isLoggedIn && !showIntro && (
         <DoodleNavbar
           currentTab={currentTab}
-          onSelectTab={setCurrentTab}
+          activeDomain={activeDomain}
+          onSelectTab={handleSelectTab}
+          onSelectDomain={handleSelectDomain}
           classNameTitle={settings.className}
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
         />
       )}
 
-      {/* Main Content Viewport - Compacted for mobile */}
+      {/* Main Content Viewport */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-2 sm:p-4 lg:p-6">
-        {currentTab === 'ringkasan' && (
+        {/* 1. PORTAL HUB BERANDA UTAMA (Pilihan Dua Ranah Besar) */}
+        {activeDomain === 'hub' && (
+          <MainPortalHub
+            settings={settings}
+            members={members}
+            transactions={transactions}
+            kolektifBills={kolektifBills}
+            pointLogs={pointLogs}
+            attendanceRecords={attendanceRecords}
+            meetingMinutes={meetingMinutes}
+            onSelectDomain={handleSelectDomain}
+            onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
+          />
+        )}
+
+        {/* 2. RANAH SEKRETARIS */}
+        {activeDomain === 'sekretaris' && (
+          <SecretaryHub
+            initialSubTab={
+              currentTab === 'presensi' ? 'presensi' : currentTab === 'notulensi' ? 'notulensi' : 'keaktifan'
+            }
+            members={members}
+            settings={settings}
+            canEdit={canEditKas}
+            pointLogs={pointLogs}
+            attendanceRecords={attendanceRecords}
+            meetingMinutes={meetingMinutes}
+            onAddPointLog={handleAddPointLog}
+            onDeletePointLog={handleDeletePointLog}
+            onSaveAttendanceRecord={handleSaveAttendanceRecord}
+            onDeleteAttendanceRecord={handleDeleteAttendanceRecord}
+            onSaveMeetingMinute={handleSaveMeetingMinute}
+            onDeleteMeetingMinute={handleDeleteMeetingMinute}
+            onBackToHub={() => handleSelectDomain('hub', 'beranda')}
+          />
+        )}
+
+        {/* 3. RANAH BENDAHARA (Administrasi Kas & Keuangan) */}
+        {activeDomain === 'bendahara' && currentTab === 'ringkasan' && (
           <KasOverview
             transactions={transactions}
             settings={settings}
             members={members}
-            onNavigateTab={setCurrentTab}
+            onNavigateTab={handleSelectTab as any}
             onOpenNewTxModal={() => setIsAddTxModalOpen(true)}
             onOpenPrintModal={() => setIsPrintModalOpen(true)}
             onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
@@ -395,7 +701,7 @@ const AppContent: React.FC = () => {
           />
         )}
 
-        {currentTab === 'bukukas' && (
+        {activeDomain === 'bendahara' && currentTab === 'bukukas' && (
           <KasBook
             transactions={transactions}
             members={members}
@@ -412,7 +718,7 @@ const AppContent: React.FC = () => {
           />
         )}
 
-        {currentTab === 'checklist' && (
+        {activeDomain === 'bendahara' && currentTab === 'checklist' && (
           <KasChecklist
             members={members}
             settings={settings}
@@ -424,14 +730,37 @@ const AppContent: React.FC = () => {
           />
         )}
 
-        {currentTab === 'auditlog' && (
+        {activeDomain === 'bendahara' && currentTab === 'kolektif' && (
+          <KolektifBillTab
+            bills={kolektifBills}
+            members={members}
+            settings={settings}
+            canEdit={canEditKas}
+            onAddBill={handleAddKolektifBill}
+            onUpdateBill={handleUpdateKolektifBill}
+            onDeleteBill={handleDeleteKolektifBill}
+            onTogglePayment={handleToggleKolektifPayment}
+            onSyncToKas={handleAddTransaction}
+            onOpenSplitBillModal={() => setIsSplitBillModalOpen(true)}
+          />
+        )}
+
+        {activeDomain === 'bendahara' && currentTab === 'rekap' && (
+          <KasRecapView
+            transactions={transactions}
+            members={members}
+            settings={settings}
+          />
+        )}
+
+        {activeDomain === 'bendahara' && currentTab === 'auditlog' && (
           <KasAuditLog
             auditLogs={auditLogs}
             onRefreshLogs={() => setAuditLogs(LocalKasRepository.getAuditLogs())}
           />
         )}
 
-        {currentTab === 'pengaturan' && canEditKas && (
+        {activeDomain === 'bendahara' && currentTab === 'pengaturan' && canEditKas && (
           <KasSettings
             settings={settings}
             members={members}
@@ -448,7 +777,7 @@ const AppContent: React.FC = () => {
       <DoodleWalkthrough
         isOpen={isWalkthroughOpen}
         onClose={() => setIsWalkthroughOpen(false)}
-        onSelectTab={setCurrentTab}
+        onSelectTab={handleSelectTab as any}
       />
 
       {/* Printable Binder Modal */}
@@ -456,55 +785,51 @@ const AppContent: React.FC = () => {
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
         transactions={transactions}
+        members={members}
         settings={settings}
       />
 
-      {/* 1-Click WhatsApp Recap Share Modal */}
+      {/* WhatsApp Transparency Share Modal */}
       <WhatsAppShareModal
         isOpen={isWhatsAppModalOpen}
         onClose={() => setIsWhatsAppModalOpen(false)}
         transactions={transactions}
+        members={members}
         settings={settings}
       />
 
-      {/* Custom Domain Class Portal Share Modal */}
+      {/* Class Portal Direct Link Share Modal */}
       <ClassShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
-        classNameTitle={settings.className}
+        settings={settings}
       />
 
-      {/* Kalkulator Split Bill Acara Modal */}
+      {/* Split Bill Calculator Modal */}
       <SplitBillModal
         isOpen={isSplitBillModalOpen}
         onClose={() => setIsSplitBillModalOpen(false)}
         members={members}
         settings={settings}
         onAddTransaction={handleAddTransaction}
+        onConvertToKolektif={handleConvertSplitBillToKolektif}
       />
 
-      {/* Clean Footer */}
-      <footer className="border-t-2 border-slate-900 py-4 px-6 text-center text-xs font-medium print:hidden theme-bg-navbar theme-text-muted">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>
-            <strong>{settings.className}</strong> — Transparansi Keuangan Kas Kelas
-          </span>
-          <span className="font-mono">
-            v{CURRENT_APP_VERSION.version} ({CURRENT_APP_VERSION.codename})
-          </span>
-        </div>
-      </footer>
+      {/* Global Dialog Container (Alerts, Confirms, Toasts) */}
+      <DoodleDialogContainer />
     </div>
   );
 };
 
-export default function App() {
+export const App: React.FC = () => {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <DoodleDialogContainer />
         <AppContent />
       </AuthProvider>
     </ThemeProvider>
   );
-}
+};
+
+export default App;
+

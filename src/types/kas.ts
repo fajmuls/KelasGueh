@@ -43,4 +43,54 @@ export interface ClassSettings {
   supabaseUrl: string;
   supabaseAnonKey: string;
   siteUrl?: string;
+  monthlyDuesOverrides?: Record<string, number>; // key: "YYYY_M", e.g. "2026_1": 5000, "2026_2": 10000
+}
+
+export interface KolektifBill {
+  id: string;
+  title: string;
+  category: string;
+  amountPerPerson: number;
+  totalCost?: number;
+  dueDate: string; // YYYY-MM-DD
+  notes?: string;
+  participantIds: string[]; // member IDs that participate
+  paidMemberIds: string[]; // member IDs that have paid
+  createdAt: string;
+  syncedToKas?: boolean;
+}
+
+export interface StudentPointLog {
+  id: string;
+  memberId: string;
+  points: number; // positive or negative
+  category: 'tanya' | 'presentasi' | 'menjawab' | 'inisiatif' | 'tugas' | 'terlambat' | 'lainnya';
+  reason: string;
+  date: string; // YYYY-MM-DD
+  recordedBy: string;
+  createdAt: string;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  type: 'kuliah' | 'rapat' | 'kegiatan';
+  statuses: Record<string, 'hadir' | 'sakit' | 'izin' | 'alpa'>; // memberId -> status
+  notes?: string;
+  recordedBy: string;
+  createdAt: string;
+}
+
+export interface MeetingMinute {
+  id: string;
+  title: string;
+  date: string;
+  leader: string;
+  noteTaker: string;
+  agenda: string;
+  discussion: string;
+  decisions: string;
+  actionItems: { id: string; task: string; assignee: string; done: boolean }[];
+  createdAt: string;
 }
