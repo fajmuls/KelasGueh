@@ -140,14 +140,14 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
       .slice(0, 10)
       .map((ms, idx) => {
         const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
-        return `${medal} *${ms.member.name}* — ${ms.totalPoints} Poin (${ms.logCount}x keaktifan)`;
+        return `${medal} *${toTitleCase(ms.member.name)}* — ${ms.totalPoints} Poin (${ms.logCount}x keaktifan)`;
       })
       .join('\n');
 
     const message =
       `🏆 *KLASEMEN POIN KEAKTIFAN KELAS*\n` +
       `*${settings.className}*\n\n` +
-      `Berikut adalah update peringkat mahasiswa teraktif saat ini:\n\n` +
+      `Berikut adalah update peringkat siswa teraktif saat ini:\n\n` +
       (topList || '- Belum ada poin keaktifan yang dicatat -') +
       `\n\nTetap semangat aktif bertanya, presentasi, dan berdiskusi! ✨\n` +
       `_— Dicatat via Sekretariat Kelas Gue_`;
@@ -165,24 +165,24 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner & Action */}
-      <div className="card-doodle bg-white p-5 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
+      <div className="card-doodle bg-white p-3 sm:p-4 rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
         <ScotchTape className="-top-3 left-6 rotate-1" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider px-2 py-0.5 bg-sky-200 text-slate-900 border border-slate-900 rounded">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-sky-200 text-slate-900 border border-slate-900 rounded">
                 Ranah Sekretaris
               </span>
-              <span className="text-xs font-bold text-slate-500">
+              <span className="text-[10px] font-bold text-slate-500">
                 Apresiasi Partisipasi Siswa
               </span>
             </div>
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-              <Award className="w-6 h-6 text-amber-500" />
+            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <Award className="w-5 h-5 text-amber-500" />
               <span>Poin Keaktifan & Leaderboard</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-slate-600 max-w-2xl leading-relaxed">
               Catat setiap keaktifan siswa (bertanya, presentasi, menjawab pertanyaan, atau inisiatif diskusi) untuk motivasi dan transparansi nilai keaktifan kelas.
             </p>
           </div>
@@ -239,7 +239,7 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1">
                     <p className="text-xs font-black text-slate-900 truncate">
-                      {item.member.name}
+                      {toTitleCase(item.member.name)}
                     </p>
                     {isFirst && <DoodleCrown className={`w-3.5 h-3.5 ${crownColor}`} />}
                   </div>
@@ -292,17 +292,16 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
             </span>
           </button>
 
-          {/* Course filter if schedules exist */}
-          {courseSchedules.length > 0 && (
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 border border-slate-900 rounded-lg">
+          {activeSubView === 'leaderboard' && (
+            <div className="flex items-center gap-1.5 bg-white p-1 border-2 border-slate-900 rounded-xl shadow-[1px_1px_0px_#000]">
               <BookOpen className="w-3.5 h-3.5 text-slate-600 ml-1" />
               <select
                 value={selectedCourseFilter}
                 onChange={e => {
-                  sfx.playClick();
+                  sfx.playOptionSelect();
                   setSelectedCourseFilter(e.target.value);
                 }}
-                className="bg-transparent font-bold text-xs text-slate-800 focus:outline-hidden pr-2 cursor-pointer"
+                className="bg-transparent font-bold text-[11px] text-slate-800 focus:outline-none pr-2 cursor-pointer appearance-none"
               >
                 <option value="all">Semua Mata Kuliah</option>
                 {courseSchedules.map(c => (
@@ -329,14 +328,14 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
 
       {/* VIEW 1: LEADERBOARD TABLE */}
       {activeSubView === 'leaderboard' && (
-        <div className="card-doodle bg-white rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] overflow-hidden">
+        <div className="card-doodle bg-white rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#FFFDF5] border-b-2 border-slate-900 font-black text-slate-700">
                 <tr>
                   <th className="py-2.5 px-3 w-12 text-center">Rank</th>
                   <th className="py-2.5 px-4">Nama Siswa</th>
-                  <th className="py-2.5 px-3">NIM / No Absen</th>
+                  <th className="py-2.5 px-3">NIM</th>
                   <th className="py-2.5 px-3 text-center">Frekuensi</th>
                   <th className="py-2.5 px-4 text-right">Total Poin</th>
                 </tr>
@@ -382,7 +381,7 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
 
       {/* VIEW 2: LOGS FEED */}
       {activeSubView === 'logs' && (
-        <div className="card-doodle bg-white rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] overflow-hidden">
+        <div className="card-doodle bg-white rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] overflow-hidden">
           <div className="divide-y divide-slate-200">
             {pointLogs.map(log => {
               const student = members.find(m => m.id === log.memberId);
@@ -443,7 +442,7 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
       {/* Modal Catat Poin Baru */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="card-doodle bg-white w-full max-w-lg rounded-2xl border-3 border-slate-900 shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="card-doodle bg-white w-full max-w-lg rounded-xl border-3 border-slate-900 shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
               <div className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-amber-500" />
@@ -462,12 +461,15 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
                 <label className="font-bold text-slate-700 block mb-1">Pilih Siswa <span className="text-rose-500">*</span></label>
                 <select
                   value={selectedMemberId}
-                  onChange={e => setSelectedMemberId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border-2 border-slate-900 font-bold bg-white"
+                  onChange={e => {
+                    sfx.playOptionSelect();
+                    setSelectedMemberId(e.target.value);
+                  }}
+                  className="w-full px-3 py-2 rounded-lg border-2 border-slate-900 font-bold bg-white shadow-[1px_1px_0px_#000] cursor-pointer appearance-none"
                 >
                   {members.map(m => (
                     <option key={m.id} value={m.id}>
-                      {m.name} {m.studentId ? `(${m.studentId})` : ''}
+                      {toTitleCase(m.name)} {m.studentId ? `(${m.studentId})` : ''}
                     </option>
                   ))}
                 </select>
@@ -478,8 +480,11 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
                   <label className="font-bold text-slate-700 block mb-1">Terkait Mata Kuliah (Opsional)</label>
                   <select
                     value={formCourseId}
-                    onChange={e => setFormCourseId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border-2 border-slate-900 font-bold bg-white"
+                    onChange={e => {
+                      sfx.playOptionSelect();
+                      setFormCourseId(e.target.value);
+                    }}
+                    className="w-full px-3 py-2 rounded-lg border-2 border-slate-900 font-bold bg-white shadow-[1px_1px_0px_#000] cursor-pointer appearance-none"
                   >
                     <option value="">Umum / Tidak Terikat Matkul Khusus</option>
                     {courseSchedules.map(c => (

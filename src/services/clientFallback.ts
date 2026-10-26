@@ -125,7 +125,7 @@ const INITIAL_ROLES: Role[] = [
   {
     id: 'role_anggota',
     name: 'Anggota Kelas',
-    description: 'Mahasiswa aktif kelas dengan akses membaca informasi, kas, tugas, dan agenda perkuliahan',
+    description: 'Siswa aktif kelas dengan akses membaca informasi, kas, tugas, dan agenda perkuliahan',
     is_system: true,
     permissions: [
       'view_dashboard', 'view_members', 'view_courses', 'submit_assignments',
@@ -226,7 +226,7 @@ const INITIAL_TASKS: TaskItem[] = [
     id: 'tsk_01',
     class_id: 'cls_01sakp014',
     title: 'Pembentukan Kelompok Pengantar Manajemen',
-    description: 'Masing-masing kelompok terdiri dari 4-5 mahasiswa untuk tugas studi kasus.',
+    description: 'Masing-masing kelompok terdiri dari 4-5 siswa untuk tugas studi kasus.',
     status: 'in_progress',
     priority: 'medium',
     deadline: '2026-09-20T23:59:00Z',
@@ -327,7 +327,7 @@ export async function handleClientFallback<T>(endpoint: string, options: Request
     if (method === 'POST') {
       const newUser: User = {
         id: 'usr_' + Date.now(),
-        name: body.name || 'Mahasiswa Baru',
+        name: body.name || 'Siswa Baru',
         nim: body.nim || '260100' + (users.length + 1),
         email: body.email || `mhs${users.length + 1}@univ.ac.id`,
         phone: body.phone || '',

@@ -152,7 +152,7 @@ export const KasChecklistTable: React.FC = () => {
   };
 
   const handleBulkMarkPaid = async (column: KasCollectionColumn) => {
-    if (!confirm(`Tandai LUNAS semua mahasiswa untuk kolom "${column.title}"?`)) return;
+    if (!confirm(`Tandai LUNAS semua siswa untuk kolom "${column.title}"?`)) return;
     
     try {
       setIsLoading(true);
@@ -203,7 +203,7 @@ export const KasChecklistTable: React.FC = () => {
   };
 
   const handleExportCSV = () => {
-    const headers = ['No Absen', 'Nama Mahasiswa', 'NIM', ...filteredColumns.map((c) => `"${c.title} (${c.date})" - Rp ${c.amount}`), 'Total Terbayar (Rp)', 'Status'];
+    const headers = ['No Absen', 'Nama Siswa', 'NIM', ...filteredColumns.map((c) => `"${c.title} (${c.date})" - Rp ${c.amount}`), 'Total Terbayar (Rp)', 'Status'];
     const rows = sortedStudents.map((s, idx) => {
       let totalPaid = 0;
       const colStatuses = filteredColumns.map((c) => {
@@ -243,7 +243,7 @@ export const KasChecklistTable: React.FC = () => {
         token = googleAccessToken;
       }
 
-      const headers = ['No Absen', 'Nama Mahasiswa', 'NIM', ...filteredColumns.map((c) => `${c.title} (Rp ${c.amount.toLocaleString('id-ID')})`), 'Total Terbayar (Rp)', 'Status'];
+      const headers = ['No Absen', 'Nama Siswa', 'NIM', ...filteredColumns.map((c) => `${c.title} (Rp ${c.amount.toLocaleString('id-ID')})`), 'Total Terbayar (Rp)', 'Status'];
       const rows = sortedStudents.map((s, idx) => {
         let totalPaid = 0;
         const colStatuses = filteredColumns.map((c) => {
@@ -303,7 +303,7 @@ export const KasChecklistTable: React.FC = () => {
             <Wallet className="w-5 h-5 text-emerald-600" /> Tabel Kas & Absensi Pembayaran
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Centang langsung kotak pembayaran kas harian/mingguan per mahasiswa. Data otomatis terhubung ke saldo kas dan transparansi.
+            Centang langsung kotak pembayaran kas harian/mingguan per siswa. Data otomatis terhubung ke saldo kas dan transparansi.
           </p>
         </div>
 
@@ -311,7 +311,7 @@ export const KasChecklistTable: React.FC = () => {
           <button
             onClick={() => setIsWaBroadcastModalOpen(true)}
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-            title="Kirim Notifikasi Tagihan WhatsApp ke Semua Mahasiswa Menunggak"
+            title="Kirim Notifikasi Tagihan WhatsApp ke Semua Siswa Menunggak"
           >
             <MessageCircle className="w-4 h-4" />
             <span>Kirim Tagihan WA</span>
@@ -370,7 +370,7 @@ export const KasChecklistTable: React.FC = () => {
               Jumlah Anggota Terdaftar
             </span>
             <p className="text-2xl font-bold text-slate-900 mt-1">
-              {sortedStudents.length} Mahasiswa
+              {sortedStudents.length} Siswa
             </p>
             <span className="text-[11px] text-emerald-600 font-medium">
               Absen urut abjad A s/d Z (1 - 39)
@@ -405,7 +405,7 @@ export const KasChecklistTable: React.FC = () => {
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Cari nama atau NIM mahasiswa..."
+            placeholder="Cari nama atau NIM siswa..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-blue-500"
@@ -439,7 +439,7 @@ export const KasChecklistTable: React.FC = () => {
                   No
                 </th>
                 <th className="p-3.5 min-w-[200px] sticky left-12 bg-slate-50 z-30 border-r border-slate-200">
-                  Nama Mahasiswa & NIM
+                  Nama Siswa & NIM
                 </th>
                 {filteredColumns.map((col) => {
                   const colPaidCount = entries.filter(
@@ -498,7 +498,7 @@ export const KasChecklistTable: React.FC = () => {
                     colSpan={filteredColumns.length + 3}
                     className="p-8 text-center text-slate-400 text-xs"
                   >
-                    Tidak ada mahasiswa yang cocok dengan pencarian "{searchQuery}"
+                    Tidak ada siswa yang cocok dengan pencarian "{searchQuery}"
                   </td>
                 </tr>
               ) : (
@@ -520,7 +520,7 @@ export const KasChecklistTable: React.FC = () => {
                         {absentNumber}
                       </td>
 
-                      {/* Mahasiswa Info */}
+                      {/* Siswa Info */}
                       <td className="p-3 sticky left-12 bg-white group-hover:bg-blue-50/40 z-10 border-r border-slate-200">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-700 shrink-0">
@@ -614,7 +614,7 @@ export const KasChecklistTable: React.FC = () => {
                                   const finalPhone = phone.startsWith('0') ? '62' + phone.slice(1) : phone;
                                   window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
                                 }}
-                                title="Kirim Tagihan Kas ke WhatsApp Mahasiswa"
+                                title="Kirim Tagihan Kas ke WhatsApp Siswa"
                                 className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                               >
                                 <MessageCircle className="w-3 h-3 text-emerald-600" />
@@ -666,13 +666,13 @@ export const KasChecklistTable: React.FC = () => {
         isOpen={isWaBroadcastModalOpen}
         onClose={() => setIsWaBroadcastModalOpen(false)}
         title="Pengingat Tagihan Kas WhatsApp"
-        subtitle="Daftar mahasiswa yang memiliki tunggakan kas kelas beserta format pesan siap kirim"
+        subtitle="Daftar siswa yang memiliki tunggakan kas kelas beserta format pesan siap kirim"
       >
         <div className="space-y-4 text-xs">
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800">
             <p className="font-semibold">Perhatian Bendahara Kelas:</p>
             <p className="mt-0.5 text-[11px] text-amber-700 leading-relaxed">
-              Klik tombol "Kirim WA" pada masing-masing mahasiswa di bawah untuk langsung membuka percakapan WhatsApp dengan teks penagihan sopan otomatis.
+              Klik tombol "Kirim WA" pada masing-masing siswa di bawah untuk langsung membuka percakapan WhatsApp dengan teks penagihan sopan otomatis.
             </p>
           </div>
 
@@ -730,7 +730,7 @@ export const KasChecklistTable: React.FC = () => {
         isOpen={isColModalOpen}
         onClose={() => setIsColModalOpen(false)}
         title="Buat Kolom Kas / Periode Baru"
-        subtitle="Menambahkan sesi kas baru yang siap di-checklist untuk seluruh 39 mahasiswa"
+        subtitle="Menambahkan sesi kas baru yang siap di-checklist untuk seluruh 39 siswa"
       >
         <form onSubmit={handleCreateColumn} className="space-y-4 text-xs">
           <div>

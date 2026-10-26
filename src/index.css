@@ -25,16 +25,6 @@
     --shadow-main: #5D4037;
     --bg-paper-lines: #D8CBB5;
   }
-
-  .theme-dark {
-    --bg-paper: #1A1A1A;
-    --bg-paper-dots: #333333;
-    --bg-card: #242424;
-    --text-main: #E8E2D2;
-    --border-main: #404040;
-    --shadow-main: #000000;
-    --bg-paper-lines: #333333;
-  }
 }
 
 h1, h2, h3, .font-display {
@@ -52,6 +42,7 @@ body {
   background-color: var(--bg-paper);
   color: var(--text-main);
   transition: background-color 0.3s ease, color 0.3s ease;
+  color-scheme: light !important;
 }
 
 *, ::before, ::after {
@@ -92,20 +83,12 @@ body {
     border: 2px solid var(--border-main);
     box-shadow: 4px 4px 0px var(--shadow-main);
   }
-  .theme-dark .card-doodle-yellow {
-    background-color: #423E1C;
-    color: #E8E2D2;
-  }
 
   .card-doodle-blue {
     background-color: #E0F2FE;
     color: #0f172a;
     border: 2px solid var(--border-main);
     box-shadow: 4px 4px 0px var(--shadow-main);
-  }
-  .theme-dark .card-doodle-blue {
-    background-color: #1E3A5F;
-    color: #E8E2D2;
   }
 
   .card-doodle-mint {
@@ -114,20 +97,12 @@ body {
     border: 2px solid var(--border-main);
     box-shadow: 4px 4px 0px var(--shadow-main);
   }
-  .theme-dark .card-doodle-mint {
-    background-color: #064E3B;
-    color: #E8E2D2;
-  }
 
   .card-doodle-rose {
     background-color: #FFE4E6;
     color: #0f172a;
     border: 2px solid var(--border-main);
     box-shadow: 4px 4px 0px var(--shadow-main);
-  }
-  .theme-dark .card-doodle-rose {
-    background-color: #4C1D1F;
-    color: #E8E2D2;
   }
 
   /* Squishy tactile doodle button with click audio feedback */
@@ -157,37 +132,6 @@ body {
   .theme-text-muted {
     color: var(--text-main);
     opacity: 0.6;
-  }
-
-  /* Dark Theme Contrast & Visibility Overrides */
-  .theme-dark .bg-white,
-  .theme-dark .bg-\[\#FFFDF9\],
-  .theme-dark .bg-\[\#FAF7F2\] {
-    background-color: var(--bg-card) !important;
-    color: var(--text-main);
-  }
-
-  .theme-dark .text-slate-900,
-  .theme-dark .text-slate-800,
-  .theme-dark .text-slate-700 {
-    color: var(--text-main) !important;
-  }
-
-  .theme-dark .text-slate-600,
-  .theme-dark .text-slate-500 {
-    color: #B3AAA0 !important;
-  }
-
-  .theme-dark .border-slate-900 {
-    border-color: var(--border-main);
-  }
-
-  .theme-dark input,
-  .theme-dark select,
-  .theme-dark textarea {
-    background-color: #2D2D2D !important;
-    color: var(--text-main) !important;
-    border-color: var(--border-main) !important;
   }
 
   /* Scotch tape decorative element */

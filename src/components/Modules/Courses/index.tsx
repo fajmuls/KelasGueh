@@ -342,7 +342,7 @@ export const CoursesModule: React.FC = () => {
           {courses.map((course, idx) => {
             const cleanPhone = (course.lecturer_phone || '').replace(/[^0-9]/g, '');
             const waNumber = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
-            const waUrl = waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo Bapak/Ibu ${course.lecturer_name}, saya mahasiswa kelas 01SAKP014 mata kuliah ${course.name}.`)}` : '#';
+            const waUrl = waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo Bapak/Ibu ${course.lecturer_name}, saya siswa kelas 01SAKP014 mata kuliah ${course.name}.`)}` : '#';
 
             return (
               <div
@@ -497,7 +497,7 @@ export const CoursesModule: React.FC = () => {
               <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
               <p className="text-sm font-semibold text-slate-700">Belum ada tugas perkuliahan</p>
               <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                Semua tugas kuliah yang diterbitkan akan muncul di sini. Mahasiswa dapat mengumpulkan link Google Drive / tugas masing-masing.
+                Semua tugas kuliah yang diterbitkan akan muncul di sini. Siswa dapat mengumpulkan link Google Drive / tugas masing-masing.
               </p>
               <button
                 onClick={() => setIsAddAssignmentModalOpen(true)}
@@ -549,14 +549,14 @@ export const CoursesModule: React.FC = () => {
 
                     <div className="mt-5 pt-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
                       <span className="text-xs text-slate-500 font-medium">
-                        📊 <strong className="text-slate-800">{asg.submission_count || 0}</strong> mahasiswa mengumpulkan
+                        📊 <strong className="text-slate-800">{asg.submission_count || 0}</strong> siswa mengumpulkan
                       </span>
 
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleOpenViewSubmissions(asg)}
                           className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                          title="Lihat daftar pengumpulan mahasiswa"
+                          title="Lihat daftar pengumpulan siswa"
                         >
                           <Users className="w-3.5 h-3.5 text-slate-500" />
                           <span>Pengumpulan</span>
@@ -869,7 +869,7 @@ export const CoursesModule: React.FC = () => {
         </form>
       </Modal>
 
-      {/* Modal: Lihat Daftar Pengumpulan Mahasiswa */}
+      {/* Modal: Lihat Daftar Pengumpulan Siswa */}
       <Modal
         isOpen={isViewSubmissionsModalOpen}
         onClose={() => setIsViewSubmissionsModalOpen(false)}
@@ -878,19 +878,19 @@ export const CoursesModule: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-xs text-slate-500">
-            Daftar seluruh mahasiswa yang telah mengumpulkan tugas ini beserta tautan Google Drive dan waktu pengumpulan.
+            Daftar seluruh siswa yang telah mengumpulkan tugas ini beserta tautan Google Drive dan waktu pengumpulan.
           </p>
 
           {submissionsList.length === 0 ? (
             <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200">
-              <p className="text-xs font-semibold text-slate-600">Belum ada mahasiswa yang mengumpulkan tugas ini.</p>
+              <p className="text-xs font-semibold text-slate-600">Belum ada siswa yang mengumpulkan tugas ini.</p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="p-3">Mahasiswa</th>
+                    <th className="p-3">Siswa</th>
                     <th className="p-3">Waktu</th>
                     <th className="p-3">Status</th>
                     <th className="p-3">Tautan Tugas</th>

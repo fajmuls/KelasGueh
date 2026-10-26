@@ -28,7 +28,7 @@ export const ReportsModule: React.FC = () => {
   const totalTunggakanNominal = arrears.reduce((acc, p) => acc + p.amount, 0);
 
   const handleExportArrearsCSV = () => {
-    const headers = ['NIM', 'Nama Mahasiswa', 'Tagihan', 'Nominal Tunggakan (Rp)', 'Status'];
+    const headers = ['NIM', 'Nama Siswa', 'Tagihan', 'Nominal Tunggakan (Rp)', 'Status'];
     const rows = arrears.map((a) => [
       a.user_nim,
       `"${a.user_name}"`,
@@ -54,7 +54,7 @@ export const ReportsModule: React.FC = () => {
             <FileSpreadsheet className="w-5 h-5 text-blue-600" /> Rekap & Laporan Administrasi
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Rekapitulasi keuangan kas, daftar tunggakan iuran mahasiswa, dan evaluasi operasional kelas.
+            Rekapitulasi keuangan kas, daftar tunggakan iuran siswa, dan evaluasi operasional kelas.
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export const ReportsModule: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-2xs">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Total Mahasiswa Menunggak
+            Total Siswa Menunggak
           </span>
           <p className="text-2xl sm:text-3xl font-bold text-rose-600 mt-2">
             {arrears.length} Orang
@@ -103,7 +103,7 @@ export const ReportsModule: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" /> Daftar Mahasiswa dengan Tunggakan Kas
+            <AlertTriangle className="w-4 h-4 text-amber-600" /> Daftar Siswa dengan Tunggakan Kas
           </h3>
           <span className="text-xs text-slate-400">{arrears.length} Data</span>
         </div>
@@ -112,7 +112,7 @@ export const ReportsModule: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
               <tr>
-                <th className="p-3.5">Mahasiswa</th>
+                <th className="p-3.5">Siswa</th>
                 <th className="p-3.5">NIM</th>
                 <th className="p-3.5">Tagihan Kas</th>
                 <th className="p-3.5">Nominal</th>

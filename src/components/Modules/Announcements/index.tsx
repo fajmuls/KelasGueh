@@ -520,7 +520,7 @@ export const AnnouncementsModule: React.FC<AnnouncementsModuleProps> = ({
                 onChange={(e) => setAnnouncementForm({ ...announcementForm, target: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-blue-500 text-slate-800 font-medium"
               >
-                <option value="all">Semua Mahasiswa (01 SAKP 14)</option>
+                <option value="all">Semua Siswa (01 SAKP 14)</option>
                 <option value="officers">Pengurus Kelas Saja</option>
                 <option value="group_leaders">Ketua Kelompok Tugas</option>
               </select>
@@ -695,7 +695,7 @@ export const AnnouncementsModule: React.FC<AnnouncementsModuleProps> = ({
             <label className="block font-semibold text-slate-800 mb-1">Action Items & Penanggung Jawab (1 baris per tugas)</label>
             <textarea
               rows={3}
-              placeholder="Contoh:&#10;Konfirmasi ruangan dosen [PIC: Sekretaris]&#10;Kirim tagihan kas ke mahasiswa [PIC: Bendahara]"
+              placeholder="Contoh:&#10;Konfirmasi ruangan dosen [PIC: Sekretaris]&#10;Kirim tagihan kas ke siswa [PIC: Bendahara]"
               value={minutesForm.action_items}
               onChange={(e) => setMinutesForm({ ...minutesForm, action_items: e.target.value })}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-blue-500 text-slate-800 font-mono"

@@ -182,7 +182,7 @@ export const PollsModule: React.FC = () => {
               </div>
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Total Partisipasi: <strong>{p.total_votes}</strong> Mahasiswa</span>
+                <span>Total Partisipasi: <strong>{p.total_votes}</strong> Siswa</span>
                 {hasVoted ? (
                   <span className="text-emerald-600 font-semibold flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Anda telah memberikan suara
@@ -203,7 +203,7 @@ export const PollsModule: React.FC = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Buat Polling / Voting Kelas"
-        subtitle="Himpun suara dan aspirasi mahasiswa secara terstruktur"
+        subtitle="Himpun suara dan aspirasi siswa secara terstruktur"
       >
         <form onSubmit={handleCreate} className="space-y-4 text-xs">
           <div>

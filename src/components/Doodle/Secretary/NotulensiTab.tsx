@@ -57,7 +57,7 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
   const [tujuanSurat, setTujuanSurat] = useState('Yth. Dosen Pengampu Mata Kuliah');
   const [perihal, setPerihal] = useState('Permohonan Dispensasi / Izin Kegiatan');
   const [isiSurat, setIsiSurat] = useState(
-    'Sehubungan dengan adanya kegiatan akademik kelas di luar kampus, kami bermaksud memohon izin dispensasi bagi mahasiswa yang terlampir.'
+    'Sehubungan dengan adanya kegiatan akademik kelas di luar kampus, kami bermaksud memohon izin dispensasi bagi siswa yang terlampir.'
   );
 
   const activeMinute = meetingMinutes.find(m => m.id === selectedMinuteId) || meetingMinutes[0];
@@ -191,24 +191,24 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner */}
-      <div className="card-doodle bg-white p-5 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
+      <div className="card-doodle bg-white p-3 sm:p-4 rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
         <ScotchTape className="-top-3 left-6 rotate-1" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider px-2 py-0.5 bg-sky-200 text-slate-900 border border-slate-900 rounded">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-sky-200 text-slate-900 border border-slate-900 rounded">
                 Ranah Sekretaris
               </span>
-              <span className="text-xs font-bold text-slate-500">
+              <span className="text-[10px] font-bold text-slate-500">
                 Dokumentasi & Administrasi
               </span>
             </div>
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-              <FileText className="w-6 h-6 text-sky-700" />
+            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-sky-700" />
               <span>Notulensi Rapat & Format Surat</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-slate-600 max-w-2xl leading-relaxed">
               Arsipkan keputusan musyawarah kelas beserta daftar tugas tindak lanjutnya, dan buat format surat resmi kelas (izin/dispensasi, undangan, pengantar) siap pakai.
             </p>
           </div>
@@ -293,7 +293,7 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
           )}
 
           {activeMinute ? (
-            <div className="card-doodle bg-white rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] p-5 sm:p-6 space-y-5">
+            <div className="card-doodle bg-white rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] p-5 sm:p-6 space-y-5">
               {/* Header Info */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-900 pb-4">
                 <div>
@@ -398,8 +398,8 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
               </div>
             </div>
           ) : (
-            <div className="card-doodle bg-white p-8 rounded-2xl border-2 border-slate-900 text-center space-y-3">
-              <FileText className="w-12 h-12 text-slate-400 mx-auto" />
+            <div className="card-doodle bg-white p-8 rounded-xl border-2 border-slate-900 text-center space-y-3">
+              <FileText className="w-8 h-8 text-slate-400 mx-auto" />
               <h3 className="text-base font-black text-slate-800">Belum Ada Notulensi Rapat</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
                 Mulai catat musyawarah kelas pertama Anda untuk menyimpan keputusan dan pembagian tugas bersama.
@@ -421,7 +421,7 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
       {activeMode === 'surat' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Left: Input Form */}
-          <div className="card-doodle bg-white rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] p-5 space-y-4">
+          <div className="card-doodle bg-white rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] p-5 space-y-4">
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2">
               <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <Mail className="w-4 h-4 text-sky-600" />
@@ -435,11 +435,11 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
                     onClick={() => {
                       setSuratType(t);
                       if (t === 'izin') {
-                        setPerihal('Permohonan Dispensasi / Izin Mahasiswa');
+                        setPerihal('Permohonan Dispensasi / Izin Siswa');
                         setIsiSurat('Sehubungan dengan pelaksanaan kegiatan kelas di luar kampus, kami bermaksud memohon izin dispensasi tidak mengikuti perkuliahan pada tanggal yang ditentukan.');
                       } else if (t === 'undangan') {
                         setPerihal('Undangan Musyawarah Rapat Kelas');
-                        setIsiSurat('Dengan ini kami mengundang seluruh rekan mahasiswa dan pengurus untuk menghadiri musyawarah pembahasan agenda kelas.');
+                        setIsiSurat('Dengan ini kami mengundang seluruh rekan siswa dan pengurus untuk menghadiri musyawarah pembahasan agenda kelas.');
                       } else {
                         setPerihal('Surat Pengantar Kegiatan & Proposal');
                         setIsiSurat('Bersama surat ini kami sampaikan pengantar pelaksanaan kegiatan kelas demi kelancaran administrasi akademik.');
@@ -511,7 +511,7 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
           </div>
 
           {/* Right: Live Preview Box */}
-          <div className="card-doodle bg-[#FFFDF9] rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] p-6 space-y-4 font-serif text-slate-900 text-xs leading-relaxed relative">
+          <div className="card-doodle bg-[#FFFDF9] rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] p-6 space-y-4 font-serif text-slate-900 text-xs leading-relaxed relative">
             <ScotchTape className="-top-3 right-8 rotate-1" />
 
             {/* Letterhead */}
@@ -569,7 +569,7 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
       {/* Modal Catat Notulensi Baru */}
       {isMinuteModalOpen && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="card-doodle bg-white w-full max-w-xl rounded-2xl border-3 border-slate-900 shadow-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="card-doodle bg-white w-full max-w-xl rounded-xl border-3 border-slate-900 shadow-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-sky-600" />

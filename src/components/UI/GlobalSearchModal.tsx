@@ -17,7 +17,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
 
   const quickNavItems = [
     { id: 'dashboard', label: 'Dashboard Kelas', group: 'Navigasi', icon: LayoutDashboard },
-    { id: 'members', label: 'Daftar Anggota & Mahasiswa', group: 'Modul', icon: Users },
+    { id: 'members', label: 'Daftar Anggota & Siswa', group: 'Modul', icon: Users },
     { id: 'finance', label: 'Buku Kas & Verifikasi Tagihan', group: 'Keuangan', icon: Wallet },
     { id: 'my-kas', label: 'Kas Saya & Upload Bukti Transfer', group: 'Keuangan', icon: Wallet },
     { id: 'transparency', label: 'Transparansi Kas & Mutasi Saldo', group: 'Keuangan', icon: Wallet },

@@ -142,7 +142,7 @@ export const DoodleWalkthrough: React.FC<DoodleWalkthroughProps> = ({
 
   return (
     <div className="fixed inset-0 z-[1200] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="card-doodle bg-[#FFFDF9] max-w-lg w-full rounded-2xl p-5 sm:p-7 relative border-4 border-slate-900 shadow-[6px_6px_0px_#1E293B]">
+      <div className="card-doodle bg-[#FFFDF9] max-w-lg w-full rounded-xl p-5 sm:p-7 relative border-4 border-slate-900 shadow-[6px_6px_0px_#1E293B]">
         <ScotchTape className="absolute -top-3 left-10 rotate-[-2deg]" />
         <ScotchTape className="absolute -top-3 right-10 rotate-[2deg]" />
 

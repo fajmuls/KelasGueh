@@ -11,22 +11,21 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '4.3.0',
-  codename: 'Doodle UI Total & Dedicated Admin Settings Tab',
+  version: '4.3.2',
+  codename: 'Kas Module Polish & Aesthetic Refinement',
   releaseDate: '2026-10-26',
   changes: [
-    'Tab View Dedicated Pengaturan Admin: Memindahkan Pengaturan Admin dari modal pop-up ke Tab View utama khusus dengan 6 sub-navigasi doodle (Whitelist Roll, Manajemen Siswa, Audit Log, PIN, Cache, & Catatan Versi).',
-    'Dropdown Auto-Complete Siswa & NIM: Sistem pencarian otomatis berbasis nama dan NIM pada menu Whitelist Roll untuk memudahkan penetapan role pengguna.',
-    'Isolasi Manajemen Siswa ke Master Admin: Fitur Tambah & Import Siswa kini dikhususkan pada Tab Pengaturan Admin, menjaga fokus Pengaturan Kas pada iuran dan semester.',
-    'Standardisasi Format Nama Title Case: Memastikan seluruh penulisan nama mahasiswa di Presensi, Keaktifan, Notulensi, Inventaris, dan Kelompok berformat Title Case rapi (contoh: "Ahmad Budi Pratama").',
-    'Reset Data Inisialisasi Clean Slate: Mengosongkan data awal untuk Inventaris Barang, Jadwal & Tugas, serta Poin Keaktifan agar siap digunakan dari keadaan bersih.',
-    'Penyelarasan Total Estetika Doodle: Penyegaran gaya visual doodle hand-drawn (border hitam tebal, bayangan offset, stempel, & aksen selotip) pada seluruh elemen UI termasuk Pembagian Kelompok.'
+    'Kas Module Polish: Optimalisasi seluruh komponen Buku Kas, Ringkasan, dan Checklist Iuran dengan standardisasi rounded-xl dan border doodle.',
+    'Penyelarasan SFX: Menambahkan feedback suara unik untuk seluruh interaksi di modul administrasi kas (Buku Kas, Nota, Checklist).',
+    'Standardisasi Kontainer: Mengganti rounded-2xl yang tersisa menjadi rounded-xl agar konsisten dengan desain doodle yang lebih pas.',
+    'Penyempurnaan Table Header: Memberikan styling doodle yang lebih tegas pada header tabel Buku Kas dan Matriks Iuran.',
+    'Doodle Select Integration: Memastikan seluruh dropdown menggunakan komponen DoodleSelect untuk konsistensi visual.'
   ],
   suggestedUpdates: [
     {
       category: 'fitur',
       title: 'Auto-Sync Presensi dengan Poin Keaktifan',
-      description: 'Fitur otomatisasi yang memberikan bonus poin keaktifan secara langsung setiap kali mahasiswa hadir dalam presensi kelas.'
+      description: 'Fitur otomatisasi yang memberikan bonus poin keaktifan secara langsung setiap kali siswa hadir dalam presensi kelas.'
     },
     {
       category: 'optimasi',

@@ -72,39 +72,9 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPatchNotesModal, setShowPatchNotesModal] = useState(false);
 
-  // Tab bar scroll visibility (hide on scroll down, show on scroll up)
-  const [isTabBarVisible, setIsTabBarVisible] = useState(true);
-  const lastScrollYRef = useRef(0);
-  const tabStripRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentY = window.scrollY;
-          const diff = currentY - lastScrollYRef.current;
 
-          if (currentY <= 20) {
-            setIsTabBarVisible(true);
-          } else if (diff > 8 && currentY > 60) {
-            // Scrolling down
-            setIsTabBarVisible(false);
-          } else if (diff < -8) {
-            // Scrolling up
-            setIsTabBarVisible(true);
-          }
 
-          lastScrollYRef.current = currentY;
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Synchronize BGM state with global SoundEngine
   useEffect(() => {
@@ -122,15 +92,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
     return unsub;
   }, []);
 
-  // Auto-scroll active tab into view whenever tab changes
-  useEffect(() => {
-    if (tabStripRef.current) {
-      const activeBtn = tabStripRef.current.querySelector<HTMLButtonElement>(`[data-tab-id="${currentTab}"]`);
-      if (activeBtn) {
-        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-    }
-  }, [currentTab]);
+
 
   const handleToggleBgm = () => {
     sfx.playClick();
@@ -160,29 +122,11 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
     }
   };
 
-  const navItems = activeDomain === 'sekretaris'
-    ? [
-        { id: 'keaktifan' as const, label: 'Poin Keaktifan' },
-        { id: 'presensi' as const, label: 'Presensi Kelas' },
-        { id: 'notulensi' as const, label: 'Notulensi & Surat' },
-      ]
-    : activeDomain === 'bendahara'
-    ? [
-        { id: 'ringkasan' as const, label: 'Ringkasan Kas' },
-        { id: 'bukukas' as const, label: 'Buku Kas & Nota' },
-        { id: 'checklist' as const, label: 'Checklist Iuran' },
-        { id: 'kolektif' as const, label: 'Iuran Kolektif' },
-        { id: 'rekap' as const, label: 'Rekap Kas' },
-        ...(isRealSuperAdmin || isSuperAdmin ? [{ id: 'auditlog' as const, label: 'Laporan Audit' }] : []),
-      ]
-    : [
-        { id: 'beranda' as const, label: 'Beranda Portal' },
-      ];
+
 
   const themes: { id: ThemeType; label: string; icon: any; color: string }[] = [
     { id: 'light', label: 'Terang', icon: Sun, color: 'bg-white' },
     { id: 'sepia', label: 'Sepia', icon: BookOpen, color: 'bg-[#F4ECD8]' },
-    { id: 'dark', label: 'Dark', icon: Moon, color: 'bg-[#1A1A1A]' },
   ];
 
   return (
@@ -453,7 +397,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
           />
 
           {/* Drawer Card */}
-          <div className="relative z-10 card-doodle bg-[#FFFDF9] rounded-t-2xl md:rounded-2xl border-t-4 md:border-4 border-slate-900 shadow-2xl p-5 space-y-4 max-h-[85vh] w-full max-w-md overflow-y-auto animate-in slide-in-from-bottom duration-200">
+          <div className="relative z-10 card-doodle bg-[#FFFDF9] rounded-t-xl md:rounded-xl border-t-4 md:border-4 border-slate-900 shadow-2xl p-5 space-y-4 max-h-[85vh] w-full max-w-md overflow-y-auto animate-in slide-in-from-bottom duration-200">
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-600" />

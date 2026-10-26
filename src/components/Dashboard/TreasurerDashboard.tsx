@@ -135,7 +135,7 @@ export const TreasurerDashboard: React.FC<TreasurerDashboardProps> = ({
 
       {/* Grid: Anggota Sudah vs Belum Bayar & Grafik Aliran Kas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Status Pembayaran Mahasiswa */}
+        {/* Status Pembayaran Siswa */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-800">Status Pembayaran Iuran</h3>
@@ -150,7 +150,7 @@ export const TreasurerDashboard: React.FC<TreasurerDashboardProps> = ({
               <p className="text-2xl font-bold text-emerald-900 mt-2">
                 {summary?.paidMembersCount || 0}
               </p>
-              <p className="text-[11px] text-emerald-700 mt-0.5">Mahasiswa</p>
+              <p className="text-[11px] text-emerald-700 mt-0.5">Siswa</p>
             </div>
 
             <div className="p-4 rounded-xl bg-rose-50/70 border border-rose-100">
@@ -160,7 +160,7 @@ export const TreasurerDashboard: React.FC<TreasurerDashboardProps> = ({
               <p className="text-2xl font-bold text-rose-900 mt-2">
                 {summary?.unpaidMembersCount || 0}
               </p>
-              <p className="text-[11px] text-rose-700 mt-0.5">Mahasiswa</p>
+              <p className="text-[11px] text-rose-700 mt-0.5">Siswa</p>
             </div>
           </div>
 

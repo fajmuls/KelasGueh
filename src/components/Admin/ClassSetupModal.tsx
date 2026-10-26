@@ -92,7 +92,7 @@ export const ClassSetupModal: React.FC<ClassSetupModalProps> = ({
                 Manajemen Kelas (Cloud Firestore)
               </h2>
               <p className="text-xs text-slate-500">
-                Siapkan kelas dan tentukan jurusannya untuk mengelola mahasiswa & kas
+                Siapkan kelas dan tentukan jurusannya untuk mengelola siswa & kas
               </p>
             </div>
           </div>

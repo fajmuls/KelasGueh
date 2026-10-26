@@ -188,7 +188,7 @@ export const MembersModule: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Daftar_Mahasiswa_${classInfo?.code || 'TI'}.csv`);
+    link.setAttribute('download', `Daftar_Siswa_${classInfo?.code || 'TI'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -213,7 +213,7 @@ export const MembersModule: React.FC = () => {
       }
       
       const rows = [
-        ['No', 'NIM', 'Nama Mahasiswa', 'Email', 'Telepon', 'Role RBAC', 'Jabatan', 'Status', 'Tanggal Terdaftar'],
+        ['No', 'NIM', 'Nama Siswa', 'Email', 'Telepon', 'Role RBAC', 'Jabatan', 'Status', 'Tanggal Terdaftar'],
         ...filteredMembers.map((m, idx) => [
           idx + 1,
           m.nim,
@@ -230,15 +230,15 @@ export const MembersModule: React.FC = () => {
       if (token) {
         const res = await googleWorkspace.createSpreadsheet(
           token,
-          `Daftar Mahasiswa ${classInfo?.name || '01SAKP014'} - ${new Date().toLocaleDateString('id-ID')}`,
-          [{ title: 'Data Mahasiswa', rows }]
+          `Daftar Siswa ${classInfo?.name || '01SAKP014'} - ${new Date().toLocaleDateString('id-ID')}`,
+          [{ title: 'Data Siswa', rows }]
         );
         alert(`Berhasil membuat Google Sheets! URL: ${res.spreadsheetUrl}`);
         window.open(res.spreadsheetUrl, '_blank');
       } else {
         // Fallback to CSV export with notification
         handleExportCSV();
-        alert('File CSV mahasiswa telah diunduh. Hubungkan akun Google untuk sinkronisasi Google Sheets secara langsung.');
+        alert('File CSV siswa telah diunduh. Hubungkan akun Google untuk sinkronisasi Google Sheets secara langsung.');
       }
     } catch (err: any) {
       console.error('Export Google Sheets error:', err);
@@ -256,10 +256,10 @@ export const MembersModule: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600" /> Manajemen Anggota Mahasiswa
+            <Users className="w-5 h-5 text-blue-600" /> Manajemen Anggota Siswa
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Kelola data 39 mahasiswa kelas {classInfo?.name}, penetapan role RBAC, dan jabatan kepengurusan.
+            Kelola data 39 siswa kelas {classInfo?.name}, penetapan role RBAC, dan jabatan kepengurusan.
           </p>
         </div>
 
@@ -268,7 +268,7 @@ export const MembersModule: React.FC = () => {
             onClick={handleExportGoogleSheets}
             disabled={isExportingSheets}
             className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-            title="Ekspor daftar mahasiswa langsung ke Google Sheets"
+            title="Ekspor daftar siswa langsung ke Google Sheets"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             {isExportingSheets ? 'Membuat Spreadsheet...' : 'Google Sheets'}
@@ -406,7 +406,7 @@ export const MembersModule: React.FC = () => {
         </div>
 
         <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-          <span>Menampilkan <strong>{filteredMembers.length}</strong> dari {members.length} mahasiswa</span>
+          <span>Menampilkan <strong>{filteredMembers.length}</strong> dari {members.length} siswa</span>
         </div>
       </div>
 
@@ -416,7 +416,7 @@ export const MembersModule: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
               <tr>
-                <th className="p-3.5">Mahasiswa</th>
+                <th className="p-3.5">Siswa</th>
                 <th className="p-3.5">NIM</th>
                 <th className="p-3.5">Kontak</th>
                 <th className="p-3.5">Role RBAC</th>
@@ -468,7 +468,7 @@ export const MembersModule: React.FC = () => {
                           setSelectedMember(m);
                           setIsDetailModalOpen(true);
                         }}
-                        title="Detail Mahasiswa"
+                        title="Detail Siswa"
                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       >
                         <Eye className="w-4 h-4" />
@@ -533,7 +533,7 @@ export const MembersModule: React.FC = () => {
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        title="Tambah Mahasiswa Baru"
+        title="Tambah Siswa Baru"
         subtitle="Registrasikan anggota ke dalam kelas perkuliahan"
       >
         <form onSubmit={handleCreateMember} className="space-y-4 text-xs">
@@ -549,7 +549,7 @@ export const MembersModule: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">NIM (Nomor Induk Mahasiswa)</label>
+            <label className="block font-semibold text-slate-700 mb-1">NIM (Nomor Induk Siswa)</label>
             <input
               type="text"
               required
@@ -617,7 +617,7 @@ export const MembersModule: React.FC = () => {
               type="submit"
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold"
             >
-              Simpan Mahasiswa
+              Simpan Siswa
             </button>
           </div>
         </form>
@@ -627,7 +627,7 @@ export const MembersModule: React.FC = () => {
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        title="Edit Data Mahasiswa"
+        title="Edit Data Siswa"
       >
         <form onSubmit={handleUpdateMember} className="space-y-4 text-xs">
           <div>
@@ -720,7 +720,7 @@ export const MembersModule: React.FC = () => {
             </select>
           </div>
           <p className="text-slate-500 text-[11px] leading-relaxed">
-            Perubahan role akan segera memperbarui permission yang dimiliki oleh mahasiswa di server backend dan navigasi antarmuka.
+            Perubahan role akan segera memperbarui permission yang dimiliki oleh siswa di server backend dan navigasi antarmuka.
           </p>
           <div className="flex justify-end gap-2 pt-3">
             <button
@@ -744,7 +744,7 @@ export const MembersModule: React.FC = () => {
       <Modal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
-        title="Profil Lengkap Mahasiswa"
+        title="Profil Lengkap Siswa"
       >
         {selectedMember && (
           <div className="space-y-4 text-xs">

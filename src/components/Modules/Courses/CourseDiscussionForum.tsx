@@ -132,7 +132,7 @@ export const CourseDiscussionForum: React.FC<CourseDiscussionForumProps> = ({ co
       course_name: matchedCourse ? matchedCourse.name : 'Umum',
       title: newThreadForm.title,
       content: newThreadForm.content,
-      author_name: user?.name || 'Mahasiswa Kelas',
+      author_name: user?.name || 'Siswa Kelas',
       author_nim: user?.nim || '2310112001',
       created_at: 'Baru saja',
       category: newThreadForm.category,
@@ -175,7 +175,7 @@ export const CourseDiscussionForum: React.FC<CourseDiscussionForumProps> = ({ co
         if (t.id === threadId) {
           const newRep = {
             id: `rep-${Date.now()}`,
-            author_name: user?.name || 'Mahasiswa Kelas',
+            author_name: user?.name || 'Siswa Kelas',
             author_nim: user?.nim || '2310112001',
             content: text.trim(),
             created_at: 'Baru saja',
@@ -216,7 +216,7 @@ export const CourseDiscussionForum: React.FC<CourseDiscussionForumProps> = ({ co
             <MessageSquare className="w-5 h-5 text-blue-600" /> Forum Tanya Jawab & Diskusi Kuliah
           </h3>
           <p className="text-slate-500 mt-0.5">
-            Ruang diskusi terbuka antar mahasiswa dan asisten dosen untuk membahas tugas, materi ujian, dan catatan perkuliahan.
+            Ruang diskusi terbuka antar siswa dan asisten dosen untuk membahas tugas, materi ujian, dan catatan perkuliahan.
           </p>
         </div>
 
@@ -436,7 +436,7 @@ export const CourseDiscussionForum: React.FC<CourseDiscussionForumProps> = ({ co
               <input
                 type="text"
                 disabled
-                value={`${user?.name || 'Mahasiswa'} (${user?.nim || '2310112001'})`}
+                value={`${user?.name || 'Siswa'} (${user?.nim || '2310112001'})`}
                 className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-600"
               />
             </div>

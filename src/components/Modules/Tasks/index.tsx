@@ -61,7 +61,7 @@ export const TasksModule: React.FC = () => {
     try {
       await api.createTask({
         ...formData,
-        assignee_name: assignedUser?.name || 'Mahasiswa',
+        assignee_name: assignedUser?.name || 'Siswa',
         status: 'pending',
       } as any);
       setIsAddModalOpen(false);

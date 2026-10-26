@@ -85,7 +85,7 @@ export const ChairmanDashboard: React.FC<ChairmanDashboardProps> = ({ onNavigate
       {/* KPI Cards: Total Anggota, Jumlah Pengurus, Saldo Kas, Task Pending */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Mahasiswa</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Siswa</p>
           <h3 className="mt-2 text-2xl font-bold text-slate-900">{totalMembers} / 40</h3>
           <p className="mt-1 text-sm text-slate-500 font-medium">95% Partisipasi Terdaftar</p>
         </div>

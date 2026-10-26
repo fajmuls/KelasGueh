@@ -270,9 +270,9 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   });
 
   return (
-    <div className="min-h-screen bg-amber-50/60 dark:bg-slate-950 p-3 sm:p-6 space-y-5 animate-in fade-in duration-200">
+    <div className="min-h-screen bg-amber-50/60 p-3 sm:p-6 space-y-5 animate-in fade-in duration-200">
       {/* Top Banner Header */}
-      <div className="bg-amber-100 dark:bg-slate-900 border-3 border-slate-900 dark:border-slate-700 rounded-2xl p-4 sm:p-5 shadow-[4px_4px_0px_#000] relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-amber-100 border-3 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[4px_4px_0px_#000] relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Decorative Tape & Badge */}
         <div className="absolute -top-3 left-8 bg-amber-400 text-slate-900 font-black text-[10px] uppercase tracking-wider px-3 py-0.5 border-2 border-slate-900 rotate-[-2deg] shadow-[1px_1px_0px_#000]">
           ★ RANAH MASTER ADMIN
@@ -284,7 +284,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
               sfx.playCardClose();
               onReturnToHub();
             }}
-            className="p-2.5 bg-white dark:bg-slate-800 border-2 border-slate-900 rounded-xl hover:bg-amber-300 transition shadow-[2px_2px_0px_#000] active:translate-y-0.5 flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100"
+            className="p-2.5 bg-white border-2 border-slate-900 rounded-xl hover:bg-amber-300 transition shadow-[2px_2px_0px_#000] active:translate-y-0.5 flex items-center gap-1.5 font-bold text-xs text-slate-900"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Kembali ke Hub Utama</span>
@@ -293,11 +293,11 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           <div className="h-8 w-0.5 bg-slate-900/20 hidden sm:block" />
 
           <div>
-            <h1 className="font-black text-slate-900 dark:text-slate-100 text-lg sm:text-xl flex items-center gap-2">
+            <h1 className="font-black text-slate-900 text-lg sm:text-xl flex items-center gap-2">
               <ShieldCheck className="w-6 h-6 text-amber-600" />
               Pengaturan Master Admin Kelas
             </h1>
-            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+            <p className="text-xs text-slate-600 font-medium">
               Kontrol terpusat Whitelist Roll, Manajemen Anggota Siswa, Audit Log, dan Keamanan System (v{CURRENT_APP_VERSION.version})
             </p>
           </div>
@@ -311,7 +311,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
       </div>
 
       {/* Sub-Navigation Bar */}
-      <div className="flex items-center gap-1.5 p-2 bg-white dark:bg-slate-900 border-2 border-slate-900 rounded-2xl shadow-[3px_3px_0px_#000] overflow-x-auto no-scrollbar">
+      <div className="flex items-center gap-1.5 p-2 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] overflow-x-auto no-scrollbar">
         {[
           { id: 'whitelist', label: 'Whitelist Roll', icon: UserCheck },
           { id: 'students', label: 'Manajemen Siswa', icon: UserPlus },
@@ -332,8 +332,8 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
               }}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center gap-2 whitespace-nowrap shrink-0 ${
                 isActive
-                  ? 'bg-amber-400 text-slate-900 border-slate-900 font-black shadow-[2px_2px_0px_#000]'
-                  : 'bg-amber-50/50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-amber-100'
+                  ? 'bg-amber-400 text-slate-900 border-slate-900 font-black shadow-[2px_2px_0px_#000] -translate-y-0.5'
+                  : 'bg-amber-50/50 border-slate-300 text-slate-700 hover:bg-amber-100 shadow-[1px_1px_0px_#000]'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -344,22 +344,22 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
       </div>
 
       {/* Main Tab Content Card */}
-      <div className="bg-white dark:bg-slate-900 border-3 border-slate-900 dark:border-slate-700 rounded-2xl p-4 sm:p-6 shadow-[4px_4px_0px_#000] space-y-6">
+      <div className="bg-white border-3 border-slate-900 rounded-xl p-4 sm:p-6 shadow-[4px_4px_0px_#000] space-y-6">
         {/* SUB-TAB 1: WHITELIST ROLL */}
         {activeTab === 'whitelist' && (
           <div className="space-y-5">
-            <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-xl border-2 border-slate-900 text-xs text-slate-900 dark:text-slate-200 space-y-1">
-              <strong className="font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+            <div className="bg-amber-50 p-4 rounded-xl border-2 border-slate-900 text-xs text-slate-900 space-y-1">
+              <strong className="font-black text-amber-900 flex items-center gap-1.5">
                 <UserCheck className="w-4 h-4 text-amber-600" /> Whitelist Roll Hak Akses Pengurus
               </strong>
               <p>
-                Ketik nama atau NIM mahasiswa untuk mencari otomatis dari daftar anggota kelas, lalu tetapkan role wewenang sebagai <strong>Bendahara Kelas</strong> atau <strong>Sekretaris Kelas</strong>.
+                Ketik nama atau NIM siswa untuk mencari otomatis dari daftar anggota kelas, lalu tetapkan role wewenang sebagai <strong>Bendahara Kelas</strong> atau <strong>Sekretaris Kelas</strong>.
               </p>
             </div>
 
             {/* Auto-Complete Search Bar */}
             <div className="relative space-y-2">
-              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+              <label className="block text-xs font-bold text-slate-800">
                 🔍 Cari Nama / NIM Siswa atau Masukkan Email Google:
               </label>
 
@@ -375,20 +375,20 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                       setIsDropdownOpen(true);
                     }}
                     onFocus={() => setIsDropdownOpen(true)}
-                    className="w-full px-3.5 py-2.5 border-2 border-slate-900 rounded-xl text-xs font-semibold focus:outline-none dark:bg-slate-800 dark:text-slate-100 shadow-[1px_1px_0px_#000]"
+                    className="w-full px-3.5 py-2.5 border-2 border-slate-900 rounded-xl text-xs font-semibold focus:outline-none bg-white shadow-[1px_1px_0px_#000]"
                   />
 
                   {/* Dropdown Auto-Complete */}
                   {isDropdownOpen && filteredStudentSuggestions.length > 0 && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] z-30 max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700">
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] z-30 max-h-48 overflow-y-auto divide-y divide-slate-100">
                       {filteredStudentSuggestions.map((st) => (
                         <div
                           key={st.id}
                           onClick={() => handleSelectStudentForWhitelist(st)}
-                          className="p-2.5 hover:bg-amber-100 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-between text-xs transition"
+                          className="p-2.5 hover:bg-amber-100 cursor-pointer flex items-center justify-between text-xs transition"
                         >
                           <div>
-                            <p className="font-bold text-slate-900 dark:text-slate-100">{toTitleCase(st.name)}</p>
+                            <p className="font-bold text-slate-900">{toTitleCase(st.name)}</p>
                             <p className="text-[10px] text-slate-500">NIM: {st.studentId || 'Belum diset'}</p>
                           </div>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-900 border border-slate-900">
@@ -402,8 +402,11 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
 
                 <select
                   value={whitelistRole}
-                  onChange={(e) => setWhitelistRole(e.target.value as any)}
-                  className="px-3.5 py-2.5 border-2 border-slate-900 rounded-xl text-xs font-black bg-amber-100 dark:bg-slate-800 dark:text-slate-100 shadow-[1px_1px_0px_#000]"
+                  onChange={(e) => {
+                    sfx.playOptionSelect();
+                    setWhitelistRole(e.target.value as any);
+                  }}
+                  className="px-3.5 py-2.5 border-2 border-slate-900 rounded-xl text-xs font-black bg-amber-100 shadow-[1.5px_1.5px_0px_#000] cursor-pointer appearance-none"
                 >
                   <option value="bendahara">Bendahara Kelas</option>
                   <option value="sekretaris">Sekretaris Kelas</option>
@@ -429,7 +432,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
             {/* Whitelist Users Table */}
             <div className="border-2 border-slate-900 rounded-xl overflow-hidden shadow-[2px_2px_0px_#000]">
               <table className="w-full text-left text-xs">
-                <thead className="bg-amber-100 dark:bg-slate-800 border-b-2 border-slate-900 font-black text-slate-900 dark:text-slate-100">
+                <thead className="bg-amber-100 border-b-2 border-slate-900 font-black text-slate-900">
                   <tr>
                     <th className="p-3">Pengguna / Nama</th>
                     <th className="p-3">Email / ID Whitelist</th>
@@ -437,11 +440,11 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                     <th className="p-3 text-right">Aksi Ubah Role</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-200">
                   {users.map((u) => (
-                    <tr key={u.email} className="hover:bg-amber-50/60 dark:hover:bg-slate-800/50">
-                      <td className="p-3 font-bold text-slate-900 dark:text-slate-100">{toTitleCase(u.name || u.email.split('@')[0])}</td>
-                      <td className="p-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">{u.email}</td>
+                    <tr key={u.email} className="hover:bg-amber-50/60">
+                      <td className="p-3 font-bold text-slate-900">{toTitleCase(u.name || u.email.split('@')[0])}</td>
+                      <td className="p-3 text-slate-600 font-mono text-[11px]">{u.email}</td>
                       <td className="p-3">
                         <span
                           className={`px-2.5 py-0.5 rounded-lg font-black text-[10px] uppercase border-2 border-slate-900 shadow-[1px_1px_0px_#000] ${
@@ -464,7 +467,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                           <select
                             value={u.role}
                             onChange={(e) => handleRoleChange(u.email, e.target.value as any)}
-                            className="px-2 py-1 border-2 border-slate-900 rounded-lg bg-white dark:bg-slate-800 text-[11px] font-bold"
+                            className="px-2 py-1 border-2 border-slate-900 rounded-lg bg-white text-[11px] font-bold shadow-[1px_1px_0px_#000] cursor-pointer"
                           >
                             <option value="bendahara">Bendahara</option>
                             <option value="sekretaris">Sekretaris</option>
@@ -483,8 +486,8 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
         {/* SUB-TAB 2: MANAJEMEN SISWA (Tambah & Import) */}
         {activeTab === 'students' && (
           <div className="space-y-6">
-            <div className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-xl border-2 border-slate-900 text-xs text-slate-900 dark:text-slate-200 space-y-1">
-              <strong className="font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+            <div className="bg-amber-50 p-4 rounded-xl border-2 border-slate-900 text-xs text-slate-900 space-y-1">
+              <strong className="font-black text-amber-900 flex items-center gap-1.5">
                 <UserPlus className="w-4 h-4 text-amber-600" /> Pusat Manajemen Anggota Siswa Kelas
               </strong>
               <p>
@@ -499,40 +502,43 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
             )}
 
             {/* Individual Student Form */}
-            <div className="p-4 bg-amber-50/60 dark:bg-slate-800 rounded-xl border-2 border-slate-900 space-y-3">
-              <h4 className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-slate-100">
+            <div className="p-4 bg-amber-50/60 rounded-xl border-2 border-slate-900 space-y-3">
+              <h4 className="font-black text-xs uppercase tracking-wider text-slate-900">
                 + Tambah Siswa Individual
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Lengkap Siswa</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Nama Lengkap Siswa</label>
                   <input
                     type="text"
                     placeholder="Contoh: Ahmad Budi Pratama"
                     value={newStudentName}
                     onChange={(e) => setNewStudentName(e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl text-xs font-medium focus:outline-none dark:bg-slate-900"
+                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl text-xs font-medium focus:outline-none bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">NIM / Nomor Absen</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">NIM</label>
                   <input
                     type="text"
                     placeholder="Contoh: 230101001"
                     value={newStudentId}
                     onChange={(e) => setNewStudentId(e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl text-xs font-medium focus:outline-none dark:bg-slate-900"
+                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl text-xs font-medium focus:outline-none bg-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Jenis Kelamin</label>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis Kelamin</label>
                   <select
                     value={newStudentGender}
-                    onChange={(e) => setNewStudentGender(e.target.value as any)}
-                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl text-xs font-bold bg-white dark:bg-slate-900"
+                    onChange={(e) => {
+                      sfx.playOptionSelect();
+                      setNewStudentGender(e.target.value as any);
+                    }}
+                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl text-xs font-bold bg-white shadow-[1px_1px_0px_#000] cursor-pointer appearance-none"
                   >
                     <option value="L">Laki-laki (L)</option>
                     <option value="P">Perempuan (P)</option>
@@ -549,13 +555,13 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
             </div>
 
             {/* Batch Import Area */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-slate-900 space-y-3">
+            <div className="p-4 bg-slate-50 rounded-xl border-2 border-slate-900 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-black text-xs uppercase tracking-wider text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <h4 className="font-black text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                     <Upload className="w-4 h-4 text-amber-500" /> Impor Massal Daftar Siswa Kelas
                   </h4>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                  <p className="text-[11px] text-slate-600">
                     Masukkan daftar nama siswa bertumpuk (satu nama per baris). Format: "Nama, NIM" atau "NIM - Nama".
                   </p>
                 </div>
@@ -574,7 +580,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                     placeholder={`Ahmad Budi, 230101001\nSiti Rahmawati, 230101002\nEko Prasetyo - 230101003`}
                     value={importText}
                     onChange={(e) => setImportText(e.target.value)}
-                    className="w-full p-3 border-2 border-slate-900 rounded-xl text-xs font-mono focus:outline-none dark:bg-slate-900"
+                    className="w-full p-3 border-2 border-slate-900 rounded-xl text-xs font-mono focus:outline-none bg-white"
                   />
                   <button
                     onClick={handleBatchImport}
@@ -588,18 +594,18 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
 
             {/* Current Member List Preview */}
             <div className="space-y-2">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                📋 Daftar Anggota Siswa Kelas Terdaftar ({memberList.length} Mahasiswa)
+              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">
+                📋 Daftar Anggota Siswa Kelas Terdaftar ({memberList.length} Siswa)
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-80 overflow-y-auto pr-1">
                 {memberList.map((m) => (
                   <div
                     key={m.id}
-                    className="p-3 bg-white dark:bg-slate-800 border-2 border-slate-900 rounded-xl flex items-center justify-between shadow-[2px_2px_0px_#000]"
+                    className="p-3 bg-white border-2 border-slate-900 rounded-xl flex items-center justify-between shadow-[2px_2px_0px_#000]"
                   >
                     <div>
-                      <p className="font-bold text-xs text-slate-900 dark:text-slate-100">{toTitleCase(m.name)}</p>
+                      <p className="font-bold text-xs text-slate-900">{toTitleCase(m.name)}</p>
                       <p className="text-[10px] text-slate-500 font-mono">NIM: {m.studentId || '-'}</p>
                     </div>
                     <span
@@ -621,7 +627,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2 overflow-x-auto">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Filter Modul:</span>
+                <span className="text-xs font-bold text-slate-700">Filter Modul:</span>
                 {(['semua', 'transaksi', 'iuran', 'sekretaris'] as const).map((f) => (
                   <button
                     key={f}
@@ -629,7 +635,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                     className={`px-3 py-1 rounded-xl text-xs font-bold border-2 capitalize transition ${
                       auditFilter === f
                         ? 'bg-amber-400 text-slate-900 border-slate-900 shadow-[1px_1px_0px_#000]'
-                        : 'bg-slate-100 dark:bg-slate-800 border-slate-300 text-slate-700 dark:text-slate-300'
+                        : 'bg-slate-100 border-slate-300 text-slate-700'
                     }`}
                   >
                     {f}
@@ -644,14 +650,14 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                   placeholder="Cari aktivitas..."
                   value={auditSearch}
                   onChange={(e) => setAuditSearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 border-2 border-slate-900 rounded-xl text-xs w-full sm:w-56 dark:bg-slate-800"
+                  className="pl-8 pr-3 py-1.5 border-2 border-slate-900 rounded-xl text-xs w-full sm:w-56 bg-white"
                 />
               </div>
             </div>
 
             <div className="border-2 border-slate-900 rounded-xl overflow-hidden max-h-96 overflow-y-auto shadow-[2px_2px_0px_#000]">
               <table className="w-full text-left text-xs">
-                <thead className="bg-amber-100 dark:bg-slate-800 border-b-2 border-slate-900 font-black text-slate-900 dark:text-slate-100 sticky top-0 z-10">
+                <thead className="bg-amber-100 border-b-2 border-slate-900 font-black text-slate-900 sticky top-0 z-10">
                   <tr>
                     <th className="p-2.5">Waktu</th>
                     <th className="p-2.5">Aksi</th>
@@ -659,7 +665,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                     <th className="p-2.5">Rincian Detail</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-200">
                   {filteredLogs.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="p-4 text-center text-slate-500 italic">
@@ -668,15 +674,15 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                     </tr>
                   ) : (
                     filteredLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-amber-50/60 dark:hover:bg-slate-800/50">
+                      <tr key={log.id} className="hover:bg-amber-50/60">
                         <td className="p-2.5 text-[11px] text-slate-500 font-mono whitespace-nowrap">
                           {new Date(log.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
                         </td>
-                        <td className="p-2.5 font-bold text-slate-900 dark:text-slate-100">{log.action}</td>
-                        <td className="p-2.5 text-slate-700 dark:text-slate-300">
+                        <td className="p-2.5 font-bold text-slate-900">{log.action}</td>
+                        <td className="p-2.5 text-slate-700">
                           {log.performedBy} <span className="text-[10px] text-slate-400">({log.userRole})</span>
                         </td>
-                        <td className="p-2.5 text-slate-600 dark:text-slate-400">{log.details}</td>
+                        <td className="p-2.5 text-slate-600">{log.details}</td>
                       </tr>
                     ))
                   )}
@@ -689,8 +695,8 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
         {/* SUB-TAB 4: MANAJEMEN KELAMIN SISWA */}
         {activeTab === 'gender' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/40 p-3.5 rounded-xl border-2 border-slate-900">
-              <p className="text-xs text-amber-950 dark:text-amber-200 font-medium">
+            <div className="flex items-center justify-between bg-amber-50 p-3.5 rounded-xl border-2 border-slate-900">
+              <p className="text-xs text-amber-950 font-medium">
                 Data jenis kelamin digunakan untuk modul Pembagian Kelompok Seimbang (L/P) Sekretaris.
               </p>
               <button
@@ -706,10 +712,10 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
               {memberList.map((m) => (
                 <div
                   key={m.id}
-                  className="p-3 border-2 border-slate-900 rounded-xl flex items-center justify-between bg-white dark:bg-slate-800 shadow-[2px_2px_0px_#000]"
+                  className="p-3 border-2 border-slate-900 rounded-xl flex items-center justify-between bg-white shadow-[2px_2px_0px_#000]"
                 >
                   <div>
-                    <p className="font-bold text-xs text-slate-900 dark:text-slate-100">{toTitleCase(m.name)}</p>
+                    <p className="font-bold text-xs text-slate-900">{toTitleCase(m.name)}</p>
                     <p className="text-[10px] text-slate-500 font-mono">NIM: {m.studentId || '-'}</p>
                   </div>
 
@@ -719,7 +725,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                       className={`px-3 py-1 rounded-lg text-xs font-black border-2 border-slate-900 transition ${
                         (m.gender || autoDetectGenderByName(m.name)) === 'L'
                           ? 'bg-blue-500 text-white shadow-[1px_1px_0px_#000]'
-                          : 'bg-slate-100 text-slate-600 dark:bg-slate-700'
+                          : 'bg-slate-100 text-slate-600'
                       }`}
                     >
                       Laki-laki (L)
@@ -729,7 +735,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                       className={`px-3 py-1 rounded-lg text-xs font-black border-2 border-slate-900 transition ${
                         (m.gender || autoDetectGenderByName(m.name)) === 'P'
                           ? 'bg-pink-500 text-white shadow-[1px_1px_0px_#000]'
-                          : 'bg-slate-100 text-slate-600 dark:bg-slate-700'
+                          : 'bg-slate-100 text-slate-600'
                       }`}
                     >
                       Perempuan (P)
@@ -744,11 +750,11 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
         {/* SUB-TAB 5: PIN KEAMANAN */}
         {activeTab === 'pin' && (
           <div className="max-w-md mx-auto space-y-4 py-4">
-            <div className="bg-slate-50 dark:bg-slate-800 p-5 rounded-2xl border-3 border-slate-900 space-y-3 shadow-[3px_3px_0px_#000]">
-              <h4 className="font-black text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <div className="bg-slate-50 p-5 rounded-xl border-3 border-slate-900 space-y-3 shadow-[3px_3px_0px_#000]">
+              <h4 className="font-black text-sm text-slate-900 flex items-center gap-2">
                 <Lock className="w-5 h-5 text-amber-500" /> Atur PIN Keamanan Kelas
               </h4>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+              <p className="text-xs text-slate-600">
                 PIN digunakan untuk memverifikasi tindakan administratif sensitif. PIN default: <strong>123456</strong>.
               </p>
 
@@ -759,14 +765,14 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
               )}
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">PIN Baru (Min 4 Angka)</label>
+                <label className="block text-xs font-bold text-slate-700">PIN Baru (Min 4 Angka)</label>
                 <input
                   type="password"
                   maxLength={8}
                   placeholder="Masukkan PIN baru"
                   value={newPin}
                   onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-3.5 py-2 border-2 border-slate-900 rounded-xl text-sm font-mono focus:outline-none dark:bg-slate-900"
+                  className="w-full px-3.5 py-2 border-2 border-slate-900 rounded-xl text-sm font-mono focus:outline-none bg-white"
                 />
               </div>
 
@@ -783,12 +789,12 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
         {/* SUB-TAB 6: RESET CACHE LOKAL */}
         {activeTab === 'cache' && (
           <div className="max-w-md mx-auto space-y-4 py-4">
-            <div className="bg-rose-50 dark:bg-rose-950/40 p-5 rounded-2xl border-3 border-rose-300 dark:border-rose-800 space-y-3 text-center shadow-[3px_3px_0px_#000]">
+            <div className="bg-rose-50 p-5 rounded-xl border-3 border-rose-300 space-y-3 text-center shadow-[3px_3px_0px_#000]">
               <Trash2 className="w-9 h-9 text-rose-600 mx-auto" />
-              <h4 className="font-black text-sm text-rose-950 dark:text-rose-200">
+              <h4 className="font-black text-sm text-rose-950">
                 Pembersihan Cache & Storage Lokal
               </h4>
-              <p className="text-xs text-rose-800 dark:text-rose-300">
+              <p className="text-xs text-rose-800">
                 Tindakan ini hanya akan membersihkan memori sementara di perangkat browser ini. Data utama yang telah tersimpan di Supabase <strong>tetap aman</strong> dan akan diunduh kembali secara otomatis.
               </p>
 
@@ -811,7 +817,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
         {/* SUB-TAB 7: VERSION & RELEASE NOTES */}
         {activeTab === 'version' && (
           <div className="space-y-5">
-            <div className="bg-slate-900 text-white p-5 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#000] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="bg-slate-900 text-white p-5 rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#000] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <span className="text-[10px] font-black text-amber-400 uppercase tracking-wider px-2 py-0.5 bg-slate-800 rounded border border-amber-400/40">
                   Aplikasi Kelas Gue Official
@@ -825,14 +831,14 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
 
             {/* Release Notes */}
             <div className="space-y-2">
-              <h4 className="font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              <h4 className="font-black text-xs uppercase tracking-wider text-slate-700">
                 📋 Catatan Pembaruan Terintegrasi
               </h4>
               <ul className="space-y-2">
                 {CURRENT_APP_VERSION.changes.map((c, i) => (
-                  <li key={i} className="text-xs p-3 rounded-xl bg-amber-50/70 dark:bg-slate-800 border-2 border-slate-900 flex items-start gap-2 shadow-[2px_2px_0px_#000]">
+                  <li key={i} className="text-xs p-3 rounded-xl bg-amber-50/70 border-2 border-slate-900 flex items-start gap-2 shadow-[2px_2px_0px_#000]">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <span className="text-slate-900 dark:text-slate-100 font-medium">{c}</span>
+                    <span className="text-slate-900 font-medium">{c}</span>
                   </li>
                 ))}
               </ul>
@@ -840,17 +846,17 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
 
             {/* Suggested Features */}
             <div className="space-y-2 pt-2">
-              <h4 className="font-black text-xs uppercase tracking-wider text-amber-900 dark:text-amber-400">
+              <h4 className="font-black text-xs uppercase tracking-wider text-amber-900">
                 💡 Saran & Rekomendasi Pembaruan Aplikasi Masa Depan
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {CURRENT_APP_VERSION.suggestedUpdates.map((s, idx) => (
-                  <div key={idx} className="p-3.5 bg-amber-100/60 dark:bg-amber-950/30 border-2 border-slate-900 rounded-xl space-y-1.5 shadow-[2px_2px_0px_#000]">
+                  <div key={idx} className="p-3.5 bg-amber-100/60 border-2 border-slate-900 rounded-xl space-y-1.5 shadow-[2px_2px_0px_#000]">
                     <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-300 text-amber-950 border border-slate-900">
                       {s.category}
                     </span>
-                    <h5 className="font-black text-xs text-slate-900 dark:text-slate-100">{s.title}</h5>
-                    <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-snug">{s.description}</p>
+                    <h5 className="font-black text-xs text-slate-900">{s.title}</h5>
+                    <p className="text-[11px] text-slate-700 leading-snug">{s.description}</p>
                   </div>
                 ))}
               </div>

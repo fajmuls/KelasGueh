@@ -34,6 +34,7 @@ interface BendaharaHubProps {
   auditLogs: AuditLogEntry[];
   canEdit: boolean;
   isSuperAdmin: boolean;
+  canViewAudit: boolean;
   
   // Handlers
   onAddTransaction: (tx: Omit<KasTransaction, 'id' | 'createdAt'>) => Promise<void>;
@@ -76,6 +77,7 @@ export const BendaharaHub: React.FC<BendaharaHubProps> = ({
   auditLogs,
   canEdit,
   isSuperAdmin,
+  canViewAudit,
   onAddTransaction,
   onDeleteTransaction,
   onToggleWeek,
@@ -118,14 +120,13 @@ export const BendaharaHub: React.FC<BendaharaHubProps> = ({
     { id: 'checklist' as const, label: 'Ceklis Iuran', icon: CheckSquare },
     { id: 'kolektif' as const, label: 'Iuran Khusus', icon: Receipt },
     { id: 'rekap' as const, label: 'Rekap Kas', icon: TrendingUp },
-    ...(canEdit ? [{ id: 'pengaturan' as const, label: 'Pengaturan', icon: Settings }] : []),
-    ...(isSuperAdmin || canEdit ? [{ id: 'auditlog' as const, label: 'Audit Log', icon: FileCheck2 }] : [])
+    ...(canEdit ? [{ id: 'pengaturan' as const, label: 'Pengaturan Kas', icon: Settings }] : [])
   ];
 
   return (
     <div className="space-y-6">
       {/* Bendahara Sub Navigation Bar (Identical in style to SecretaryHub) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B]">
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
@@ -231,13 +232,6 @@ export const BendaharaHub: React.FC<BendaharaHubProps> = ({
           transactions={transactions}
           members={members}
           settings={settings}
-        />
-      )}
-
-      {currentSubTab === 'auditlog' && (
-        <KasAuditLog
-          auditLogs={auditLogs}
-          onRefreshLogs={onRefreshAuditLogs}
         />
       )}
 

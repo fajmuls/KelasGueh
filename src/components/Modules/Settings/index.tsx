@@ -743,7 +743,7 @@ export const SettingsModule: React.FC = () => {
               <h3 className="text-sm font-bold text-slate-900">Panel Kontrol Admin & Mode Uji Peran</h3>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Bilah pengujian peran disembunyikan secara default di tampilan awal mahasiswa. Anda dapat mengaktifkannya di sini untuk pengujian hak akses RBAC.
+              Bilah pengujian peran disembunyikan secara default di tampilan awal siswa. Anda dapat mengaktifkannya di sini untuk pengujian hak akses RBAC.
             </p>
           </div>
 
@@ -769,7 +769,7 @@ export const SettingsModule: React.FC = () => {
               { roleKey: 'role_superadmin', label: 'Super Admin', name: 'Dr. Hendra' },
               { roleKey: 'role_ketua', label: 'Ketua Kelas', name: 'Aditya Pratama' },
               { roleKey: 'role_bendahara', label: 'Bendahara', name: 'Siti Rahmawati' },
-              { roleKey: 'role_anggota', label: 'Mahasiswa', name: 'Rian Hidayat' },
+              { roleKey: 'role_anggota', label: 'Siswa', name: 'Rian Hidayat' },
             ].map((persona) => {
               const targetUser = allUsers.find(u => u.role_id === persona.roleKey);
               const isActive = role?.id === persona.roleKey;

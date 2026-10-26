@@ -284,7 +284,7 @@ export const KasBook: React.FC<KasBookProps> = ({
   return (
     <div className="space-y-6">
       {/* Header & Action Controls */}
-      <div className="card-doodle p-5 rounded-lg bg-[#FFFDF9] relative">
+      <div className="card-doodle p-5 rounded-xl bg-[#FFFDF9] relative">
         <ScotchTape className="absolute -top-3 right-8 rotate-2" />
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-slate-900 pb-4 mb-4">
@@ -472,7 +472,7 @@ export const KasBook: React.FC<KasBookProps> = ({
       </div>
 
       {/* Transactions Table (Minimalist Doodle Notebook Style) */}
-      <div className="card-doodle rounded-lg bg-white overflow-hidden shadow-sm border-2 border-slate-900">
+      <div className="card-doodle rounded-xl bg-white overflow-hidden shadow-sm border-2 border-slate-900">
         <div className="overflow-x-auto max-h-[600px] relative">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-[#FAF7F2] border-b-2 border-slate-900 font-black uppercase text-slate-700 sticky top-0 z-20">
@@ -576,7 +576,7 @@ export const KasBook: React.FC<KasBookProps> = ({
       {/* Modal Catat Transaksi Baru (Hanya Bendahara) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="card-doodle bg-white max-w-lg w-full rounded-lg p-6 relative max-h-[90vh] overflow-y-auto">
+          <div className="card-doodle bg-white max-w-lg w-full rounded-xl p-6 relative max-h-[90vh] overflow-y-auto">
             <ScotchTape className="absolute -top-3 left-1/2 -translate-x-1/2 rotate-1" />
 
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
@@ -828,7 +828,7 @@ export const KasBook: React.FC<KasBookProps> = ({
       {/* Modal Zoom Nota / Kwitansi */}
       {previewReceiptUrl && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="card-doodle bg-white max-w-xl w-full rounded-lg p-5 relative">
+          <div className="card-doodle bg-white max-w-xl w-full rounded-xl p-5 relative">
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2 mb-4">
               <h4 className="font-black text-slate-900 flex items-center gap-2">
                 <DoodleReceipt className="w-5 h-5" />
@@ -855,7 +855,7 @@ export const KasBook: React.FC<KasBookProps> = ({
       {/* Super Admin Dues Setting Modal */}
       {isDuesModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="card-doodle bg-white max-w-md w-full rounded-lg p-6 relative">
+          <div className="card-doodle bg-white max-w-md w-full rounded-xl p-6 relative">
             <ScotchTape className="absolute -top-3 left-10 rotate-1" />
 
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">

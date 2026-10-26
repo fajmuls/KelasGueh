@@ -70,7 +70,7 @@ export const DynamicQrPresence: React.FC<DynamicQrPresenceProps> = ({
 
     const student = members.find((m) => m.id === selectedStudentId);
     if (!student) {
-      setErrorMessage('Pilih mahasiswa terlebih dahulu.');
+      setErrorMessage('Pilih siswa terlebih dahulu.');
       return;
     }
 
@@ -167,7 +167,7 @@ export const DynamicQrPresence: React.FC<DynamicQrPresenceProps> = ({
               </div>
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">Input Token / Check-In Presensi</h4>
-                <p className="text-[11px] text-slate-500">Mahasiswa memasukkan 6-digit kode yang tampil di layar proyektor / dosen</p>
+                <p className="text-[11px] text-slate-500">Siswa memasukkan 6-digit kode yang tampil di layar proyektor / dosen</p>
               </div>
             </div>
 
@@ -186,7 +186,7 @@ export const DynamicQrPresence: React.FC<DynamicQrPresenceProps> = ({
 
             <form onSubmit={handleStudentCheckIn} className="space-y-3">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Pilih Akun Mahasiswa:</label>
+                <label className="block font-semibold text-slate-700 mb-1">Pilih Akun Siswa:</label>
                 <select
                   value={selectedStudentId}
                   onChange={(e) => setSelectedStudentId(e.target.value)}

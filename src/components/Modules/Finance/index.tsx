@@ -522,7 +522,7 @@ export const FinanceModule: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                   <tr>
-                    <th className="p-3.5">Mahasiswa</th>
+                    <th className="p-3.5">Siswa</th>
                     <th className="p-3.5">NIM</th>
                     <th className="p-3.5">Tagihan Kas</th>
                     <th className="p-3.5">Nominal</th>
@@ -768,7 +768,7 @@ export const FinanceModule: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Nominal per Mahasiswa (Rp)</label>
+              <label className="block font-semibold text-slate-700 mb-1">Nominal per Siswa (Rp)</label>
               <input
                 type="number"
                 required

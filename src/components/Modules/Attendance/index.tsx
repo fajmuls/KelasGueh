@@ -68,7 +68,7 @@ export const AttendanceModule: React.FC = () => {
 
       setIsRecordModalOpen(false);
       await loadData();
-      alert('Presensi kehadiran mahasiswa berhasil dicatat!');
+      alert('Presensi kehadiran siswa berhasil dicatat!');
     } catch (err: any) {
       alert(err.message || 'Gagal menyimpan presensi');
     }
@@ -109,7 +109,7 @@ export const AttendanceModule: React.FC = () => {
       {/* Attendance History Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-800">Riwayat Presensi Mahasiswa</h3>
+          <h3 className="text-sm font-bold text-slate-800">Riwayat Presensi Siswa</h3>
           <span className="text-xs text-slate-500">Total {records.length} Catatan</span>
         </div>
 
@@ -118,7 +118,7 @@ export const AttendanceModule: React.FC = () => {
             <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
               <tr>
                 <th className="p-3.5">Tanggal</th>
-                <th className="p-3.5">Mahasiswa</th>
+                <th className="p-3.5">Siswa</th>
                 <th className="p-3.5">NIM</th>
                 <th className="p-3.5">Status Kehadiran</th>
                 <th className="p-3.5">Keterangan</th>
@@ -165,8 +165,8 @@ export const AttendanceModule: React.FC = () => {
       <Modal
         isOpen={isRecordModalOpen}
         onClose={() => setIsRecordModalOpen(false)}
-        title="Input Presensi Mahasiswa"
-        subtitle="Tentukan kehadiran mahasiswa untuk sesi perkuliahan"
+        title="Input Presensi Siswa"
+        subtitle="Tentukan kehadiran siswa untuk sesi perkuliahan"
         maxWidth="2xl"
       >
         <form onSubmit={handleSaveAttendance} className="space-y-4 text-xs">
@@ -194,7 +194,7 @@ export const AttendanceModule: React.FC = () => {
           </div>
 
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-            <label className="block font-semibold text-slate-700">Daftar Mahasiswa:</label>
+            <label className="block font-semibold text-slate-700">Daftar Siswa:</label>
             {members.map((m) => (
               <div
                 key={m.id}

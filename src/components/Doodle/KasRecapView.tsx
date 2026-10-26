@@ -145,7 +145,7 @@ export const KasRecapView: React.FC<KasRecapViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner */}
-      <div className="card-doodle bg-white p-5 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
+      <div className="card-doodle bg-white p-5 rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
         <ScotchTape className="-top-3 left-6 rotate-1" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -224,7 +224,7 @@ export const KasRecapView: React.FC<KasRecapViewProps> = ({
       {/* VIEW 1: 12-MONTH TABLE */}
       {viewMode === 'bulanan' && (
         <div className="space-y-4">
-          <div className="card-doodle bg-white rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] overflow-hidden">
+          <div className="card-doodle bg-white rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#FFFDF5] border-b-2 border-slate-900 font-black text-slate-700">
@@ -315,7 +315,7 @@ export const KasRecapView: React.FC<KasRecapViewProps> = ({
       {viewMode === 'semester' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* SEMESTER GENAP (Jan - Jun) */}
-          <div className="card-doodle bg-white rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] p-5 space-y-4">
+          <div className="card-doodle bg-white rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] p-5 space-y-4">
             <div className="border-b-2 border-slate-900 pb-3 flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-sky-100 text-sky-900 border border-slate-900 rounded">
@@ -364,7 +364,7 @@ export const KasRecapView: React.FC<KasRecapViewProps> = ({
           </div>
 
           {/* SEMESTER GANJIL (Jul - Des) */}
-          <div className="card-doodle bg-white rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] p-5 space-y-4">
+          <div className="card-doodle bg-white rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] p-5 space-y-4">
             <div className="border-b-2 border-slate-900 pb-3 flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-amber-100 text-amber-900 border border-slate-900 rounded">

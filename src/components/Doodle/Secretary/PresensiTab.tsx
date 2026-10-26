@@ -188,25 +188,25 @@ export const PresensiTab: React.FC<PresensiTabProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner */}
-      <div className="card-doodle bg-white p-5 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
+      <div className="card-doodle bg-white p-3 sm:p-4 rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
         <ScotchTape className="-top-3 left-6 rotate-1" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider px-2 py-0.5 bg-sky-200 text-slate-900 border border-slate-900 rounded">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-sky-200 text-slate-900 border border-slate-900 rounded">
                 Ranah Sekretaris
               </span>
-              <span className="text-xs font-bold text-slate-500">
+              <span className="text-[10px] font-bold text-slate-500">
                 Pencatatan Kehadiran
               </span>
             </div>
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-              <ClipboardCheck className="w-6 h-6 text-emerald-600" />
+            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <ClipboardCheck className="w-5 h-5 text-emerald-600" />
               <span>Presensi Rapat & Kelas</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-              Catat absensi pertemuan kuliah harian, musyawarah kelas, atau kerja kelompok. Cukup klik status hadir/izin/sakit/alpa untuk setiap siswa dan salin format laporan WhatsApp.
+            <p className="text-[11px] sm:text-xs text-slate-600 max-w-2xl leading-relaxed">
+              Catat presensi pertemuan kuliah harian, musyawarah kelas, atau kerja kelompok. Cukup klik status hadir/izin/sakit/alpa untuk setiap siswa dan salin format laporan WhatsApp.
             </p>
           </div>
 
@@ -257,7 +257,7 @@ export const PresensiTab: React.FC<PresensiTabProps> = ({
       )}
 
       {/* Main Attendance Sheet Card */}
-      <div className="card-doodle bg-white rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] overflow-hidden">
+      <div className="card-doodle bg-white rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] overflow-hidden">
         {/* Session Config Strip */}
         <div className="p-4 sm:p-5 bg-[#F8FAFC] border-b-2 border-slate-900 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -286,8 +286,11 @@ export const PresensiTab: React.FC<PresensiTabProps> = ({
               <label className="text-[11px] font-bold text-slate-700 block mb-1">Jenis Pertemuan</label>
               <select
                 value={sessionType}
-                onChange={e => setSessionType(e.target.value as any)}
-                className="w-full px-3 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-900 bg-white"
+                onChange={e => {
+                  sfx.playOptionSelect();
+                  setSessionType(e.target.value as any);
+                }}
+                className="w-full px-3 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-900 bg-white shadow-[1px_1px_0px_#000] cursor-pointer appearance-none"
               >
                 <option value="kuliah">Kuliah Kelas</option>
                 <option value="rapat">Rapat Internal Kelas</option>

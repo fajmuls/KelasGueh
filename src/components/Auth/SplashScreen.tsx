@@ -157,7 +157,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       // Claim role & link profile
       const res = await api.claimRole({
         google_email: firebaseUser?.email || chosenStudent?.email || `${nimInput}@student.ac.id`,
-        google_name: firebaseUser?.displayName || chosenStudent?.name || 'Mahasiswa',
+        google_name: firebaseUser?.displayName || chosenStudent?.name || 'Siswa',
         google_avatar: firebaseUser?.photoURL || chosenStudent?.avatar || '',
         google_uid: firebaseUser?.uid || `splash_${selectedStudentId}`,
         requested_user_id: selectedStudentId,
@@ -259,7 +259,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-white leading-tight">
               Kelas Manager
             </h1>
-            <p className="text-[11px] text-slate-400">Portal Kolaborasi Mahasiswa</p>
+            <p className="text-[11px] text-slate-400">Portal Kolaborasi Siswa</p>
           </div>
         </div>
 
@@ -359,7 +359,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                   />
                   <div className="overflow-hidden">
                     <p className="text-xs font-bold text-white truncate">
-                      {firebaseUser.displayName || 'Mahasiswa'}
+                      {firebaseUser.displayName || 'Siswa'}
                     </p>
                     <p className="text-[11px] text-slate-400 font-mono truncate">
                       {firebaseUser.email}
@@ -395,7 +395,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                   )}
                 </div>
                 <p className="text-xs text-slate-400">
-                  Pilih kelas untuk melanjutkan ke profil mahasiswa dan melihat aktivitas perkuliahan.
+                  Pilih kelas untuk melanjutkan ke profil siswa dan melihat aktivitas perkuliahan.
                 </p>
               </div>
 
@@ -421,7 +421,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                       </div>
                       <p className="text-xs text-slate-300">{cls.major} • {cls.faculty}</p>
                       <p className="text-[11px] text-slate-400">
-                        Dosen Wali: {cls.advisor} • {cls.studentCount} Mahasiswa
+                        Dosen Wali: {cls.advisor} • {cls.studentCount} Siswa
                       </p>
                     </div>
 
@@ -506,9 +506,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                 <form onSubmit={handleSubmitClassEntry} className="space-y-4 text-xs">
                   <div className="p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-xl text-slate-300 leading-relaxed">
                     <p className="font-semibold text-indigo-300 flex items-center gap-1.5 mb-1">
-                      <UserCheck className="w-3.5 h-3.5" /> Pilih Profil Mahasiswa Anda di {selectedClass.code}
+                      <UserCheck className="w-3.5 h-3.5" /> Pilih Profil Siswa Anda di {selectedClass.code}
                     </p>
-                    Akun Google Anda (<strong>{firebaseUser.email}</strong>) akan dihubungkan ke profil mahasiswa yang dipilih di bawah ini. Anda langsung masuk sebagai <strong>Anggota Kelas</strong>.
+                    Akun Google Anda (<strong>{firebaseUser.email}</strong>) akan dihubungkan ke profil siswa yang dipilih di bawah ini. Anda langsung masuk sebagai <strong>Anggota Kelas</strong>.
                   </div>
 
                   {/* Step A: Input NIM */}
@@ -650,7 +650,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Kapasitas Mahasiswa</label>
+                  <label className="block text-slate-400 font-semibold mb-1">Kapasitas Siswa</label>
                   <input
                     type="number"
                     value={editingClass.studentCount}

@@ -83,7 +83,7 @@ export const SecretaryHub: React.FC<SecretaryHubProps> = ({
   return (
     <div className="space-y-6">
       {/* Secretary Navigation Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#1E293B]">
         <div className="flex items-center gap-2">
           <button
             onClick={() => {

@@ -81,7 +81,7 @@ export const ClassOrgChart: React.FC<ClassOrgChartProps> = ({ members }) => {
   ) => {
     const cleanPhone = (member.phone || '').replace(/[^0-9]/g, '');
     const waNumber = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
-    const waUrl = waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo ${member.name} (${title}), saya mahasiswa kelas 01SAKP014 ingin berkoordinasi.`)}` : '#';
+    const waUrl = waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`Halo ${member.name} (${title}), saya siswa kelas 01SAKP014 ingin berkoordinasi.`)}` : '#';
 
     const colorClasses = {
       blue: 'border-blue-200 bg-blue-50/40 hover:border-blue-400',
@@ -152,7 +152,7 @@ export const ClassOrgChart: React.FC<ClassOrgChartProps> = ({ members }) => {
           </div>
           <h3 className="text-lg font-black tracking-tight">Bagan Organisasi Kelas 01SAKP014</h3>
           <p className="text-slate-300 text-xs mt-1 max-w-xl">
-            Susunan hirarki kepengurusan kelas yang bertugas mengoordinasikan perkuliahan, administrasi kas, komunikasi dosen, dan aspirasi seluruh mahasiswa.
+            Susunan hirarki kepengurusan kelas yang bertugas mengoordinasikan perkuliahan, administrasi kas, komunikasi dosen, dan aspirasi seluruh siswa.
           </p>
         </div>
 
@@ -213,7 +213,7 @@ export const ClassOrgChart: React.FC<ClassOrgChartProps> = ({ members }) => {
             sekretaris2,
             'blue',
             <FileSpreadsheet className="w-3 h-3 text-blue-600" />,
-            'Pengelolaan rekapitulasi surat perizinan mahasiswa sakit/izin dan pengumuman kelas.'
+            'Pengelolaan rekapitulasi surat perizinan siswa sakit/izin dan pengumuman kelas.'
           )}
 
           {renderOfficerCard(

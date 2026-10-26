@@ -14,7 +14,10 @@ interface AuthContextType {
   isSuperAdmin: boolean;
   isRealSuperAdmin: boolean;
   isBendahara: boolean;
+  isSekretaris: boolean;
   canEditKas: boolean;
+  canEditSecretary: boolean;
+  canViewAudit: boolean;
   loginAs: (role: UserRole, customName?: string, customEmail?: string) => void;
   loginWithGooglePrompt: () => Promise<void>;
   switchRole: (newRole: UserRole) => void;
@@ -90,7 +93,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const email = customEmail || (selectedRole === 'superadmin' ? SUPER_ADMIN_EMAIL : `${selectedRole}@kelasgue.sch.id`);
     const name = customName || (
       email.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Super Admin Kelas' :
-      selectedRole === 'bendahara' ? 'Bendahara Kelas' : 'Anggota Siswa Kelas'
+      selectedRole === 'bendahara' ? 'Bendahara Kelas' : 
+      selectedRole === 'sekretaris' ? 'Sekretaris Kelas' : 'Anggota Siswa Kelas'
     );
 
     const assignedRole = await LocalKasRepository.syncUserProfile({
@@ -166,11 +170,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Determine if user has permanent super admin privileges for simulation switching
   const isRealSuperAdmin = user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
-  // Active role determines actual current permissions (allows superadmin to simulate bendahara / anggota)
+  // Active role determines actual current permissions
   const role: UserRole = user?.role || 'anggota';
   const isSuperAdmin = role === 'superadmin';
   const isBendahara = role === 'bendahara';
+  const isSekretaris = role === 'sekretaris';
+  
+  // Specific Permissions
   const canEditKas = isSuperAdmin || isBendahara;
+  const canEditSecretary = isSuperAdmin || isSekretaris;
+  const canViewAudit = isSuperAdmin;
 
   return (
     <AuthContext.Provider
@@ -180,7 +189,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSuperAdmin,
         isRealSuperAdmin,
         isBendahara,
+        isSekretaris,
         canEditKas,
+        canEditSecretary,
+        canViewAudit,
         loginAs,
         loginWithGooglePrompt,
         switchRole,

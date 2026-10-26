@@ -82,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           items: [
             { id: 'finance', label: 'Buku Kas & Tagihan', icon: Wallet, permission: 'view_finance' },
             { id: 'transparency', label: 'Transparansi Kas', icon: Eye, permission: 'view_transparency' },
-            { id: 'attendance', label: 'Absensi Mahasiswa', icon: ClipboardCheck, permission: 'view_attendance' },
+            { id: 'attendance', label: 'Absensi Siswa', icon: ClipboardCheck, permission: 'view_attendance' },
             { id: 'reports', label: 'Laporan Kelas', icon: FileSpreadsheet, permission: 'view_reports' },
           ],
         },

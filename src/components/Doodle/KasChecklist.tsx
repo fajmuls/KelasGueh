@@ -365,7 +365,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 
     return `*LAPORAN IURAN KAS KELAS*\n` +
       `*${settings.className}* · Periode *${MONTHS[selectedMonth]} ${selectedYear}*\n\n` +
-      `Yth. Sdr/i *${member.name}* (NIM: ${member.studentId}),\n\n` +
+      `Yth. Sdr/i *${toTitleCase(member.name)}* (NIM: ${member.studentId}),\n\n` +
       `Berikut rincian transparansi status iuran kas kelas Anda:\n` +
       `• *Total Kas Terkumpul:* ${formatRupiah(currentBalance)}\n` +
       `• *Pengeluaran Bulan Ini:* ${formatRupiah(monthExpenses)}\n` +
@@ -390,7 +390,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   return (
     <div className="space-y-3">
       {/* Header card - Compact and Doodle */}
-      <div className="card-doodle p-3 sm:p-4 rounded-lg bg-[#FFFDF9] relative">
+      <div className="card-doodle p-3 sm:p-4 rounded-xl bg-[#FFFDF9] relative">
         <ScotchTape className="absolute -top-3 left-10 rotate-[-1deg]" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-slate-900 pb-2.5 mb-2.5">
           <div>
@@ -493,7 +493,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 
       {/* CARD VIEW MODE FOR CLASSROOM COLLECTION */}
       {isFastTapMode ? (
-        <div className="card-doodle p-4 rounded-lg bg-amber-50/50 border-2 border-slate-900 space-y-4">
+        <div className="card-doodle p-4 rounded-xl bg-amber-50/50 border-2 border-slate-900 space-y-4">
           {/* Week Selector Bar */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3 border-2 border-slate-900 rounded-md">
             <div>
@@ -602,7 +602,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
           </div>
         </div>
       ) : (
-        <div className="relative card-doodle bg-white rounded-lg overflow-hidden border-2 border-slate-900 shadow-xs">
+        <div className="relative card-doodle bg-white rounded-xl overflow-hidden border-2 border-slate-900 shadow-xs">
           {/* Mobile Horizontal Scroll Hint Cue */}
           <div className="sm:hidden flex items-center justify-between px-2.5 py-1 bg-amber-50 border-b border-slate-300 text-[10px] font-bold text-slate-700">
             <span>Matriks Siswa &amp; Minggu</span>
@@ -822,11 +822,11 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
       {/* Add Member Modal */}
       {showAddMember && (
         <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="card-doodle bg-white max-w-sm w-full rounded-lg p-5 relative">
+          <div className="card-doodle bg-white max-w-sm w-full rounded-xl p-5 relative">
             <h3 className="text-lg font-black text-slate-900 mb-3 pb-2 border-b-2 border-slate-900">Tambah Siswa Baru</h3>
             <form onSubmit={handleAddSubmit} className="space-y-3">
               <div><label className="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">Nama Lengkap *</label><input required value={newName} onChange={e => setNewName(e.target.value)} className="w-full px-2 py-1.5 text-[11px] border-2 border-slate-900 rounded focus:outline-none" /></div>
-              <div><label className="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">NIM / No Absen</label><input value={newNim} onChange={e => setNewNim(e.target.value)} className="w-full px-2 py-1.5 text-[11px] font-mono border-2 border-slate-900 rounded focus:outline-none" /></div>
+              <div><label className="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">NIM</label><input value={newNim} onChange={e => setNewNim(e.target.value)} className="w-full px-2 py-1.5 text-[11px] font-mono border-2 border-slate-900 rounded focus:outline-none" /></div>
               <div><label className="block text-[10px] font-bold uppercase text-slate-600 mb-0.5">No WhatsApp</label><input value={newPhone} onChange={e => setNewPhone(e.target.value)} className="w-full px-2 py-1.5 text-[11px] font-mono border-2 border-slate-900 rounded focus:outline-none" /></div>
               <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
                 <button type="button" onClick={() => setShowAddMember(false)} className="px-3 py-1.5 border border-slate-900 rounded text-[10px] font-bold">Batal</button>
@@ -853,7 +853,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                 return (
                   <div key={m.id} className="p-2 bg-slate-50 border border-slate-800 rounded flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-bold text-slate-900 truncate">{m.name}</p>
+                      <p className="text-[10px] font-bold text-slate-900 truncate">{toTitleCase(m.name)}</p>
                       <p className="text-[9px] text-rose-600 font-mono">Tunggakan: {unpaidCount} mgg ({formatRupiah(unpaidCount * settings.weeklyDuesAmount)})</p>
                     </div>
                     <button onClick={() => handleSendWhatsApp(m)} className="btn-doodle p-1.5 bg-emerald-400 rounded text-slate-900"><Send className="w-3 h-3" /></button>
@@ -868,7 +868,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
       {/* Bulk Processing Loading Modal Overlay */}
       {bulkLoadingWeek && (
         <div className="fixed inset-0 z-[1200] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="card-doodle bg-white max-w-sm w-full rounded-2xl p-6 border-3 border-slate-900 shadow-[5px_5px_0px_#1E293B] text-center space-y-4 animate-in zoom-in-95">
+          <div className="card-doodle bg-white max-w-sm w-full rounded-xl p-6 border-3 border-slate-900 shadow-[5px_5px_0px_#1E293B] text-center space-y-4 animate-in zoom-in-95">
             <div className="w-16 h-16 mx-auto rounded-full bg-amber-100 border-2 border-slate-900 flex items-center justify-center shadow-[2px_2px_0px_#000]">
               <Loader2 className="w-9 h-9 text-amber-600 animate-spin" />
             </div>

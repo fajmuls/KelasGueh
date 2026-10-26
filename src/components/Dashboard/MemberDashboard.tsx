@@ -69,7 +69,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ onNavigate }) 
         onOpenAnnouncements={() => onNavigate('announcements')} 
       />
 
-      {/* Sapaan Mahasiswa (Clean Minimalist Dashboard Header) */}
+      {/* Sapaan Siswa (Clean Minimalist Dashboard Header) */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-200">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">
@@ -252,7 +252,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ onNavigate }) 
         </div>
       </div>
 
-      {/* Grid Bawah: Pengumuman Terbaru & Tugas Mahasiswa */}
+      {/* Grid Bawah: Pengumuman Terbaru & Tugas Siswa */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pengumuman Terbaru */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
@@ -290,7 +290,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ onNavigate }) 
           </div>
         </div>
 
-        {/* Tugas Mahasiswa / Task Saya */}
+        {/* Tugas Siswa / Task Saya */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

@@ -15,7 +15,7 @@ export const RoleSwitcherBar: React.FC<RoleSwitcherBarProps> = ({ onClose }) => 
     { roleKey: 'role_wakil', label: 'Wakil Ketua', desc: 'Operasional' },
     { roleKey: 'role_bendahara', label: 'Bendahara', desc: 'Keuangan' },
     { roleKey: 'role_sekretaris', label: 'Sekretaris', desc: 'Administrasi' },
-    { roleKey: 'role_anggota', label: 'Anggota', desc: 'Mahasiswa' },
+    { roleKey: 'role_anggota', label: 'Anggota', desc: 'Siswa' },
     { roleKey: 'role_koordinator_acara', label: 'Koor. Acara', desc: 'Custom Role' },
   ];
 

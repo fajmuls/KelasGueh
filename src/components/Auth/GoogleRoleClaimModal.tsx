@@ -161,7 +161,7 @@ export const GoogleRoleClaimModal: React.FC<GoogleRoleClaimModalProps> = ({
         {/* Header Badge */}
         <div className="flex items-center justify-between">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-200">
-            <GraduationCap className="w-3.5 h-3.5" /> Pendaftaran & Pemilihan Kelas Mahasiswa
+            <GraduationCap className="w-3.5 h-3.5" /> Pendaftaran & Pemilihan Kelas Siswa
           </div>
           <button
             onClick={logoutGoogle}
@@ -183,7 +183,7 @@ export const GoogleRoleClaimModal: React.FC<GoogleRoleClaimModalProps> = ({
           />
           <div className="overflow-hidden">
             <p className="text-sm font-bold text-slate-900 truncate">
-              {firebaseUser?.displayName || 'Mahasiswa Google'}
+              {firebaseUser?.displayName || 'Siswa Google'}
             </p>
             <p className="text-xs text-slate-500 font-mono truncate">
               {firebaseUser?.email}
@@ -245,7 +245,7 @@ export const GoogleRoleClaimModal: React.FC<GoogleRoleClaimModalProps> = ({
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1 text-[11px]">
-                  Pilih Nama di Roster 39 Mahasiswa Kelas:
+                  Pilih Nama di Roster 39 Siswa Kelas:
                 </label>
                 <select
                   required

@@ -101,7 +101,7 @@ export const CourseSyllabusModal: React.FC<CourseSyllabusModalProps> = ({
         meeting_no: nextNo,
         topic: `Pertemuan ke-${nextNo}: Pokok Bahasan Baru`,
         subtopics: ['Subtopik materi 1', 'Subtopik materi 2'],
-        learning_outcome: 'Mahasiswa menguasai capaian pembelajaran pada pokok bahasan ini.',
+        learning_outcome: 'Siswa menguasai capaian pembelajaran pada pokok bahasan ini.',
       },
     ]);
   };

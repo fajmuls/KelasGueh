@@ -114,7 +114,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Top Banner Alert / Welcome */}
-      <div className="relative card-doodle-yellow p-4 sm:p-6 rounded-lg">
+      <div className="relative card-doodle-yellow p-4 sm:p-6 rounded-xl">
         <ScotchTape className="absolute -top-3 left-8 rotate-[-2deg]" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -199,7 +199,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
 
       {/* Primary KPI Grid (Compacted vertical padding on mobile) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-        <div className="relative card-doodle p-3.5 sm:p-5 rounded-lg bg-white">
+        <div className="relative card-doodle p-3.5 sm:p-5 rounded-xl bg-white">
           <div className="absolute top-3 right-3">
             <DoodleCoin className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
@@ -213,7 +213,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
           </div>
         </div>
 
-        <div className="relative card-doodle-mint p-3.5 sm:p-5 rounded-lg">
+        <div className="relative card-doodle-mint p-3.5 sm:p-5 rounded-xl">
           <div className="absolute top-3 right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-200 border-2 border-slate-900 flex items-center justify-center">
             <ArrowDownRight className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-800" />
           </div>
@@ -227,7 +227,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
           </div>
         </div>
 
-        <div className="relative card-doodle-rose p-3.5 sm:p-5 rounded-lg">
+        <div className="relative card-doodle-rose p-3.5 sm:p-5 rounded-xl">
           <div className="absolute top-3 right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-rose-200 border-2 border-slate-900 flex items-center justify-center">
             <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5 text-rose-800" />
           </div>
@@ -241,7 +241,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
           </div>
         </div>
 
-        <div className="relative card-doodle-blue p-3.5 sm:p-5 rounded-lg">
+        <div className="relative card-doodle-blue p-3.5 sm:p-5 rounded-xl">
           <div className="absolute top-3 right-3">
             <PushPin className="w-5 h-5 sm:w-6 sm:h-6 text-sky-700" />
           </div>
@@ -263,7 +263,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
 
       {/* Advanced Stats Chart Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 relative card-doodle p-5 sm:p-6 rounded-lg bg-white">
+        <div className="lg:col-span-2 relative card-doodle p-5 sm:p-6 rounded-xl bg-white">
           <ScotchTape className="absolute -top-3 left-10 rotate-1" />
           <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-6">
             <div className="flex items-center gap-2">
@@ -312,7 +312,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
 
         {/* Quick Summary Sidebar */}
         <div className="space-y-6">
-          <div className="relative card-doodle p-5 rounded-lg bg-amber-50/60">
+          <div className="relative card-doodle p-5 rounded-xl bg-amber-50/60">
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2 border-b-2 border-slate-900 pb-2 mb-4">
               <CheckCircle2 className="w-5 h-5 text-emerald-700" />
               <span>Status Iuran</span>
@@ -337,7 +337,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
             </button>
           </div>
 
-          <div className="relative card-doodle p-5 rounded-lg bg-white">
+          <div className="relative card-doodle p-5 rounded-xl bg-white">
             <h3 className="text-base font-black text-slate-900 flex items-center gap-2 border-b-2 border-slate-900 pb-2 mb-4">
               <BarChart3 className="w-5 h-5 text-sky-600" />
               <span>Data Real-Sync</span>
@@ -361,7 +361,7 @@ export const KasOverview: React.FC<KasOverviewProps> = ({
       </div>
 
       {/* Recent Activity Notepad */}
-      <div className="relative card-doodle p-5 sm:p-6 rounded-lg bg-[#FFFDF9]">
+      <div className="relative card-doodle p-5 sm:p-6 rounded-xl bg-[#FFFDF9]">
         <ScotchTape className="absolute -top-3 right-12 rotate-3" />
         <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
           <div className="flex items-center gap-2">

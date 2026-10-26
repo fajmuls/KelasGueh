@@ -291,7 +291,7 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Header Card */}
-      <div className="card-doodle bg-white p-5 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
+      <div className="card-doodle bg-white p-5 rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
         <ScotchTape className="-top-3 left-6 rotate-1" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -416,7 +416,7 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
           })}
         </div>
       ) : (
-        <div className="card-doodle bg-white p-8 rounded-2xl border-2 border-slate-900 text-center space-y-3">
+        <div className="card-doodle bg-white p-8 rounded-xl border-2 border-slate-900 text-center space-y-3">
           <Receipt className="w-12 h-12 text-slate-400 mx-auto" />
           <h3 className="text-base font-black text-slate-800">Belum Ada Tagihan Kolektif</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -435,7 +435,7 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
 
       {/* Active Campaign Detail Box */}
       {activeBill && (
-        <div className="card-doodle bg-white rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] overflow-hidden">
+        <div className="card-doodle bg-white rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] overflow-hidden">
           {/* Top Info Bar */}
           <div className="bg-[#FFFDF5] p-5 border-b-2 border-slate-900 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -651,7 +651,7 @@ export const KolektifBillTab: React.FC<KolektifBillTabProps> = ({
       {/* Modal Buat Tagihan Kolektif Baru */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="card-doodle bg-white w-full max-w-xl rounded-2xl border-3 border-slate-900 shadow-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto space-y-4 animate-in zoom-in-95 duration-150">
+          <div className="card-doodle bg-white w-full max-w-xl rounded-xl border-3 border-slate-900 shadow-2xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
               <div className="flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-amber-600" />

@@ -75,7 +75,7 @@ export const MyKasModule: React.FC = () => {
             </button>
           </div>
           <p className="text-xs text-blue-100">
-            Bank Mandiri • a.n. Kas Mahasiswa {classInfo?.code} (Bendahara: Siti Aisyah)
+            Bank Mandiri • a.n. Kas Siswa {classInfo?.code} (Bendahara: Siti Aisyah)
           </p>
         </div>
 

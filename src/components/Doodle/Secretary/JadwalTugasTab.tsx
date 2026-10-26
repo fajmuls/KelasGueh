@@ -189,24 +189,24 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner Card */}
-      <div className="card-doodle bg-white p-5 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
+      <div className="card-doodle bg-white p-3 sm:p-4 rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
         <ScotchTape className="-top-3 left-6 rotate-1" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider px-2 py-0.5 bg-sky-200 text-slate-900 border border-slate-900 rounded">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-sky-200 text-slate-900 border border-slate-900 rounded">
                 Ranah Sekretaris
               </span>
-              <span className="text-xs font-bold text-slate-500">
+              <span className="text-[10px] font-bold text-slate-500">
                 Akademik & Jadwal Kuliah
               </span>
             </div>
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-              <CalendarDays className="w-6 h-6 text-sky-600" />
+            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-sky-600" />
               <span>Jadwal Kuliah & Deadline Tugas</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-slate-600 max-w-2xl leading-relaxed">
               Kelola daftar mata kuliah, nama dosen pengampu, bobot SKS, ruangan, dan deadline tugas kuliah. Data mata kuliah di sini otomatis terhubung ke filter Poin Keaktifan dan Presensi.
             </p>
           </div>
@@ -328,7 +328,7 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
             return (
               <div
                 key={course.id}
-                className="card-doodle bg-white rounded-2xl border-3 border-slate-900 p-5 shadow-[4px_4px_0px_#1E293B] flex flex-col justify-between space-y-4"
+                className="card-doodle bg-white rounded-xl border-3 border-slate-900 p-5 shadow-[4px_4px_0px_#1E293B] flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-3">
                   {/* Top info */}
@@ -478,8 +478,8 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
           })}
         </div>
       ) : (
-        <div className="card-doodle bg-white p-10 rounded-2xl border-2 border-slate-900 text-center space-y-3">
-          <CalendarDays className="w-12 h-12 text-slate-400 mx-auto" />
+        <div className="card-doodle bg-white p-10 rounded-xl border-2 border-slate-900 text-center space-y-3">
+          <CalendarDays className="w-10 h-10 text-slate-400 mx-auto" />
           <h3 className="text-base font-black text-slate-800">Belum Ada Jadwal Kuliah</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
             {selectedDay !== 'all' ? `Tidak ada jadwal kuliah di hari ${selectedDay}.` : 'Mulai daftarkan jadwal mata kuliah semester ini dengan menekan tombol Tambah Matkul di atas.'}
@@ -490,7 +490,7 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
       {/* Modal Add / Edit Course */}
       {isCourseModalOpen && (
         <div className="fixed inset-0 z-[1100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="card-doodle bg-white max-w-md w-full rounded-2xl p-5 border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative animate-in zoom-in-95 my-auto">
+          <div className="card-doodle bg-white max-w-md w-full rounded-xl p-5 border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative animate-in zoom-in-95 my-auto">
             <ScotchTape className="absolute -top-3 left-10 rotate-[-1deg]" />
 
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
@@ -540,8 +540,11 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                   <label className="font-bold text-slate-700 block mb-1">Hari Perkuliahan</label>
                   <select
                     value={day}
-                    onChange={e => setDay(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border-2 border-slate-900 font-bold bg-white"
+                    onChange={e => {
+                      sfx.playOptionSelect();
+                      setDay(e.target.value);
+                    }}
+                    className="w-full px-3 py-2 rounded-lg border-2 border-slate-900 font-bold bg-white shadow-[1px_1px_0px_#000] cursor-pointer appearance-none"
                   >
                     {DAYS_OF_WEEK.map(d => (
                       <option key={d} value={d}>{d}</option>
@@ -610,7 +613,7 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
       {/* Modal Add Assignment */}
       {isAssignModalOpen && (
         <div className="fixed inset-0 z-[1100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="card-doodle bg-white max-w-md w-full rounded-2xl p-5 border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative animate-in zoom-in-95 my-auto">
+          <div className="card-doodle bg-white max-w-md w-full rounded-xl p-5 border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative animate-in zoom-in-95 my-auto">
             <ScotchTape className="absolute -top-3 left-10 rotate-[-1deg]" />
 
             <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
@@ -631,8 +634,11 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                 <label className="font-bold text-slate-700 block mb-1">Mata Kuliah</label>
                 <select
                   value={selectedCourseForAssign}
-                  onChange={e => setSelectedCourseForAssign(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border-2 border-slate-900 font-bold bg-white"
+                  onChange={e => {
+                    sfx.playOptionSelect();
+                    setSelectedCourseForAssign(e.target.value);
+                  }}
+                  className="w-full px-3 py-2 rounded-lg border-2 border-slate-900 font-bold bg-white shadow-[1px_1px_0px_#000] cursor-pointer appearance-none"
                 >
                   {courseSchedules.map(c => (
                     <option key={c.id} value={c.id}>

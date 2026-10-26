@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type ThemeType = 'light' | 'sepia' | 'dark';
+export type ThemeType = 'light' | 'sepia';
 
 interface ThemeContextType {
   theme: ThemeType;
@@ -22,15 +22,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('theme-light', 'theme-sepia', 'theme-dark');
+    root.classList.remove('theme-light', 'theme-sepia');
     root.classList.add(`theme-${theme}`);
     
-    // Also set color-scheme for system UI elements
-    if (theme === 'dark') {
-      root.style.colorScheme = 'dark';
-    } else {
-      root.style.colorScheme = 'light';
-    }
+    // Force light color-scheme for system UI elements
+    root.style.colorScheme = 'light';
   }, [theme]);
 
   return (

@@ -112,8 +112,8 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 
       text += `📌 *STATUS IURAN KAS:* \n`;
       text += `• *${activeBill.title}*\n`;
-      text += `• Nominal: Rp ${activeBill.amount.toLocaleString('id-ID')} / mahasiswa\n`;
-      text += `• Progres Pembayaran: ${paidCount}/${totalCount} Mahasiswa (${Math.round((paidCount / totalCount) * 100)}%)\n\n`;
+      text += `• Nominal: Rp ${activeBill.amount.toLocaleString('id-ID')} / siswa\n`;
+      text += `• Progres Pembayaran: ${paidCount}/${totalCount} Siswa (${Math.round((paidCount / totalCount) * 100)}%)\n\n`;
     }
 
     text += `──────────────────────\n`;
@@ -138,7 +138,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="Bagikan Laporan Kas ke WhatsApp" maxWidth="max-w-2xl">
       <div className="space-y-4">
         <p className="text-xs text-slate-500">
-          Pilih periode laporan kas yang ingin Anda bagikan langsung ke grup WhatsApp kelas atau broadcast mahasiswa.
+          Pilih periode laporan kas yang ingin Anda bagikan langsung ke grup WhatsApp kelas atau broadcast siswa.
         </p>
 
         {/* Period Selector Tabs */}

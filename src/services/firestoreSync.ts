@@ -291,7 +291,7 @@ export function subscribeToMembers(callback: (members: User[]) => void): () => v
 
           customMap.set(docSnap.id, {
             id: docSnap.id,
-            name: d.name || d.displayName || 'Mahasiswa',
+            name: d.name || d.displayName || 'Siswa',
             nim: d.nim || d.student_id || '',
             email: d.email || '',
             phone: d.phone || '',
@@ -364,7 +364,7 @@ export async function fetchMembersFromFirestore(): Promise<User[]> {
 
       customMap.set(docSnap.id, {
         id: docSnap.id,
-        name: d.name || d.displayName || 'Mahasiswa',
+        name: d.name || d.displayName || 'Siswa',
         nim: d.nim || d.student_id || '',
         email: d.email || '',
         phone: d.phone || '',
@@ -415,7 +415,7 @@ export async function saveMemberToFirestore(memberData: Partial<User>): Promise<
 
   const userDoc: User = {
     id: userId,
-    name: memberData.name || 'Mahasiswa',
+    name: memberData.name || 'Siswa',
     nim: memberData.nim || '',
     email: memberData.email || '',
     phone: memberData.phone || '',

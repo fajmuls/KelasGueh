@@ -83,7 +83,7 @@ export const MainPortalHub: React.FC<MainPortalHubProps> = ({
   return (
     <div className="space-y-6 max-w-5xl mx-auto py-2 sm:py-4 animate-in fade-in duration-200">
       {/* Header Banner */}
-      <div className="card-doodle bg-white p-5 sm:p-6 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative overflow-hidden">
+      <div className="card-doodle bg-white p-5 sm:p-6 rounded-xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative overflow-hidden">
         <ScotchTape className="-top-3 left-8 rotate-1 hidden sm:block" />
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -128,7 +128,7 @@ export const MainPortalHub: React.FC<MainPortalHubProps> = ({
             sfx.playPageSwitch();
             onSelectDomain('bendahara', 'ringkasan');
           }}
-          className="card-doodle bg-[#FFFBEB] hover:bg-[#FEF3C7] rounded-2xl border-3 border-slate-900 p-5 sm:p-6 shadow-[5px_5px_0px_#1E293B] hover:-translate-y-1 transition-all cursor-pointer flex flex-col justify-between group relative"
+          className="card-doodle bg-[#FFFBEB] hover:bg-[#FEF3C7] rounded-xl border-3 border-slate-900 p-5 sm:p-6 shadow-[5px_5px_0px_#1E293B] hover:-translate-y-1 transition-all cursor-pointer flex flex-col justify-between group relative"
         >
           <div className="space-y-4">
             {/* Top row */}
@@ -178,7 +178,7 @@ export const MainPortalHub: React.FC<MainPortalHubProps> = ({
               <span className="px-2 py-0.5 bg-amber-100 rounded border border-slate-400">Ringkasan Kas</span>
               <span className="px-2 py-0.5 bg-amber-100 rounded border border-slate-400">Buku Kas & Nota</span>
               <span className="px-2 py-0.5 bg-amber-100 rounded border border-slate-400">Ceklis Iuran</span>
-              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 font-black rounded border border-emerald-600">Iuran Kolektif NEW</span>
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 font-black rounded border border-emerald-600">Iuran Kolektif</span>
             </div>
           </div>
 
@@ -198,7 +198,7 @@ export const MainPortalHub: React.FC<MainPortalHubProps> = ({
             sfx.playPageSwitch();
             onSelectDomain('sekretaris', 'keaktifan');
           }}
-          className="card-doodle bg-[#F0F9FF] hover:bg-[#E0F2FE] rounded-2xl border-3 border-slate-900 p-5 sm:p-6 shadow-[5px_5px_0px_#1E293B] hover:-translate-y-1 transition-all cursor-pointer flex flex-col justify-between group relative"
+          className="card-doodle bg-[#F0F9FF] hover:bg-[#E0F2FE] rounded-xl border-3 border-slate-900 p-5 sm:p-6 shadow-[5px_5px_0px_#1E293B] hover:-translate-y-1 transition-all cursor-pointer flex flex-col justify-between group relative"
         >
           <div className="space-y-4">
             {/* Top row */}
@@ -216,7 +216,7 @@ export const MainPortalHub: React.FC<MainPortalHubProps> = ({
                 Sekretariat, Presensi & Akademik
               </h3>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                Pencatatan poin keaktifan mahasiswa, presensi kehadiran harian / rapat kelas, notulensi musyawarah, dan format surat resmi.
+                Pencatatan poin keaktifan siswa, presensi kehadiran harian / rapat kelas, notulensi musyawarah, dan format surat resmi.
               </p>
             </div>
 

@@ -605,9 +605,9 @@ export function exportKasReportToExcel(transactions: Transaction[], classInfo?: 
 export function exportMembersToExcel(members: User[], classInfo?: ClassInfo | null) {
   const className = (classInfo?.name || '01 SAKP 14').replace(/[^a-zA-Z0-9_-]/g, '_');
   const dateStr = new Date().toISOString().split('T')[0];
-  const filename = `Daftar_Mahasiswa_${className}_${dateStr}.csv`;
+  const filename = `Daftar_Siswa_${className}_${dateStr}.csv`;
 
-  const headers = ['No', 'NIM', 'Nama Mahasiswa', 'Role / Jabatan', 'Email Google / Kampus', 'No. WhatsApp', 'Status Akun'];
+  const headers = ['No', 'NIM', 'Nama Siswa', 'Role / Jabatan', 'Email Google / Kampus', 'No. WhatsApp', 'Status Akun'];
 
   const rows = members.map((m, idx) => [
     idx + 1,

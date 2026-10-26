@@ -3,7 +3,7 @@ import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog
 import { getRegisteredUsers, registerOrUpdateUser, updateUserRole } from '../utils/userManagement.ts';
 
 /**
- * CORE DATABASE SERVICE - KELAS GUE v3.9.0
+ * CORE DATABASE SERVICE - KELAS GUE v4.3.0
  * Optimized for Supabase with robust cloud-first synchronization.
  */
 
@@ -761,41 +761,8 @@ export class LocalKasRepository {
   public static getKolektifBills(): KolektifBill[] {
     const raw = localStorage.getItem(this.KEY_KOLEKTIF);
     if (!raw) {
-      // Seed default demo campaign if empty
-      const members = this.getMembers();
-      const allIds = members.map(m => m.id);
-      const sample: KolektifBill[] = [
-        {
-          id: 'kolektif_demo_1',
-          title: 'Seminar Nasional AI & Karir 2026',
-          category: 'Acara & Seminar',
-          billType: 'acara',
-          amountPerPerson: 35000,
-          totalCost: 35000 * (allIds.length || 1),
-          dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-          notes: 'Registrasi kolektif sertifikat & konsumsi seminar.',
-          participantIds: allIds,
-          paidMemberIds: allIds.slice(0, Math.min(2, allIds.length)),
-          createdAt: new Date().toISOString(),
-          syncedToKas: false
-        },
-        {
-          id: 'kolektif_demo_2',
-          title: 'Patungan Konsumsi & Sound System Acara Kelas',
-          category: 'Patungan Belanja',
-          billType: 'patungan',
-          amountPerPerson: 20000,
-          totalCost: 20000 * (allIds.length || 1),
-          dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-          notes: 'Pembelian snack, air mineral, dan sewa mic portable.',
-          participantIds: allIds,
-          paidMemberIds: allIds.slice(0, Math.min(1, allIds.length)),
-          createdAt: new Date().toISOString(),
-          syncedToKas: false
-        }
-      ];
-      localStorage.setItem(this.KEY_KOLEKTIF, JSON.stringify(sample));
-      return sample;
+      localStorage.setItem(this.KEY_KOLEKTIF, JSON.stringify([]));
+      return [];
     }
     try {
       const parsed: KolektifBill[] = JSON.parse(raw);
@@ -852,7 +819,7 @@ export class LocalKasRepository {
   }
 
   // ---------------- SEKRETARIAT: POIN KEAKTIFAN ----------------
-  private static KEY_POINTS = 'kelasgue_secretary_points_v1';
+  private static KEY_POINTS = 'kelasgue_secretary_points_v2';
 
   public static getPointLogs(): StudentPointLog[] {
     const raw = localStorage.getItem(this.KEY_POINTS);
@@ -967,7 +934,7 @@ export class LocalKasRepository {
   }
 
   // ---------------- SEKRETARIAT: INVENTARIS KELAS ----------------
-  private static KEY_INVENTORY = 'kelasgue_secretary_inventory_v1';
+  private static KEY_INVENTORY = 'kelasgue_secretary_inventory_v2';
 
   public static getInventoryItems(): ClassInventoryItem[] {
     const raw = localStorage.getItem(this.KEY_INVENTORY);
@@ -1008,7 +975,7 @@ export class LocalKasRepository {
   }
 
   // ---------------- SEKRETARIAT: JADWAL KULIAH & TUGAS ----------------
-  private static KEY_COURSES = 'kelasgue_secretary_courses_v1';
+  private static KEY_COURSES = 'kelasgue_secretary_courses_v2';
 
   public static getCourseSchedules(): CourseSchedule[] {
     const raw = localStorage.getItem(this.KEY_COURSES);

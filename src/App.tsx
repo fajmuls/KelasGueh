@@ -88,7 +88,7 @@ const getPathFromRoute = (domain: AppDomain, tab: AppNavTab): string => {
 };
 
 const AppContent: React.FC = () => {
-  const { user, role, isLoggedIn, canEditKas, isSuperAdmin } = useAuth();
+  const { user, role, isLoggedIn, canEditKas, canEditSecretary, canViewAudit, isSuperAdmin } = useAuth();
   const [showIntro, setShowIntro] = useState(true);
 
   // Initialize Route & Domain from browser URL
@@ -103,7 +103,6 @@ const AppContent: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSplitBillModalOpen, setIsSplitBillModalOpen] = useState(false);
   const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
-  const [isAdminSettingsModalOpen, setIsAdminSettingsModalOpen] = useState(false);
 
   // Synchronized Navigation Handler with HTML5 history.pushState
   const navigateTo = (newDomain: AppDomain, newTab: AppNavTab) => {
@@ -163,12 +162,18 @@ const AppContent: React.FC = () => {
     }
   }, [isLoggedIn, showIntro]);
 
-  // Auto redirect from settings tab if user is read-only Anggota
+  // Auto redirect from settings tab if user is restricted
   useEffect(() => {
-    if (!canEditKas && (currentTab === 'pengaturan' || currentTab === 'auditlog')) {
+    if (!canEditKas && currentTab === 'pengaturan') {
       navigateTo('bendahara', 'ringkasan');
     }
-  }, [canEditKas, currentTab]);
+    if (!canViewAudit && currentTab === 'auditlog') {
+      navigateTo('bendahara', 'ringkasan');
+    }
+    if (activeDomain === 'admin' && !isSuperAdmin) {
+      navigateTo('hub', 'beranda');
+    }
+  }, [canEditKas, canViewAudit, isSuperAdmin, currentTab, activeDomain]);
 
   // State: Financial Data
   const [transactions, setTransactions] = useState<KasTransaction[]>(() => LocalKasRepository.getTransactions());
@@ -695,7 +700,7 @@ const AppContent: React.FC = () => {
           classNameTitle={settings.className}
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
-          onOpenAdminSettings={() => setIsAdminSettingsModalOpen(true)}
+          onOpenAdminSettings={() => handleSelectDomain('admin', 'admin_settings')}
         />
       )}
 
@@ -724,7 +729,7 @@ const AppContent: React.FC = () => {
             }
             members={members}
             settings={settings}
-            canEdit={canEditKas}
+            canEdit={canEditSecretary}
             pointLogs={pointLogs}
             attendanceRecords={attendanceRecords}
             meetingMinutes={meetingMinutes}
@@ -762,6 +767,7 @@ const AppContent: React.FC = () => {
             auditLogs={auditLogs}
             canEdit={canEditKas}
             isSuperAdmin={isSuperAdmin}
+            canViewAudit={canViewAudit}
             onAddTransaction={handleAddTransaction}
             onDeleteTransaction={handleDeleteTransaction}
             onToggleWeek={handleToggleWeek}
