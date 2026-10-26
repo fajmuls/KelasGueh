@@ -18,7 +18,7 @@ import { ClassShareModal } from './components/Doodle/ClassShareModal.tsx';
 import { SplitBillModal } from './components/Doodle/SplitBillModal.tsx';
 import { AnimatedIntroScreen } from './components/Doodle/AnimatedIntroScreen.tsx';
 import { DoodleWalkthrough } from './components/Doodle/DoodleWalkthrough.tsx';
-import { AdminSettingsModal } from './components/Doodle/AdminSettingsModal.tsx';
+import { AdminSettingsView } from './components/Doodle/AdminSettingsView.tsx';
 import {
   LocalKasRepository,
   INITIAL_TRANSACTIONS,
@@ -48,6 +48,9 @@ const getRouteFromPath = (path: string): { domain: AppDomain; tab: AppNavTab } =
   if (clean === '/' || clean === '/beranda' || clean === '/hub') {
     return { domain: 'hub', tab: 'beranda' };
   }
+  if (clean === '/admin' || clean === '/admin/pengaturan') {
+    return { domain: 'admin', tab: 'admin_settings' };
+  }
   if (clean === '/administrasi/ringkasan-kas') return { domain: 'bendahara', tab: 'ringkasan' };
   if (clean === '/administrasi/buku-kas') return { domain: 'bendahara', tab: 'bukukas' };
   if (clean === '/administrasi/ceklis-iuran') return { domain: 'bendahara', tab: 'checklist' };
@@ -60,6 +63,7 @@ const getRouteFromPath = (path: string): { domain: AppDomain; tab: AppNavTab } =
   if (clean === '/sekretaris/presensi') return { domain: 'sekretaris', tab: 'presensi' };
   if (clean === '/sekretaris/notulensi') return { domain: 'sekretaris', tab: 'notulensi' };
 
+  if (clean.startsWith('/admin')) return { domain: 'admin', tab: 'admin_settings' };
   if (clean.startsWith('/sekretaris')) return { domain: 'sekretaris', tab: 'keaktifan' };
   if (clean.startsWith('/administrasi')) return { domain: 'bendahara', tab: 'ringkasan' };
   return { domain: 'hub', tab: 'beranda' };
@@ -67,6 +71,7 @@ const getRouteFromPath = (path: string): { domain: AppDomain; tab: AppNavTab } =
 
 const getPathFromRoute = (domain: AppDomain, tab: AppNavTab): string => {
   if (domain === 'hub' || tab === 'beranda') return '/';
+  if (domain === 'admin' || tab === 'admin_settings') return '/admin/pengaturan';
   if (domain === 'sekretaris') {
     if (tab === 'presensi') return '/sekretaris/presensi';
     if (tab === 'notulensi') return '/sekretaris/notulensi';
@@ -116,6 +121,8 @@ const AppContent: React.FC = () => {
       domain = 'bendahara';
     } else if (['keaktifan', 'presensi', 'notulensi'].includes(tab)) {
       domain = 'sekretaris';
+    } else if (tab === 'admin_settings') {
+      domain = 'admin';
     } else if (tab === 'beranda') {
       domain = 'hub';
     }
@@ -127,6 +134,8 @@ const AppContent: React.FC = () => {
       navigateTo('hub', 'beranda');
     } else if (domain === 'sekretaris') {
       navigateTo('sekretaris', defaultTab || 'keaktifan');
+    } else if (domain === 'admin') {
+      navigateTo('admin', 'admin_settings');
     } else {
       navigateTo('bendahara', defaultTab || 'ringkasan');
     }
@@ -778,6 +787,16 @@ const AppContent: React.FC = () => {
             onSubTabChange={(subTab) => handleSelectTab(subTab as any)}
           />
         )}
+
+        {/* 4. RANAH MASTER ADMIN (Pengaturan System) */}
+        {activeDomain === 'admin' && (
+          <AdminSettingsView
+            members={members}
+            settings={settings}
+            onUpdateMembers={(ms) => setMembers(ms)}
+            onReturnToHub={() => handleSelectDomain('hub', 'beranda')}
+          />
+        )}
       </main>
 
       {/* Interactive Story Walkthrough Modal */}
@@ -820,15 +839,6 @@ const AppContent: React.FC = () => {
         settings={settings}
         onAddTransaction={handleAddTransaction}
         onConvertToKolektif={handleConvertSplitBillToKolektif}
-      />
-
-      {/* Admin Settings Master Modal */}
-      <AdminSettingsModal
-        isOpen={isAdminSettingsModalOpen}
-        onClose={() => setIsAdminSettingsModalOpen(false)}
-        members={members}
-        settings={settings}
-        onUpdateMembers={(ms) => setMembers(ms)}
       />
 
       {/* Global Dialog Container (Alerts, Confirms, Toasts) */}

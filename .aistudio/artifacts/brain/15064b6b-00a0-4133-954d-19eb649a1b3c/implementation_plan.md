@@ -1,76 +1,85 @@
-# Rencana Implementasi Pembaruan & Penyempurnaan Aplikasi "Kelas Gue"
+# Implementation Plan - Doodle UI Total Overhaul & Dedicated Admin Settings View (v4.3.0)
 
-Berikut adalah rencana langkah demi langkah untuk menyelesaikan pembaruan besar, perbaikan bug, penyempurnaan UI, serta penambahan fitur baru sesuai permintaan.
+Penyelarasan komprehensif tampilan visual aplikasi **Kelas Gue** ke gaya **Full Hand-Drawn Doodle**, pemindahan menu Pengaturan Admin dari modal pop-up menjadi **Tab View Mandiri**, isolasi manajemen anggota/whitelist ke ranah Master Admin dengan dropdown pencarian otomatis (Nama & NIM), reset data awal (Inventaris, Jadwal, Keaktifan) menjadi kosong, serta penegakan format Title Case untuk seluruh penulisan nama mahasiswa.
 
----
-
-### 1. Pemadatan Banner UI & Penyelarasan Doodle Box
-- **Tujuan**: Mengubah ukuran banner header pada setiap menu (`KeaktifanTab`, `PresensiTab`, `NotulensiTab`, `InventarisTab`, `JadwalTugasTab`, `BendaharaHub`, `KasRecapView`) agar lebih ringkas dan pas, serupa dengan gaya box doodle klasik pada `Ringkasan Kas` dan `Buku Kas`.
-- **Perubahan**:
-  - Mengurangi padding vertical banner dari `p-5` / `p-6` menjadi `p-3.5` / `p-4`.
-  - Merapikan posisi stempel / ScotchTape agar tidak menutupi teks atau tombol aksi.
-
----
-
-### 2. Reorganisasi Menu Pengaturan & Akses Admin (SuperAdmin)
-- **Pengaturan Kas (Bendahara)**:
-  - Difokuskan khusus untuk pengaturan besaran iuran mingguan (`weeklyDuesAmount`), target kas, dan tahun akademik/semester.
-- **Pengaturan Admin (Khusus SuperAdmin di Menu Hamburger)**:
-  - Memindahkan **Laporan Audit Log** ke dalam Modal Pengaturan Admin dengan filter lengkap (kategori transaksi, iuran, perubahan role, perspektif bendahara vs sekretaris).
-  - **Manajemen Role ("Whitelist Role")**: Mengatur email whitelist dan simulasi hak akses.
-  - **Manajemen Jenis Kelamin Siswa**: Pengaturan manual gender ('L' | 'P') untuk seluruh anggota kelas.
-  - **Pembersihan Cache Lokal**: Tombol reset cache browser per pengguna tanpa menghapus database cloud Supabase.
-  - **Pin Keamanan & Catatan Rilis**: Pengaturan PIN khusus admin dan penampil changelog rilis.
+> [!IMPORTANT]
+> **Keputusan Utama yang Telah Dikonfirmasi (Phase 1 Confirmation)**
+> - **Navigasi Pengaturan Admin**: Dibuka sebagai **Tab View tersendiri** (`admin_settings`) dengan header doodle, pita/badge doodle, dan sub-tab navigasi lengkap (Whitelist Roll, Manajemen Siswa, Audit Log, PIN Keamanan, Pembersihan Cache, Catatan Pembaruan).
+> - **Reset Data Awal**: Inisialisasi awal data *Inventaris Barang*, *Jadwal & Tugas*, dan *Poin Keaktifan* dikosongkan secara total (`[]`), sehingga data bersih hingga diisi manual oleh pengurus/admin.
+> - **Input & Whitelist Siswa Auto-complete**: Penambahan siswa dan whitelist di Pengaturan Admin menggunakan dropdown pencarian doodle yang secara otomatis mencocokkan nama dan NIM siswa.
+> - **Kerapihan Penulisan Nama**: Semua tampilan nama siswa di Presensi, Keaktifan, Notulensi, Inventaris, dan Kelompok diwajibkan menggunakan format **Title Case** (contoh: "Ahmad Budi Pratama").
+> - **Pembaruan Versi Aplikasi**: Pengkinian versi aplikasi ke `v4.3.0` di file `src/version.ts` beserta catatan pembaruan dan saran update fitur/keamanan sesuai instruksi sistem.
 
 ---
 
-### 3. Data Jenis Kelamin (L/P) & Auto-Detection
-- **Struktur Data**: Menambahkan field `gender?: 'L' | 'P'` pada interface `KasMember`.
-- **Auto-Detect**:
-  - Pada inisialisasi awal, nama siswa dipindai secara otomatis:
-    - Kata kunci laki-laki (misal: *Ahmad, Budi, Muhammad, Fajri, Putra, Rian, Rizky, Kevin, Hendra, Agung, Irfan*) -> `'L'`
-    - Kata kunci perempuan (misal: *Siti, Putri, Anisa, Dewi, Nur, Ayu, Fitri, Sarah, Rahma, Indah, Maya*) -> `'P'`
-- **Pengaturan Manual**: Admin dapat mengubah jenis kelamin kapan saja dari daftar anggota atau Pengaturan Admin.
+## 1. Overview & Core Concept
+
+Aplikasi **Kelas Gue** akan ditingkatkan ke versi `v4.3.0` ("Doodle UI Total & Admin Tab Alignment") dengan penyempurnaan menyeluruh pada estetika doodle hand-drawn dan perbaikan arsitektur navigasi menu Pengaturan Admin.
+
+### Target Pengguna & Fitur Utama:
+- **Admin / SuperAdmin**: Memiliki hak akses khusus ke Tab View **Pengaturan Admin** tersendiri untuk mengelola Whitelist Roll (Super Admin, Bendahara, Sekretaris), mengimpor/menambah data siswa dengan gender, melihat Audit Log lintas modul, mengatur PIN keamanan, serta mengelola cache lokal.
+- **Sekretaris Kelas**: Mengelola presensi, notulensi, jadwal/tugas, inventaris barang, poin keaktifan, dan pembagian kelompok siswa dengan data yang bersih serta nama berformat Title Case.
+- **Bendahara Kelas**: Mengelola kas, ringkasan kas, buku kas, checklist iuran, dan iuran kolektif melalui menu Pengaturan Kas yang khusus mengatur iuran dan semester saja (tanpa manajemen anggota siswa).
 
 ---
 
-### 4. Tab Baru Sekretaris: Pembagian Kelompok Kelas
-- **Sub-Tab Ke-6 di Sekretaris Hub**: `Pembagian Kelompok` (Group Generator).
-- **Fitur Utama**:
-  - Input jumlah kelompok yang diinginkan (misal: 2 hingga 10 kelompok).
-  - Mode Pembagian:
-    1. **Campur Acara (Full Random)**
-    2. **Seimbang Gender (L/P Proporsional)**: Membagi siswa laki-laki dan perempuan secara merata ke setiap kelompok.
-  - Tampilan Kartu Hasil Kelompok yang rapi.
-  - Tombol **Salin Daftar Kelompok ke WhatsApp** untuk dibagikan ke grup kelas.
+## 2. User Experience & Visual Design
+
+### Estetika Full Doodle Hand-Drawn:
+1. **Garis Tepi & Bayangan Khas Doodle**:
+   - Setiap tombol, kartu, input, select, dan badge menggunakan `border-2 border-slate-900 shadow-[2px_2px_0px_#000]` atau `border-3 border-slate-900 shadow-[4px_4px_0px_#000]`.
+   - Latar belakang bertema kertas bergaris/kertas doodle (`bg-amber-50/90`, `bg-yellow-100`, `bg-white`).
+   - Aksesori visual seperti isolasi/selotip doodle (`tape-decoration`), stempel doodle (`stamp-badge`), dan ikon bertema sketsa pensil.
+2. **Kerapihan Penulisan Nama (Title Case)**:
+   - Fungsi pembantu `toTitleCase` akan memformat setiap nama yang ditampilkan di seluruh tabel dan kartu (misal: `"AHMAD BUDI"` atau `"ahmad budi"` -> `"Ahmad Budi"`).
+3. **Bentuk Tab Dedicated Pengaturan Admin**:
+   - Pengaturan Admin tidak lagi tampil sebagai modal overlay sederhana, melainkan berupa **Tab Utama** dengan header doodle besar, stempel "ADMINISTRATOR ONLY", dan 6 sub-tab internal yang rapi.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  [★ PENGATURAN MASTER ADMIN]                    [Versi App v4.3.0 - Doodle]     │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌─────────────┐ ┌──────────┐ │
+│  │ Whitelist Roll│ │Manajemen Siswa│ │ Audit Log    │ │ PIN & Cache │ │ Ver Notes│ │
+│  └──────────────┘ └──────────────┘ └──────────────┘ └─────────────┘ └──────────┘ │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│   Cari / Auto-complete Nama Siswa & NIM:                                        │
+│   ┌─────────────────────────────────────────────────┬────────────────────────┐  │
+│   │ 🔍 Ketik Nama atau NIM...                       │ [ Dropdown Matching ]  │  │
+│   └─────────────────────────────────────────────────┴────────────────────────┘  │
+│                                                                                 │
+│   Pilih Role Hak Akses: [ Bendahara Kelas  ▼ ]                                  │
+│   [ + Tambahkan Ke Whitelist Roll ]                                              │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-### 5. Peningkatan Buku Kas & Arsip Nota
-- **Edit Transaksi**:
-  - Menambahkan tombol **Edit** pada setiap baris transaksi di Buku Kas untuk mengubah Judul, Nominal, Kategori, Tanggal, dan Catatan/Nota.
-- **Toggle Filter "Sembunyikan Iuran Mingguan"**:
-  - Menyediakan switch/toggle pada header Buku Kas untuk menyembunyikan transaksi iuran mingguan otomatis, sehingga daftar fokus pada transaksi umum (pengeluaran/pemasukan kelas non-iuran).
+## 3. Key Product Decisions & Trade-Offs
+
+1. **Tab View Dedicated vs Modal Overlay untuk Admin**:
+   - *Pilihan*: Mengganti `AdminSettingsModal` dengan `AdminSettingsView.tsx` yang di-render sebagai halaman/tab penuh (`currentTab === 'admin_settings'`).
+   - *Alasan*: Memberikan ruang yang luas untuk filter Audit Log, tabel Whitelist, serta Form Import & Input Siswa tanpa terasa sesak.
+
+2. **Isolasi Manajemen Siswa ke Admin**:
+   - *Pilihan*: Menghapus opsi *Import Siswa* dan *Tambah Siswa* dari `KasSettings.tsx` milik Bendahara dan memindahkannya secara total ke `AdminSettingsView.tsx`.
+   - *Alasan*: Mengikuti spesifikasi pengguna di mana pengaturan Bendahara difokuskan khusus pada Kas & Semester, sedangkan data siswa merupakan wewenang Master Admin.
+
+3. **Reset Inisialisasi Data Inventaris, Jadwal, dan Keaktifan**:
+   - *Pilihan*: Mengubah nilai default di `src/services/supabaseClient.ts` dari array sampel contoh menjadi array kosong (`[]`).
+   - *Alasan*: Menjamin bahwa pengguna baru memulai aplikasi dari keadaan bersih tanpa data placeholder dummy.
+
+4. **Pembaharuan Versi (v4.3.0)**:
+   - *Pilihan*: Memperbarui `src/version.ts` dengan changelog lengkap dan menyajikan opsi saran pembaruan (fitur, optimasi, keamanan) pada bagian Pengaturan.
 
 ---
 
-### 6. Perbaikan Bug & UI Polish
-- **Perbaikan Double Plus Icon**:
-  - Menghapus pembacaan plus ganda pada tombol-tombol Sekretaris (*Tambah Matkul, Tambah Tugas, Tambah Barang, Tambah Notulensi, Tambah Sesi Presensi*).
-- **Penghapusan Label "New"**:
-  - Menghapus badge/tulisan "New" pada tab Iuran Khusus & Kolektif.
-- **Efek Suara (Sound Effects) Lengkap**:
-  - Memastikan setiap tombol interaktif memicu SFX yang unik dan konsisten.
-- **Dukungan Tema Visual**:
-  - Memastikan semua komponen baru dan modal beradaptasi dengan sempurna pada tema **Terang, Sepia, dan Dark**.
-- **Delai Loading Ceklis Massal**:
-  - Menyelaraskan animasi spinner loading saat "Centang Semua Lunas" diproses agar saldo kas dan mutasi ter-update dengan pasti sebelum modal ditutup.
-- **Pembatasan Hak Akses Anggota**:
-  - Kalkulator Split Bill dan opsi ekspor keuangan dibatasi hanya untuk Bendahara, Sekretaris, dan Super Admin.
+## 5. Summary of Verification & Testing Plan
 
----
-
-### Langkah Pembuktian & Pengujian
-1. **Pengujian Kompilasi (`compile_applet`)**: Memastikan seluruh kode TypeScript bebas dari syntax / type error.
-2. **Pengujian Linter (`lint_applet`)**: Memastikan tidak ada import yang terlewat atau variabel tidak terdefinisi.
-3. **Pengujian Fungsional**: Memeriksa navigasi sub-tab, pembuatan kelompok, edit transaksi di Buku Kas, dan filter iuran.
+1. **Kompilasi & Linting**: Build aplikasi menggunakan `compile_applet` untuk memastikan tidak ada kesalahan TypeScript atau sintaksis.
+2. **Pengujian Tampilan Doodle**: Verifikasi bahwa seluruh komponen pada `KelompokTab` dan `AdminSettingsView` memiliki border hitam tebal hand-drawn (`border-2/3 border-slate-900`) dan shadow offset khas doodle.
+3. **Pengujian Navigasi Admin**: Buka Pengaturan Admin melalui Hamburger Menu dan pastikan ia terbuka sebagai Tab View tersendiri dengan sub-navigasi yang berfungsi penuh.
+4. **Pengujian Auto-complete & Whitelist**: Coba ketik Nama atau NIM pada form penambahan Whitelist dan pastikan pencarian otomatis memberikan saran pilihan siswa yang sesuai.
+5. **Pengujian Formatting Nama**: Pastikan nama-nama siswa yang tampil di seluruh tabel menggunakan huruf kapital di awal setiap kata (Title Case).

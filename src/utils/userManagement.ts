@@ -120,7 +120,11 @@ export const registerOrUpdateUser = (profile: { name: string; email: string; ava
   return assignedRole;
 };
 
-export const updateUserRole = (email: string, newRole: 'bendahara' | 'sekretaris' | 'anggota'): RegisteredUser[] => {
+export const updateUserRole = (
+  email: string, 
+  newRole: 'bendahara' | 'sekretaris' | 'anggota',
+  userName?: string
+): RegisteredUser[] => {
   const emailLower = email.toLowerCase().trim();
   let bendaharas = getBendaharaWhitelist();
   let sekretarisList = getSekretarisWhitelist();
@@ -140,12 +144,28 @@ export const updateUserRole = (email: string, newRole: 'bendahara' | 'sekretaris
   saveSekretarisWhitelist(sekretarisList);
 
   const currentList = getRegisteredUsers();
-  const updated = currentList.map(u => {
-    if (u.email.toLowerCase() === emailLower && u.role !== 'superadmin') {
-      return { ...u, role: newRole };
+  let found = false;
+  const updated: RegisteredUser[] = currentList.map(u => {
+    if (u.email.toLowerCase() === emailLower) {
+      found = true;
+      return { 
+        ...u, 
+        role: (u.role === 'superadmin' ? 'superadmin' : newRole) as RegisteredUser['role'],
+        name: userName || u.name
+      };
     }
     return u;
   });
+
+  if (!found && emailLower) {
+    updated.push({
+      id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: userName || emailLower.split('@')[0],
+      email: emailLower,
+      role: newRole,
+      lastLogin: new Date().toISOString()
+    });
+  }
 
   localStorage.setItem(STORAGE_KEY_REGISTERED, JSON.stringify(updated));
   return updated;

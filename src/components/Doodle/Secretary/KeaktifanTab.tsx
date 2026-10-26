@@ -3,6 +3,7 @@ import { StudentPointLog, KasMember, ClassSettings, CourseSchedule } from '../..
 import { sfx } from '../../../utils/soundEffects.ts';
 import { ScotchTape, DoodleCrown } from '../DoodleDecorations.tsx';
 import { showToast, showConfirm } from '../../UI/DoodleDialog.tsx';
+import { toTitleCase } from '../../../utils/textFormatting.ts';
 import {
   Award,
   Plus,
@@ -347,7 +348,7 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
                       #{idx + 1}
                     </td>
                     <td className="py-2.5 px-4 font-black text-slate-900">
-                      {ms.member.name}
+                      {toTitleCase(ms.member.name)}
                     </td>
                     <td className="py-2.5 px-3 font-mono text-slate-500">
                       {ms.member.studentId || '-'}
@@ -400,7 +401,7 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
                       </span>
                     </div>
                     <p className="text-xs font-black text-slate-900">
-                      {student?.name || 'Siswa'}
+                      {toTitleCase(student?.name || 'Siswa')}
                     </p>
                     <p className="text-[11px] text-slate-600">
                       {log.reason}

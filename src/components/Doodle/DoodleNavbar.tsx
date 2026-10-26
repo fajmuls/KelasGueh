@@ -37,9 +37,10 @@ export type AppNavTab =
   | 'auditlog'
   | 'keaktifan'
   | 'presensi'
-  | 'notulensi';
+  | 'notulensi'
+  | 'admin_settings';
 
-export type AppDomain = 'hub' | 'bendahara' | 'sekretaris';
+export type AppDomain = 'hub' | 'bendahara' | 'sekretaris' | 'admin';
 
 interface DoodleNavbarProps {
   currentTab: AppNavTab;
@@ -592,12 +593,12 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
               )}
 
               {/* Pengaturan Admin Button (For SuperAdmin / Admin) */}
-              {(isSuperAdmin || isRealSuperAdmin) && onOpenAdminSettings && (
+              {(isSuperAdmin || isRealSuperAdmin) && (
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     sfx.playCardOpen();
-                    onOpenAdminSettings();
+                    onSelectDomain('admin', 'admin_settings');
                   }}
                   className="w-full min-h-[48px] px-4 py-2.5 rounded-lg border-2 border-slate-900 bg-amber-400 hover:bg-amber-500 font-black text-xs text-slate-900 flex items-center justify-between transition-all shadow-[2px_2px_0px_#000]"
                 >

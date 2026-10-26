@@ -3,6 +3,7 @@ import { AttendanceRecord, KasMember, ClassSettings } from '../../../types/kas.t
 import { sfx } from '../../../utils/soundEffects.ts';
 import { ScotchTape } from '../DoodleDecorations.tsx';
 import { showToast, showConfirm } from '../../UI/DoodleDialog.tsx';
+import { toTitleCase } from '../../../utils/textFormatting.ts';
 import {
   ClipboardCheck,
   Calendar,
@@ -145,9 +146,9 @@ export const PresensiTab: React.FC<PresensiTabProps> = ({
     members.forEach(m => {
       const st = statuses[m.id] || 'hadir';
       counts[st]++;
-      if (st === 'sakit') sickNames.push(m.name);
-      if (st === 'izin') permitNames.push(m.name);
-      if (st === 'alpa') absentNames.push(m.name);
+      if (st === 'sakit') sickNames.push(toTitleCase(m.name));
+      if (st === 'izin') permitNames.push(toTitleCase(m.name));
+      if (st === 'alpa') absentNames.push(toTitleCase(m.name));
     });
 
     const percent = members.length > 0 ? Math.round((counts.hadir / members.length) * 100) : 0;
@@ -374,7 +375,7 @@ export const PresensiTab: React.FC<PresensiTabProps> = ({
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-mono text-slate-400">{idx + 1}.</span>
                       <p className="text-xs font-black text-slate-900 truncate">
-                        {member.name}
+                        {toTitleCase(member.name)}
                       </p>
                     </div>
                     <p className="text-[10px] font-mono text-slate-500 pl-4">

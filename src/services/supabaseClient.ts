@@ -857,19 +857,8 @@ export class LocalKasRepository {
   public static getPointLogs(): StudentPointLog[] {
     const raw = localStorage.getItem(this.KEY_POINTS);
     if (!raw) {
-      const members = this.getMembers();
-      const sample: StudentPointLog[] = members.slice(0, 3).map((m, idx) => ({
-        id: `point_sample_${idx}`,
-        memberId: m.id,
-        points: idx === 0 ? 10 : 5,
-        category: idx === 0 ? 'presentasi' : 'tanya',
-        reason: idx === 0 ? 'Presentasi materi kelompok dengan lugas' : 'Aktif mengajukan pertanyaan kritis',
-        date: new Date().toISOString().split('T')[0],
-        recordedBy: 'Sekretaris',
-        createdAt: new Date().toISOString()
-      }));
-      localStorage.setItem(this.KEY_POINTS, JSON.stringify(sample));
-      return sample;
+      localStorage.setItem(this.KEY_POINTS, JSON.stringify([]));
+      return [];
     }
     try {
       return JSON.parse(raw);
@@ -901,25 +890,8 @@ export class LocalKasRepository {
   public static getAttendanceRecords(): AttendanceRecord[] {
     const raw = localStorage.getItem(this.KEY_ATTENDANCE);
     if (!raw) {
-      const members = this.getMembers();
-      const initialStatuses: Record<string, 'hadir' | 'sakit' | 'izin' | 'alpa'> = {};
-      members.forEach((m, idx) => {
-        initialStatuses[m.id] = idx === 0 ? 'izin' : 'hadir';
-      });
-      const sample: AttendanceRecord[] = [
-        {
-          id: 'att_sample_1',
-          date: new Date().toISOString().split('T')[0],
-          title: 'Perkuliahan Sesi Diskusi & Rapat Internal Kelas',
-          type: 'rapat',
-          statuses: initialStatuses,
-          notes: 'Dihadiri mayoritas anggota kelas, persiapan agenda bulanan.',
-          recordedBy: 'Sekretaris',
-          createdAt: new Date().toISOString()
-        }
-      ];
-      localStorage.setItem(this.KEY_ATTENDANCE, JSON.stringify(sample));
-      return sample;
+      localStorage.setItem(this.KEY_ATTENDANCE, JSON.stringify([]));
+      return [];
     }
     try {
       return JSON.parse(raw);
@@ -959,25 +931,8 @@ export class LocalKasRepository {
   public static getMeetingMinutes(): MeetingMinute[] {
     const raw = localStorage.getItem(this.KEY_MINUTES);
     if (!raw) {
-      const sample: MeetingMinute[] = [
-        {
-          id: 'minute_sample_1',
-          title: 'Rapat Koordinasi Rencana Studi Tur & Acara Kelas',
-          date: new Date().toISOString().split('T')[0],
-          leader: 'Ketua Kelas',
-          noteTaker: 'Sekretaris',
-          agenda: 'Pembahasan destinasi studi tur, estimasi biaya, dan pembagian panitia kecil.',
-          discussion: 'Disepakati lokasi studi tur ke Balai Riset Informatika. Pengurus kelas mengumpulkan biaya transport secara kolektif.',
-          decisions: '1. Biaya partisipasi disepakati Rp 35.000 per orang.\n2. Pembayaran ditutup H-3 kegiatan.\n3. Presensi kehadiran wajib bagi seluruh pengurus.',
-          actionItems: [
-            { id: 'act_1', task: 'Kirim surat permohonan kunjungan', assignee: 'Sekretaris', done: false },
-            { id: 'act_2', task: 'Mulai buka posko pembayaran kolektif', assignee: 'Bendahara', done: true }
-          ],
-          createdAt: new Date().toISOString()
-        }
-      ];
-      localStorage.setItem(this.KEY_MINUTES, JSON.stringify(sample));
-      return sample;
+      localStorage.setItem(this.KEY_MINUTES, JSON.stringify([]));
+      return [];
     }
     try {
       return JSON.parse(raw);
@@ -1017,42 +972,8 @@ export class LocalKasRepository {
   public static getInventoryItems(): ClassInventoryItem[] {
     const raw = localStorage.getItem(this.KEY_INVENTORY);
     if (!raw) {
-      const sample: ClassInventoryItem[] = [
-        {
-          id: 'inv_sample_1',
-          name: 'Spidol Boardmarker & Penghapus Whiteboard',
-          quantity: 3,
-          condition: 'baik',
-          location: 'Laci Meja Dosen Kelas',
-          purchasedFromKas: true,
-          price: 25000,
-          notes: 'Dibeli dari kas bulan lalu, warna hitam dan biru.',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'inv_sample_2',
-          name: 'Kabel Terminal / Stopkontak Roll 5 Meter',
-          quantity: 1,
-          condition: 'baik',
-          location: 'Lemari Belakang Kelas',
-          purchasedFromKas: true,
-          price: 65000,
-          notes: 'Untuk keperluan presentasi laptop kelompok.',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'inv_sample_3',
-          name: 'Kotak P3K Kelas (Betadine, Plester, Paracetamol)',
-          quantity: 1,
-          condition: 'baik',
-          location: 'Dinding Samping Pintu',
-          purchasedFromKas: false,
-          notes: 'Bantuan dari klinik kampus.',
-          createdAt: new Date().toISOString()
-        }
-      ];
-      localStorage.setItem(this.KEY_INVENTORY, JSON.stringify(sample));
-      return sample;
+      localStorage.setItem(this.KEY_INVENTORY, JSON.stringify([]));
+      return [];
     }
     try {
       return JSON.parse(raw);
@@ -1092,59 +1013,8 @@ export class LocalKasRepository {
   public static getCourseSchedules(): CourseSchedule[] {
     const raw = localStorage.getItem(this.KEY_COURSES);
     if (!raw) {
-      const sample: CourseSchedule[] = [
-        {
-          id: 'course_sample_1',
-          courseName: 'Algoritma & Struktur Data',
-          lecturerName: 'Dr. Budi Santoso, M.Kom',
-          sks: 3,
-          day: 'Senin',
-          time: '08:00 - 10:30',
-          room: 'Lab Komputer 3',
-          assignments: [
-            {
-              id: 'asg_1',
-              title: 'Tugas Implementasi Binary Search Tree',
-              deadline: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
-              status: 'pending',
-              notes: 'Upload ke portal e-learning format ZIP.'
-            }
-          ],
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'course_sample_2',
-          courseName: 'Basis Data Terdistribusi',
-          lecturerName: 'Siti Rahmawati, S.T., M.T.',
-          sks: 3,
-          day: 'Rabu',
-          time: '10:00 - 12:30',
-          room: 'Ruang Teori 204',
-          assignments: [
-            {
-              id: 'asg_2',
-              title: 'Proposal Proyek Akhir Basis Data',
-              deadline: new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0],
-              status: 'pending',
-              notes: 'Kelompok maksimal 3 orang.'
-            }
-          ],
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'course_sample_3',
-          courseName: 'Rekayasa Perangkat Lunak',
-          lecturerName: 'Ir. Ahmad Hidayat, M.Eng',
-          sks: 2,
-          day: 'Kamis',
-          time: '13:00 - 14:40',
-          room: 'Ruang Teori 101',
-          assignments: [],
-          createdAt: new Date().toISOString()
-        }
-      ];
-      localStorage.setItem(this.KEY_COURSES, JSON.stringify(sample));
-      return sample;
+      localStorage.setItem(this.KEY_COURSES, JSON.stringify([]));
+      return [];
     }
     try {
       return JSON.parse(raw);
