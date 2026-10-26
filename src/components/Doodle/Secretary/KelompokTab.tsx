@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { KasMember } from '../../../types/kas.ts';
 import { autoDetectGenderByName } from '../../../utils/userManagement.ts';
 import { sfx } from '../../../utils/soundEffects.ts';
 import { toTitleCase } from '../../../utils/textFormatting.ts';
-import { Users, Shuffle, Copy, Check, Sparkles, UserCheck, Scale, Award } from 'lucide-react';
+import { Users, Shuffle, Send, Check, Sparkles, UserCheck, Scale, Award, Lock, RefreshCw } from 'lucide-react';
 
 interface KelompokTabProps {
   members: KasMember[];
@@ -12,20 +12,25 @@ interface KelompokTabProps {
 export const KelompokTab: React.FC<KelompokTabProps> = ({ members }) => {
   const [numGroups, setNumGroups] = useState<number>(4);
   const [mode, setMode] = useState<'campur' | 'seimbang_gender'>('seimbang_gender');
-  const [seed, setSeed] = useState<number>(0); // Used to re-shuffle
-  const [copied, setCopied] = useState<boolean>(false);
+  const [seed, setSeed] = useState<number>(() => {
+    const saved = localStorage.getItem('kelasgue_kelompok_seed');
+    return saved ? Number(saved) : 0;
+  });
+  const [isLocked, setIsLocked] = useState<boolean>(() => {
+    return localStorage.getItem('kelasgue_kelompok_locked') === 'true';
+  });
 
-  // Compute gender for all members
-  const processedMembers = useMemo(() => {
-    return members.map(m => ({
+  // Filter only active students
+  const activeMembers = useMemo(() => {
+    return members.filter(m => m.isActive !== false).map(m => ({
       ...m,
       name: toTitleCase(m.name),
       gender: m.gender || autoDetectGenderByName(m.name)
     }));
   }, [members]);
 
-  const males = useMemo(() => processedMembers.filter(m => m.gender === 'L'), [processedMembers]);
-  const females = useMemo(() => processedMembers.filter(m => m.gender === 'P'), [processedMembers]);
+  const males = useMemo(() => activeMembers.filter(m => m.gender === 'L'), [activeMembers]);
+  const females = useMemo(() => activeMembers.filter(m => m.gender === 'P'), [activeMembers]);
 
   // Shuffle algorithm
   const shuffleArray = <T,>(arr: T[]): T[] => {
@@ -39,23 +44,40 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({ members }) => {
 
   // Divide into groups based on seed and mode
   const groups = useMemo(() => {
-    if (processedMembers.length === 0 || numGroups < 1) return [];
+    if (activeMembers.length === 0 || numGroups < 1) return [];
 
-    const groupList: Array<{ id: number; name: string; members: typeof processedMembers }> = [];
+    const groupList: Array<{ id: number; name: string; members: typeof activeMembers }> = [];
     for (let i = 0; i < numGroups; i++) {
       groupList.push({ id: i + 1, name: `Kelompok ${i + 1}`, members: [] });
     }
 
+    // Use seed for pseudo-random deterministic shuffle when locked
+    const customShuffle = <T,>(arr: T[]): T[] => {
+      const copy = [...arr];
+      let currentIndex = copy.length;
+      let temporaryValue, randomIndex;
+      let localSeed = seed + 123;
+      while (currentIndex !== 0) {
+        localSeed = (localSeed * 9301 + 49297) % 233280;
+        randomIndex = Math.floor((localSeed / 233280) * currentIndex);
+        currentIndex -= 1;
+        temporaryValue = copy[currentIndex];
+        copy[currentIndex] = copy[randomIndex];
+        copy[randomIndex] = temporaryValue;
+      }
+      return copy;
+    };
+
     if (mode === 'campur') {
-      const shuffled = shuffleArray(processedMembers);
+      const shuffled = customShuffle(activeMembers);
       shuffled.forEach((member, index) => {
         const groupIndex = index % numGroups;
         groupList[groupIndex].members.push(member);
       });
     } else {
       // Seimbang Gender
-      const shuffledMales = shuffleArray(males);
-      const shuffledFemales = shuffleArray(females);
+      const shuffledMales = customShuffle(males);
+      const shuffledFemales = customShuffle(females);
 
       shuffledMales.forEach((male, index) => {
         const groupIndex = index % numGroups;
@@ -69,16 +91,26 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({ members }) => {
     }
 
     return groupList;
-  }, [processedMembers, numGroups, mode, seed, males, females]);
+  }, [activeMembers, numGroups, mode, seed, males, females]);
 
-  const handleShuffle = () => {
+  const handleGenerateOrShuffle = () => {
     sfx.playOptionSelect();
-    setSeed(prev => prev + 1);
+    const newSeed = Date.now();
+    setSeed(newSeed);
+    setIsLocked(true);
+    localStorage.setItem('kelasgue_kelompok_seed', String(newSeed));
+    localStorage.setItem('kelasgue_kelompok_locked', 'true');
   };
 
-  const handleCopyWhatsApp = () => {
+  const handleResetLock = () => {
+    sfx.playDeleteConfirm();
+    setIsLocked(false);
+    localStorage.removeItem('kelasgue_kelompok_locked');
+  };
+
+  const handleSendWhatsApp = () => {
     sfx.playFileDownload();
-    let text = `📌 *PEMBAGIAN KELOMPOK KELAS*\nMode: ${mode === 'seimbang_gender' ? '⚖️ Seimbang Gender (L/P)' : '🎲 Acak Campur'}\nTotal Anggota: ${processedMembers.length} Siswa\n\n`;
+    let text = `📌 *PEMBAGIAN KELOMPOK KELAS*\nMode: ${mode === 'seimbang_gender' ? '⚖️ Seimbang Gender (L/P)' : '🎲 Acak Campur'}\nTotal Anggota Aktif: ${activeMembers.length} Siswa\n\n`;
 
     groups.forEach((g) => {
       text += `*${g.name.toUpperCase()}* (${g.members.length} Orang)\n`;
@@ -91,72 +123,64 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({ members }) => {
 
     text += `_Dibuat otomatis via Aplikasi Kelas Gue_ ✨`;
 
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    const encoded = encodeURIComponent(text);
+    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
   };
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-amber-100 border-3 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[4px_4px_0px_#000] relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center border-2 border-slate-900 font-black shrink-0 shadow-[2px_2px_0px_#000]">
-              <Users className="w-6 h-6" />
+      {/* Header Banner - Minimized Top Spacing */}
+      <div className="bg-amber-100 border-3 border-slate-900 rounded-xl p-3.5 sm:p-4 shadow-[4px_4px_0px_#000] relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 relative z-10">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center border-2 border-slate-900 font-black shrink-0 shadow-[2px_2px_0px_#000]">
+              <Users className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-black text-lg text-slate-900">
+              <h3 className="font-black text-base text-slate-900 leading-tight">
                 Generator Pembagian Kelompok
               </h3>
-              <p className="text-xs text-slate-700 font-medium">
-                Bagi anggota siswa kelas secara adil dengan opsi acak campur atau distribusi seimbang gender (L/P).
+              <p className="text-[11px] text-slate-700 font-medium">
+                Distribusi adil berdasarkan status aktif siswa dan gender (L/P).
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
             <button
-              onClick={handleShuffle}
-              className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 active:translate-y-0.5 text-slate-900 font-black text-xs sm:text-sm flex items-center gap-2 border-2 border-slate-900 shadow-[2px_2px_0px_#000] transition"
-            >
-              <Shuffle className="w-4 h-4" />
-              Acak Ulang
-            </button>
-
-            <button
-              onClick={handleCopyWhatsApp}
+              onClick={handleSendWhatsApp}
               disabled={groups.length === 0}
-              className="px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 active:translate-y-0.5 text-slate-900 font-black text-xs sm:text-sm flex items-center gap-2 border-2 border-slate-900 shadow-[2px_2px_0px_#000] transition disabled:opacity-50"
+              className="btn-doodle px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-black text-xs flex items-center gap-1.5 border-2 border-slate-900 shadow-[2px_2px_0px_#000] transition disabled:opacity-50"
             >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? 'Tersalin!' : 'Salin ke WA'}
+              <Send className="w-3.5 h-3.5 text-emerald-950" />
+              <span>Kirim WA</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Control Panel */}
+      {/* Control Panel with Shuffle / Generate Button placed Below Distribution Mode */}
       <div className="bg-white border-2 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[3px_3px_0px_#000] space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Jumlah Kelompok */}
+          {/* Jumlah Kelompok (3 to 10) */}
           <div>
             <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
-              Jumlah Kelompok: <span className="text-amber-600 text-sm">{numGroups} Kelompok</span>
+              Jumlah Kelompok (3 - 10): <span className="text-amber-600 text-sm font-black">{numGroups} Kelompok</span>
             </label>
-            <div className="flex flex-wrap items-center gap-2">
-              {[2, 3, 4, 5, 6, 8].map((n) => (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                 <button
                   key={n}
+                  disabled={isLocked}
                   onClick={() => {
                     sfx.playOptionSelect();
                     setNumGroups(n);
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black border-2 border-slate-900 transition ${
+                  className={`w-9 h-9 rounded-xl text-xs font-black border-2 border-slate-900 transition flex items-center justify-center ${
                     numGroups === n
                       ? 'bg-amber-400 text-slate-900 shadow-[1.5px_1.5px_0px_#000] -translate-y-0.5'
                       : 'bg-slate-50 text-slate-700 hover:bg-amber-50 shadow-[1px_1px_0px_#000]'
-                  }`}
+                  } ${isLocked ? 'opacity-75 cursor-not-allowed' : ''}`}
                 >
                   {n}
                 </button>
@@ -171,6 +195,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({ members }) => {
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
+                disabled={isLocked}
                 onClick={() => {
                   sfx.playOptionSelect();
                   setMode('seimbang_gender');
@@ -179,13 +204,14 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({ members }) => {
                   mode === 'seimbang_gender'
                     ? 'bg-amber-400 text-slate-900 shadow-[1.5px_1.5px_0px_#000] -translate-y-0.5'
                     : 'bg-slate-50 text-slate-700 hover:bg-amber-50 shadow-[1px_1px_0px_#000]'
-                }`}
+                } ${isLocked ? 'opacity-75 cursor-not-allowed' : ''}`}
               >
                 <Scale className="w-3.5 h-3.5" />
                 Seimbang Gender (L/P)
               </button>
 
               <button
+                disabled={isLocked}
                 onClick={() => {
                   sfx.playOptionSelect();
                   setMode('campur');
@@ -194,7 +220,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({ members }) => {
                   mode === 'campur'
                     ? 'bg-amber-400 text-slate-900 shadow-[1.5px_1.5px_0px_#000] -translate-y-0.5'
                     : 'bg-slate-50 text-slate-700 hover:bg-amber-50 shadow-[1px_1px_0px_#000]'
-                }`}
+                } ${isLocked ? 'opacity-75 cursor-not-allowed' : ''}`}
               >
                 <Shuffle className="w-3.5 h-3.5" />
                 Acak Campur Full
@@ -203,19 +229,39 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({ members }) => {
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div className="pt-3 border-t-2 border-slate-900 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-700 font-bold">
-          <div className="flex items-center gap-4">
+        {/* Shuffle / Generate Button placed BELOW distribution mode as requested */}
+        <div className="pt-3 border-t-2 border-slate-900 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 text-xs text-slate-700 font-bold">
             <span className="flex items-center gap-1">
-              <UserCheck className="w-4 h-4 text-blue-600" /> Total Laki-laki: <strong>{males.length}</strong>
+              <UserCheck className="w-4 h-4 text-blue-600" /> Laki-laki: <strong>{males.length}</strong>
             </span>
             <span className="flex items-center gap-1">
-              <UserCheck className="w-4 h-4 text-pink-600" /> Total Perempuan: <strong>{females.length}</strong>
+              <UserCheck className="w-4 h-4 text-pink-600" /> Perempuan: <strong>{females.length}</strong>
             </span>
+            <span className="text-slate-400">·</span>
+            <span className="italic text-slate-500">Aktif: {activeMembers.length} Siswa</span>
           </div>
-          <span className="italic text-slate-500">
-            Rata-rata: ~{Math.round(processedMembers.length / (numGroups || 1))} siswa / kelompok
-          </span>
+
+          <div className="flex items-center gap-2">
+            {isLocked ? (
+              <button
+                onClick={handleResetLock}
+                className="btn-doodle px-4 py-2 bg-rose-200 hover:bg-rose-300 text-rose-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5"
+                title="Buka kunci untuk melakukan generate / acak ulang kelompok"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Buka Kunci (Reset)</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleGenerateOrShuffle}
+                className="btn-doodle px-5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Generate & Kunci Kelompok</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

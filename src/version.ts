@@ -11,15 +11,15 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '4.3.2',
-  codename: 'Kas Module Polish & Aesthetic Refinement',
+  version: '4.3.3',
+  codename: 'Master Admin Hub & Secretary Group Lock',
   releaseDate: '2026-10-26',
   changes: [
-    'Kas Module Polish: Optimalisasi seluruh komponen Buku Kas, Ringkasan, dan Checklist Iuran dengan standardisasi rounded-xl dan border doodle.',
-    'Penyelarasan SFX: Menambahkan feedback suara unik untuk seluruh interaksi di modul administrasi kas (Buku Kas, Nota, Checklist).',
-    'Standardisasi Kontainer: Mengganti rounded-2xl yang tersisa menjadi rounded-xl agar konsisten dengan desain doodle yang lebih pas.',
-    'Penyempurnaan Table Header: Memberikan styling doodle yang lebih tegas pada header tabel Buku Kas dan Matriks Iuran.',
-    'Doodle Select Integration: Memastikan seluruh dropdown menggunakan komponen DoodleSelect untuk konsistensi visual.'
+    'Master Admin & Security: Restriksi menu Super Admin, pengaturan pengurus terpusat, manajemen siswa dengan status aktif/tidak aktif, serta scroll tabel whitelist.',
+    'Sekretaris & Pembagian Kelompok: Integrasi database siswa master admin, dukungan 3-10 kelompok, penguncian permanen setelah generate, serta tombol Kirim WA.',
+    'Kas & Kompresi Struk: Kompresi otomatis foto nota/kwitansi untuk penyimpanan jangka panjang di database & binder rekap cetak.',
+    'Tur Panduan Interaktif: Dialog sambutan dan tur panduan langkah-demi-langkah bagi pengguna baru.',
+    'Pengaturan Volume BGM & SFX: Kontrol volume audio (0-100%) tersimpan di localStorage.'
   ],
   suggestedUpdates: [
     {

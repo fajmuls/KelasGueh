@@ -9,9 +9,22 @@ class SoundEngine {
   private bgmAudio: HTMLAudioElement | null = null;
   private isBgmPlaying: boolean = false;
 
+  private bgmVolume: number = 0.28;
+  private sfxVolume: number = 0.45;
+
   constructor() {
     const saved = localStorage.getItem('kelasgue_sfx');
     this.soundEnabled = saved !== null ? saved === 'true' : true;
+
+    const savedBgmVol = localStorage.getItem('kelasgue_bgm_vol');
+    if (savedBgmVol !== null) {
+      this.bgmVolume = Math.max(0, Math.min(1, Number(savedBgmVol) / 100));
+    }
+
+    const savedSfxVol = localStorage.getItem('kelasgue_sfx_vol');
+    if (savedSfxVol !== null) {
+      this.sfxVolume = Math.max(0, Math.min(1, Number(savedSfxVol) / 100));
+    }
 
     const savedBgm = localStorage.getItem('kelasgue_bgm');
     const shouldPlayBgm = savedBgm === 'true';
@@ -21,14 +34,12 @@ class SoundEngine {
         // Preferred new BGM file with fallback
         this.bgmAudio = new Audio('/audio/Kelas_Gueh_Chill_Cheerful_BGM_60s-1.mp3');
         this.bgmAudio.loop = true;
-        this.bgmAudio.volume = 0.28;
+        this.bgmAudio.volume = this.bgmVolume;
         this.bgmAudio.onerror = () => {
           this.bgmAudio = new Audio('/audio/Kelas_Gueh_Chill_Cheerful_BGM_60s.mp3');
           this.bgmAudio.loop = true;
-          this.bgmAudio.volume = 0.28;
+          this.bgmAudio.volume = this.bgmVolume;
         };
-
-        /* Removed click listener to prevent double playback with App.tsx gesture handler */
       } catch {
         // Audio element not supported
       }
@@ -123,6 +134,29 @@ class SoundEngine {
     localStorage.setItem('kelasgue_bgm', 'false');
   }
 
+  public getBgmVolume(): number {
+    return Math.round(this.bgmVolume * 100);
+  }
+
+  public setBgmVolume(volPercent: number): void {
+    const val = Math.max(0, Math.min(100, volPercent));
+    this.bgmVolume = val / 100;
+    localStorage.setItem('kelasgue_bgm_vol', String(val));
+    if (this.bgmAudio) {
+      this.bgmAudio.volume = this.bgmVolume;
+    }
+  }
+
+  public getSfxVolume(): number {
+    return Math.round(this.sfxVolume * 100);
+  }
+
+  public setSfxVolume(volPercent: number): void {
+    const val = Math.max(0, Math.min(100, volPercent));
+    this.sfxVolume = val / 100;
+    localStorage.setItem('kelasgue_sfx_vol', String(val));
+  }
+
   private activeAudios: HTMLAudioElement[] = [];
 
   /**
@@ -152,7 +186,7 @@ class SoundEngine {
 
     try {
       const audio = new Audio(path);
-      audio.volume = volume;
+      audio.volume = volume * this.sfxVolume;
       this.activeAudios.push(audio);
 
       audio.onended = () => {

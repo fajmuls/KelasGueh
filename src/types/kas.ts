@@ -30,6 +30,7 @@ export interface KasMember {
   studentId: string; // NIM / No. Absen
   phone?: string;
   gender?: 'L' | 'P'; // Student gender
+  isActive?: boolean; // Active status (default true)
   weeklyStatus: {
     [weekKey: string]: boolean; // e.g. "2026_10_W1", "2026_11_W2", ...
   };
