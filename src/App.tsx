@@ -18,6 +18,7 @@ import { ClassShareModal } from './components/Doodle/ClassShareModal.tsx';
 import { SplitBillModal } from './components/Doodle/SplitBillModal.tsx';
 import { AnimatedIntroScreen } from './components/Doodle/AnimatedIntroScreen.tsx';
 import { DoodleWalkthrough } from './components/Doodle/DoodleWalkthrough.tsx';
+import { AdminSettingsModal } from './components/Doodle/AdminSettingsModal.tsx';
 import {
   LocalKasRepository,
   INITIAL_TRANSACTIONS,
@@ -97,6 +98,7 @@ const AppContent: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSplitBillModalOpen, setIsSplitBillModalOpen] = useState(false);
   const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
+  const [isAdminSettingsModalOpen, setIsAdminSettingsModalOpen] = useState(false);
 
   // Synchronized Navigation Handler with HTML5 history.pushState
   const navigateTo = (newDomain: AppDomain, newTab: AppNavTab) => {
@@ -684,6 +686,7 @@ const AppContent: React.FC = () => {
           classNameTitle={settings.className}
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
+          onOpenAdminSettings={() => setIsAdminSettingsModalOpen(true)}
         />
       )}
 
@@ -817,6 +820,15 @@ const AppContent: React.FC = () => {
         settings={settings}
         onAddTransaction={handleAddTransaction}
         onConvertToKolektif={handleConvertSplitBillToKolektif}
+      />
+
+      {/* Admin Settings Master Modal */}
+      <AdminSettingsModal
+        isOpen={isAdminSettingsModalOpen}
+        onClose={() => setIsAdminSettingsModalOpen(false)}
+        members={members}
+        settings={settings}
+        onUpdateMembers={(ms) => setMembers(ms)}
       />
 
       {/* Global Dialog Container (Alerts, Confirms, Toasts) */}

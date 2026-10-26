@@ -76,6 +76,7 @@ export const KasBook: React.FC<KasBookProps> = ({
   const { canEditKas, isSuperAdmin, user, role } = useAuth();
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [hideWeeklyDues, setHideWeeklyDues] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [previewReceiptUrl, setPreviewReceiptUrl] = useState<string | null>(null);
   const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
@@ -262,6 +263,9 @@ export const KasBook: React.FC<KasBookProps> = ({
   const filtered = transactions.filter(t => {
     if (filterType !== 'all' && t.type !== filterType) return false;
     if (selectedCategory !== 'all' && t.category !== selectedCategory) return false;
+    if (hideWeeklyDues && (t.category === 'Iuran Kas' || t.title.startsWith('Iuran:') || t.notes?.startsWith('LINKED_IURAN:'))) {
+      return false;
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
@@ -384,13 +388,13 @@ export const KasBook: React.FC<KasBookProps> = ({
         </div>
 
         {/* Filters and Search Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-center">
           {/* Search box */}
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari transaksi, nota, toko..."
+              placeholder="Cari transaksi, nota..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-white border-2 border-slate-900 rounded-md focus:outline-none focus:bg-amber-50/50"
@@ -446,6 +450,24 @@ export const KasBook: React.FC<KasBookProps> = ({
               ...CATEGORIES.map(cat => ({ value: cat, label: cat }))
             ]}
           />
+
+          {/* Toggle Sembunyikan Iuran Mingguan */}
+          <button
+            type="button"
+            onClick={() => {
+              sfx.playToggle();
+              setHideWeeklyDues(!hideWeeklyDues);
+            }}
+            className={`py-2 px-3 rounded-md border-2 border-slate-900 font-bold text-xs flex items-center justify-center gap-1.5 transition ${
+              hideWeeklyDues
+                ? 'bg-amber-400 text-slate-900 font-black shadow-[1px_1px_0px_#000]'
+                : 'bg-white text-slate-700 hover:bg-slate-100'
+            }`}
+            title="Sembunyikan entri iuran mingguan siswa dari buku kas agar fokus pada transaksi umum"
+          >
+            <Filter className="w-3.5 h-3.5" />
+            <span>{hideWeeklyDues ? '✓ Tanpa Iuran' : 'Sembunyikan Iuran'}</span>
+          </button>
         </div>
       </div>
 

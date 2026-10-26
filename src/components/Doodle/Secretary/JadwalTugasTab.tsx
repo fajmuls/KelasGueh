@@ -235,7 +235,7 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                   className="btn-doodle px-3.5 py-2 bg-amber-200 hover:bg-amber-300 text-slate-900 font-bold text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
                 >
                   <FileCheck className="w-4 h-4 text-amber-800" />
-                  <span>+ Tugas Baru</span>
+                  <span>Tugas Baru</span>
                 </button>
 
                 <button
@@ -243,7 +243,7 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                   className="btn-doodle px-4 py-2 bg-sky-300 hover:bg-sky-400 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>+ Tambah Matkul</span>
+                  <span>Tambah Matkul</span>
                 </button>
               </>
             )}

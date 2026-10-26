@@ -224,7 +224,7 @@ export const PresensiTab: React.FC<PresensiTabProps> = ({
                 className="btn-doodle px-3.5 py-2 bg-amber-300 hover:bg-amber-200 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
-                <span>+ Sesi Baru</span>
+                <span>Sesi Baru</span>
               </button>
             )}
           </div>

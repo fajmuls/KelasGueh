@@ -1,4 +1,4 @@
-export type UserRole = 'superadmin' | 'bendahara' | 'anggota';
+export type UserRole = 'superadmin' | 'bendahara' | 'sekretaris' | 'anggota';
 
 export interface UserProfile {
   id: string;
@@ -29,6 +29,7 @@ export interface KasMember {
   name: string;
   studentId: string; // NIM / No. Absen
   phone?: string;
+  gender?: 'L' | 'P'; // Student gender
   weeklyStatus: {
     [weekKey: string]: boolean; // e.g. "2026_10_W1", "2026_11_W2", ...
   };

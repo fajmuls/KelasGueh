@@ -1,6 +1,6 @@
 {
-  "summary":  "Rencana arsitektur dan perbaikan komprehensif v4.1.0:\n1. Hub Navigasi Tunggal & Sub-Navigasi Presisi untuk Bendahara & Sekretaris.\n2. Modal Laporan Akhir Semester Terpadu (Kas & Keaktifan) dengan Pratinjau Visual dan Cetak/Ekspor PDF.\n3. Ceklis Iuran: Modal Loading Proses Akumulasi Massal, Cooldown Anti-Spam Klik Cepat, dan Pembersihan Mutasi Ganda.\n4. Tab Iuran Khusus & Kolektif: Pemisahan Tab Acara dan Tab Patungan Belanja serta Perbaikan Overflow Tombol Split Bill.\n5. Sekretaris 5 Sub-Modul: Keaktifan & Presensi Terintegrasi Jadwal/Mata Kuliah, Modul Inventaris Barang Kelas, dan Modul Jadwal Dosen/Tugas.\n6. Pembersihan Bug Visual: Menghapus/memperbaiki dekorasi icon yang menimpa teks/kartu dan merestrukturisasi Audio Engine (fade-out suara tumpang tindih & chime unik).\n7. Versi v4.1.0 & Rekomendasi Saran Pengembang.",
-  "updatedAt":  "2026-10-26T08:57:47.800713362Z",
+  "summary":  "Rencana Implementasi Pembaruan Aplikasi Kelas Gue:\n1. Perataan & Pemadatan Ukuran Banner UI di Seluruh Menu\n2. Reorganisasi Menu Pengaturan: Pengaturan Kas vs Pengaturan Admin (Khusus SuperAdmin)\n3. Fitur Jenis Kelamin (L/P) + Auto-Detection & Tab Pembagian Kelompok Kelas di Sekretaris\n4. Perbaikan Double Icon pada Tombol Tambah\n5. Peningkatan Buku Kas: Edit Transaksi & Toggle Filter Sembunyikan Iuran Mingguan\n6. Pembatasan Hak Akses Peran Anggota & Penyesuaian Delai Loading Ceklis Iuran",
+  "updatedAt":  "2026-10-26T10:22:57.001604016Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

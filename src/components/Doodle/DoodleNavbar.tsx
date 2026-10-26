@@ -49,6 +49,7 @@ interface DoodleNavbarProps {
   classNameTitle: string;
   onOpenShareModal?: () => void;
   onOpenWalkthrough?: () => void;
+  onOpenAdminSettings?: () => void;
 }
 
 export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
@@ -58,7 +59,8 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   onSelectDomain,
   classNameTitle,
   onOpenShareModal,
-  onOpenWalkthrough
+  onOpenWalkthrough,
+  onOpenAdminSettings
 }) => {
   const { user, role, isSuperAdmin, isRealSuperAdmin, isBendahara, canEditKas, logout, switchRole, loginWithGooglePrompt } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -581,10 +583,30 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                 >
                   <span className="flex items-center gap-2.5">
                     <Settings className="w-4 h-4 text-indigo-600" />
-                    <span>Pengaturan Kelas & Preferensi</span>
+                    <span>Pengaturan Iuran & Semester</span>
                   </span>
                   <span className="text-[10px] font-black px-2 py-0.5 rounded border border-slate-900 bg-indigo-100 text-indigo-900">
-                    AKSES
+                    KAS
+                  </span>
+                </button>
+              )}
+
+              {/* Pengaturan Admin Button (For SuperAdmin / Admin) */}
+              {(isSuperAdmin || isRealSuperAdmin) && onOpenAdminSettings && (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    sfx.playCardOpen();
+                    onOpenAdminSettings();
+                  }}
+                  className="w-full min-h-[48px] px-4 py-2.5 rounded-lg border-2 border-slate-900 bg-amber-400 hover:bg-amber-500 font-black text-xs text-slate-900 flex items-center justify-between transition-all shadow-[2px_2px_0px_#000]"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-slate-900" />
+                    <span>Pengaturan Master Admin</span>
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded border border-slate-900 bg-slate-900 text-amber-300">
+                    ADMIN
                   </span>
                 </button>
               )}

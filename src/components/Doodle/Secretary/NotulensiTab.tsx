@@ -220,7 +220,7 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
                 className="btn-doodle px-4 py-2 bg-amber-300 hover:bg-amber-200 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
-                <span>+ Notulensi Baru</span>
+                <span>Notulensi Baru</span>
               </button>
             )}
           </div>

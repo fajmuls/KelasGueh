@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog, AttendanceRecord, MeetingMinute, ClassInventoryItem, CourseSchedule, CourseAssignment } from '../types/kas.ts';
+import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog, AttendanceRecord, MeetingMinute, ClassInventoryItem, CourseSchedule, CourseAssignment, UserRole } from '../types/kas.ts';
 import { getRegisteredUsers, registerOrUpdateUser, updateUserRole } from '../utils/userManagement.ts';
 
 /**
@@ -637,7 +637,7 @@ export class LocalKasRepository {
   }
 
   // ---------------- USER PROFILES & ROLES ----------------
-  public static async syncUserProfile(profile: { id: string; email: string; name: string; avatar?: string }): Promise<'superadmin' | 'bendahara' | 'anggota'> {
+  public static async syncUserProfile(profile: { id: string; email: string; name: string; avatar?: string }): Promise<UserRole> {
     // Also register locally for robust fallback
     const localRole = registerOrUpdateUser(profile);
 
@@ -647,7 +647,7 @@ export class LocalKasRepository {
     try {
       // 1. Get role from whitelist
       const { data: whitelist } = await client.from('authorized_whitelist').select('role').eq('email', profile.email.toLowerCase()).maybeSingle();
-      let role: 'superadmin' | 'bendahara' | 'anggota' = localRole;
+      let role: UserRole = localRole;
       
       if (profile.email.toLowerCase() === 'mrachmanfm@gmail.com') role = 'superadmin';
       else if (whitelist) role = whitelist.role;

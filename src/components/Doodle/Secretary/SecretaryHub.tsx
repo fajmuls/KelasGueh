@@ -14,11 +14,12 @@ import { PresensiTab } from './PresensiTab.tsx';
 import { NotulensiTab } from './NotulensiTab.tsx';
 import { InventarisTab } from './InventarisTab.tsx';
 import { JadwalTugasTab } from './JadwalTugasTab.tsx';
+import { KelompokTab } from './KelompokTab.tsx';
 import { sfx } from '../../../utils/soundEffects.ts';
-import { Award, ClipboardCheck, FileText, ArrowLeft, Package, Calendar } from 'lucide-react';
+import { Award, ClipboardCheck, FileText, ArrowLeft, Package, Calendar, Users } from 'lucide-react';
 
 interface SecretaryHubProps {
-  initialSubTab?: 'keaktifan' | 'presensi' | 'notulensi' | 'inventaris' | 'jadwal';
+  initialSubTab?: 'keaktifan' | 'presensi' | 'notulensi' | 'inventaris' | 'jadwal' | 'kelompok';
   members: KasMember[];
   settings: ClassSettings;
   canEdit: boolean;
@@ -68,14 +69,15 @@ export const SecretaryHub: React.FC<SecretaryHubProps> = ({
   onDeleteAssignment,
   onBackToHub
 }) => {
-  const [currentSubTab, setCurrentSubTab] = useState<'keaktifan' | 'presensi' | 'notulensi' | 'inventaris' | 'jadwal'>(initialSubTab);
+  const [currentSubTab, setCurrentSubTab] = useState<'keaktifan' | 'presensi' | 'notulensi' | 'inventaris' | 'jadwal' | 'kelompok'>(initialSubTab);
 
   const tabs = [
     { id: 'keaktifan', label: 'Poin Keaktifan', icon: Award, count: pointLogs.length },
     { id: 'presensi', label: 'Presensi', icon: ClipboardCheck, count: attendanceRecords.length },
     { id: 'notulensi', label: 'Notulensi', icon: FileText, count: meetingMinutes.length },
     { id: 'inventaris', label: 'Inventaris Barang', icon: Package, count: inventoryItems.length },
-    { id: 'jadwal', label: 'Jadwal & Tugas', icon: Calendar, count: courseSchedules.length }
+    { id: 'jadwal', label: 'Jadwal & Tugas', icon: Calendar, count: courseSchedules.length },
+    { id: 'kelompok', label: 'Pembagian Kelompok', icon: Users, count: members.length }
   ] as const;
 
   return (
@@ -182,6 +184,10 @@ export const SecretaryHub: React.FC<SecretaryHubProps> = ({
           onToggleAssignment={onToggleAssignment || (() => {})}
           onDeleteAssignment={onDeleteAssignment || (() => {})}
         />
+      )}
+
+      {currentSubTab === 'kelompok' && (
+        <KelompokTab members={members} />
       )}
     </div>
   );
