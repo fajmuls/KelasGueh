@@ -193,7 +193,6 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
       {/* Top Banner */}
       <div className="card-doodle bg-white p-5 rounded-2xl border-3 border-slate-900 shadow-[4px_4px_0px_#1E293B] relative">
         <ScotchTape className="-top-3 left-6 rotate-1" />
-        <PushPin className="top-3 right-4 absolute" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">

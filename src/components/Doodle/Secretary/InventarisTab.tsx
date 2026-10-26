@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 
 interface InventarisTabProps {
-  inventoryItems: ClassInventoryItem[];
+  items?: ClassInventoryItem[];
+  inventoryItems?: ClassInventoryItem[];
   settings: ClassSettings;
   canEdit: boolean;
   onSaveItem: (item: Omit<ClassInventoryItem, 'id' | 'createdAt'> & { id?: string }) => void;
@@ -25,12 +26,14 @@ interface InventarisTabProps {
 }
 
 export const InventarisTab: React.FC<InventarisTabProps> = ({
-  inventoryItems,
+  items,
+  inventoryItems: propInventoryItems,
   settings,
   canEdit,
   onSaveItem,
   onDeleteItem
 }) => {
+  const inventoryItems = items || propInventoryItems || [];
   const [search, setSearch] = useState('');
   const [conditionFilter, setConditionFilter] = useState<'all' | 'baik' | 'rusak'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);

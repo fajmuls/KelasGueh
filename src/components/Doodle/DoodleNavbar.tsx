@@ -283,30 +283,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
           </div>
         </div>
 
-        {/* Zone 2: Desktop Navigation Tabs */}
-        <nav className="hidden md:flex items-center gap-1.5">
-          {navItems.map((item) => {
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  sfx.playToggle();
-                  onSelectTab(item.id as any);
-                }}
-                className={`px-3 py-1.5 text-xs font-bold border-2 border-slate-900 rounded-md transition-all whitespace-nowrap shrink-0 ${
-                  isActive
-                    ? 'bg-amber-300 text-slate-900 shadow-[2px_2px_0px_#1E293B] -translate-y-0.5'
-                    : 'bg-white text-slate-700 hover:bg-amber-50 shadow-none'
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Zone 3: Actions & Controls */}
+        {/* Zone 2: Actions & Controls */}
         <div className="flex items-center gap-2 shrink-0">
           {/* Desktop-only: PWA Button, BGM Button, Share Button */}
           <div className="hidden md:flex items-center gap-2">
@@ -460,43 +437,6 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
           >
             {isMobileMenuOpen ? <X className="w-5 h-5 stroke-[2.5]" /> : <Menu className="w-5 h-5 stroke-[2.5]" />}
           </button>
-        </div>
-      </div>
-
-      {/* Mobile Horizontal Tab Strip (Main Navigation Bar) */}
-      <div
-        className={`md:hidden relative border-t-2 border-slate-900 bg-white transition-all duration-200 overflow-hidden ${
-          isTabBarVisible ? 'max-h-14 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
-        }`}
-      >
-        {/* Subtle Edge Fade cues for scroll hints */}
-        <div className="absolute left-0 inset-y-0 w-3 bg-gradient-to-r from-white to-transparent pointer-events-none z-10" />
-        <div className="absolute right-0 inset-y-0 w-4 bg-gradient-to-l from-white to-transparent pointer-events-none z-10" />
-
-        <div
-          ref={tabStripRef}
-          className="flex overflow-x-auto p-1.5 gap-1.5 no-scrollbar touch-pan-x"
-        >
-          {navItems.map((item) => {
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                data-tab-id={item.id}
-                onClick={() => {
-                  sfx.playToggle();
-                  onSelectTab(item.id as any);
-                }}
-                className={`py-1.5 px-3 min-h-[38px] text-[11px] font-bold rounded border-2 transition-all whitespace-nowrap text-center shrink-0 ${
-                  isActive
-                    ? 'bg-amber-300 border-slate-900 text-slate-900 font-black shadow-[1.5px_1.5px_0px_#1E293B]'
-                    : 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-amber-50'
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
         </div>
       </div>
 

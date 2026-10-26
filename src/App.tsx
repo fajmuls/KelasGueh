@@ -10,8 +10,8 @@ import { KasChecklist } from './components/Doodle/KasChecklist.tsx';
 import { KolektifBillTab } from './components/Doodle/KolektifBillTab.tsx';
 import { KasRecapView } from './components/Doodle/KasRecapView.tsx';
 import { KasSettings } from './components/Doodle/KasSettings.tsx';
-import { KasAuditLog } from './components/Doodle/KasAuditLog.tsx';
 import { SecretaryHub } from './components/Doodle/Secretary/SecretaryHub.tsx';
+import { BendaharaHub } from './components/Doodle/Bendahara/BendaharaHub.tsx';
 import { PrintableBinderModal } from './components/Doodle/PrintableBinderModal.tsx';
 import { WhatsAppShareModal } from './components/Doodle/WhatsAppShareModal.tsx';
 import { ClassShareModal } from './components/Doodle/ClassShareModal.tsx';
@@ -82,7 +82,7 @@ const getPathFromRoute = (domain: AppDomain, tab: AppNavTab): string => {
 };
 
 const AppContent: React.FC = () => {
-  const { user, role, isLoggedIn, canEditKas } = useAuth();
+  const { user, role, isLoggedIn, canEditKas, isSuperAdmin } = useAuth();
   const [showIntro, setShowIntro] = useState(true);
 
   // Initialize Route & Domain from browser URL
@@ -736,88 +736,43 @@ const AppContent: React.FC = () => {
         )}
 
         {/* 3. RANAH BENDAHARA (Administrasi Kas & Keuangan) */}
-        {activeDomain === 'bendahara' && currentTab === 'ringkasan' && (
-          <KasOverview
-            transactions={transactions}
-            settings={settings}
-            members={members}
-            onNavigateTab={handleSelectTab as any}
-            onOpenNewTxModal={() => setIsAddTxModalOpen(true)}
-            onOpenPrintModal={() => setIsPrintModalOpen(true)}
-            onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
-            onOpenShareModal={() => setIsShareModalOpen(true)}
-            onOpenSplitBillModal={() => setIsSplitBillModalOpen(true)}
-          />
-        )}
-
-        {activeDomain === 'bendahara' && currentTab === 'bukukas' && (
-          <KasBook
+        {activeDomain === 'bendahara' && (
+          <BendaharaHub
+            initialSubTab={
+              ['ringkasan', 'bukukas', 'checklist', 'kolektif', 'rekap', 'pengaturan', 'auditlog'].includes(currentTab)
+                ? (currentTab as any)
+                : 'ringkasan'
+            }
             transactions={transactions}
             members={members}
             settings={settings}
+            kolektifBills={kolektifBills}
+            auditLogs={auditLogs}
+            canEdit={canEditKas}
+            isSuperAdmin={isSuperAdmin}
             onAddTransaction={handleAddTransaction}
             onDeleteTransaction={handleDeleteTransaction}
-            onUpdateSettings={handleSaveSettings}
-            isModalOpen={isAddTxModalOpen}
-            onCloseModal={() => setIsAddTxModalOpen(false)}
-            onOpenModal={() => setIsAddTxModalOpen(true)}
-            onOpenPrintModal={() => setIsPrintModalOpen(true)}
-            onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
-            onOpenSplitBillModal={() => setIsSplitBillModalOpen(true)}
-          />
-        )}
-
-        {activeDomain === 'bendahara' && currentTab === 'checklist' && (
-          <KasChecklist
-            members={members}
-            settings={settings}
             onToggleWeek={handleToggleWeek}
             onToggleAllWeek={handleToggleAllWeek}
             onAddMember={handleAddMember}
             onAddMembers={handleAddMembers}
             onUpdateMember={handleUpdateMember}
-          />
-        )}
-
-        {activeDomain === 'bendahara' && currentTab === 'kolektif' && (
-          <KolektifBillTab
-            bills={kolektifBills}
-            members={members}
-            settings={settings}
-            canEdit={canEditKas}
-            onAddBill={handleAddKolektifBill}
-            onUpdateBill={handleUpdateKolektifBill}
-            onDeleteBill={handleDeleteKolektifBill}
-            onTogglePayment={handleToggleKolektifPayment}
-            onSyncToKas={handleAddTransaction}
-            onOpenSplitBillModal={() => setIsSplitBillModalOpen(true)}
-          />
-        )}
-
-        {activeDomain === 'bendahara' && currentTab === 'rekap' && (
-          <KasRecapView
-            transactions={transactions}
-            members={members}
-            settings={settings}
-          />
-        )}
-
-        {activeDomain === 'bendahara' && currentTab === 'auditlog' && (
-          <KasAuditLog
-            auditLogs={auditLogs}
-            onRefreshLogs={() => setAuditLogs(LocalKasRepository.getAuditLogs())}
-          />
-        )}
-
-        {activeDomain === 'bendahara' && currentTab === 'pengaturan' && canEditKas && (
-          <KasSettings
-            settings={settings}
-            members={members}
             onSaveSettings={handleSaveSettings}
             onResetData={handleResetData}
-            onAddMember={handleAddMember}
-            onAddMembers={handleAddMembers}
-            onUpdateMember={handleUpdateMember}
+            onAddKolektifBill={handleAddKolektifBill}
+            onUpdateKolektifBill={handleUpdateKolektifBill}
+            onDeleteKolektifBill={handleDeleteKolektifBill}
+            onToggleKolektifPayment={handleToggleKolektifPayment}
+            onRefreshAuditLogs={() => setAuditLogs(LocalKasRepository.getAuditLogs())}
+            isAddTxModalOpen={isAddTxModalOpen}
+            onOpenNewTxModal={() => setIsAddTxModalOpen(true)}
+            onCloseNewTxModal={() => setIsAddTxModalOpen(false)}
+            onOpenPrintModal={() => setIsPrintModalOpen(true)}
+            onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
+            onOpenShareModal={() => setIsShareModalOpen(true)}
+            onOpenSplitBillModal={() => setIsSplitBillModalOpen(true)}
+            onBackToHub={() => handleSelectDomain('hub', 'beranda')}
+            onSubTabChange={(subTab) => handleSelectTab(subTab as any)}
           />
         )}
       </main>

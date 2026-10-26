@@ -20,7 +20,8 @@ import {
 } from 'lucide-react';
 
 interface JadwalTugasTabProps {
-  courseSchedules: CourseSchedule[];
+  schedules?: CourseSchedule[];
+  courseSchedules?: CourseSchedule[];
   settings: ClassSettings;
   canEdit: boolean;
   onSaveCourse: (course: Omit<CourseSchedule, 'id' | 'createdAt'> & { id?: string }) => void;
@@ -33,7 +34,8 @@ interface JadwalTugasTabProps {
 const DAYS_OF_WEEK = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
-  courseSchedules,
+  schedules,
+  courseSchedules: propCourseSchedules,
   settings,
   canEdit,
   onSaveCourse,
@@ -42,6 +44,7 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
   onToggleAssignment,
   onDeleteAssignment
 }) => {
+  const courseSchedules = schedules || propCourseSchedules || [];
   const [selectedDay, setSelectedDay] = useState<string>('all');
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseSchedule | null>(null);
