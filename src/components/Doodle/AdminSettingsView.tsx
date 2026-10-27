@@ -1,3 +1,4 @@
+import { showToast, showConfirm } from "../UI/DoodleDialog.tsx";
 import React, { useState, useEffect } from 'react';
 import { KasMember, ClassSettings } from '../../types/kas.ts';
 import { AuditLogEntry, LocalKasRepository, generateUUID } from '../../services/supabaseClient.ts';
@@ -23,6 +24,7 @@ import {
   ArrowLeft,
   UserPlus,
   FileText,
+  Volume2,
   Upload,
   User
 } from 'lucide-react';
@@ -40,7 +42,9 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   onUpdateMembers,
   onReturnToHub
 }) => {
-  const [activeTab, setActiveTab] = useState<'whitelist' | 'students' | 'audit' | 'gender' | 'pin' | 'cache' | 'version'>('whitelist');
+  const [activeTab, setActiveTab] = useState<'whitelist' | 'students' | 'audit' | 'audio' | 'pin' | 'cache' | 'version'>('whitelist');
+  const [bgmVol, setBgmVol] = useState(() => sfx.getBgmVolume());
+  const [sfxVol, setSfxVol] = useState(() => sfx.getSfxVolume());
 
   // Whitelist state
   const [users, setUsers] = useState<any[]>([]);
@@ -132,6 +136,34 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
     await loadData();
   };
 
+  // Update specific student field and sync to DB
+  const handleUpdateStudent = async (memberId: string, updates: Partial<KasMember>) => {
+    sfx.playOptionSelect();
+    const updated = memberList.map(m => m.id === memberId ? { ...m, ...updates } : m);
+    setMemberList(updated);
+    onUpdateMembers(updated);
+    await LocalKasRepository.saveMembers(updated);
+    showToast("Data siswa berhasil diperbarui ke database!", "success");
+  };
+
+  // Delete student with confirmation
+  const handleDeleteStudent = async (memberId: string, name: string) => {
+    const ok = await showConfirm({
+      title: "Hapus Siswa",
+      message: `Hapus data siswa "${name}" dari database kelas?`,
+      confirmLabel: "Hapus",
+      cancelLabel: "Batal",
+      isDanger: true
+    });
+    if (!ok) return;
+    sfx.playPaperRustle();
+    const updated = memberList.filter(m => m.id !== memberId);
+    setMemberList(updated);
+    onUpdateMembers(updated);
+    await LocalKasRepository.saveMembers(updated);
+    showToast(`Siswa "${name}" dihapus`, "info");
+  };
+
   // Add individual student
   const handleAddIndividualStudent = () => {
     if (!newStudentName.trim()) return;
@@ -145,6 +177,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
       name: formattedName,
       studentId: newStudentId.trim() || `230101${(memberList.length + 1).toString().padStart(3, '0')}`,
       gender: detectedGender,
+      isActive: true,
       weeklyStatus: {}
     };
 
@@ -195,6 +228,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           name: formattedName,
           studentId: studentId || `230101${(memberList.length + newMembers.length + 1).toString().padStart(3, '0')}`,
           gender: autoDetectGenderByName(formattedName),
+          isActive: true,
           weeklyStatus: {}
         });
       }
@@ -272,9 +306,9 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   return (
     <div className="min-h-screen bg-amber-50/60 p-3 sm:p-6 space-y-5 animate-in fade-in duration-200">
       {/* Top Banner Header */}
-      <div className="bg-amber-100 border-3 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[4px_4px_0px_#000] relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-amber-100 border-3 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[4px_4px_0px_#000] relative overflow-visible flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Decorative Tape & Badge */}
-        <div className="absolute -top-3 left-8 bg-amber-400 text-slate-900 font-black text-[10px] uppercase tracking-wider px-3 py-0.5 border-2 border-slate-900 rotate-[-2deg] shadow-[1px_1px_0px_#000]">
+        <div className="absolute -top-3.5 left-8 z-30 bg-amber-400 text-slate-900 font-black text-[10px] uppercase tracking-wider px-3 py-0.5 border-2 border-slate-900 rotate-[-2deg] shadow-[1px_1px_0px_#000]">
           ★ RANAH MASTER ADMIN
         </div>
 
@@ -316,7 +350,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           { id: 'whitelist', label: 'Whitelist Roll', icon: UserCheck },
           { id: 'students', label: 'Manajemen Siswa', icon: UserPlus },
           { id: 'audit', label: 'Laporan Audit Log', icon: FileSpreadsheet },
-          { id: 'gender', label: 'Kelamin Siswa (L/P)', icon: Users },
+          { id: 'audio', label: 'Volume & Audio', icon: Volume2 },
           { id: 'pin', label: 'PIN Keamanan', icon: Lock },
           { id: 'cache', label: 'Reset Cache Lokal', icon: Trash2 },
           { id: 'version', label: 'Versi & Catatan', icon: Sparkles }
@@ -430,8 +464,8 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
             </div>
 
             {/* Whitelist Users Table */}
-            <div className="border-2 border-slate-900 rounded-xl overflow-hidden shadow-[2px_2px_0px_#000]">
-              <table className="w-full text-left text-xs">
+            <div className="border-2 border-slate-900 rounded-xl overflow-x-auto shadow-[2px_2px_0px_#000]">
+              <table className="w-full min-w-[560px] text-left text-xs">
                 <thead className="bg-amber-100 border-b-2 border-slate-900 font-black text-slate-900">
                   <tr>
                     <th className="p-3">Pengguna / Nama</th>
@@ -678,7 +712,17 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                         <td className="p-2.5 text-[11px] text-slate-500 font-mono whitespace-nowrap">
                           {new Date(log.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
                         </td>
-                        <td className="p-2.5 font-bold text-slate-900">{log.action}</td>
+                        <td className="p-2.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border border-slate-900 ${
+                            log.action.includes("PEMASUKAN") ? "bg-emerald-200 text-emerald-950" :
+                            log.action.includes("PENGELUARAN") || log.action.includes("HAPUS") ? "bg-rose-200 text-rose-950" :
+                            log.action.includes("IURAN") ? "bg-amber-200 text-amber-950" :
+                            log.action.includes("PRESENSI") || log.action.includes("SEKRETARIS") ? "bg-sky-200 text-sky-950" :
+                            "bg-purple-200 text-purple-950"
+                          }`}>
+                            {log.action}
+                          </span>
+                        </td>
                         <td className="p-2.5 text-slate-700">
                           {log.performedBy} <span className="text-[10px] text-slate-400">({log.userRole})</span>
                         </td>

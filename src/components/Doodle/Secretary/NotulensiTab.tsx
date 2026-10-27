@@ -162,8 +162,7 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
       `🎯 *Tindak Lanjut / Action Items:*\n${actionList}\n\n` +
       `_— Dicatat via Sekretariat Kelas Gue_`;
 
-    navigator.clipboard.writeText(message);
-    showToast('Teks notulensi berhasil disalin untuk WhatsApp!', 'success');
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   // WhatsApp Copy for Official Letter

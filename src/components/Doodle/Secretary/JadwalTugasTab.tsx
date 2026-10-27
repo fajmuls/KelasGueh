@@ -173,8 +173,7 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
       (rows || '- Belum ada jadwal kuliah tercatat -') +
       `\n\n_— Dicatat via Sekretariat Kelas Gue_`;
 
-    navigator.clipboard.writeText(message);
-    showToast('Jadwal kuliah berhasil disalin untuk WhatsApp!', 'success');
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const filteredCourses = courseSchedules.filter(c => {
@@ -212,13 +211,16 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              onClick={handleCopyWhatsAppSchedule}
-              className="btn-doodle px-3.5 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
-            >
-              <Share2 className="w-4 h-4 text-emerald-700" />
-              <span>Salin Jadwal WA</span>
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleCopyWhatsAppSchedule}
+                className="btn-doodle px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
+                title="Kirim Jadwal Kuliah Langsung ke WhatsApp"
+              >
+                <Share2 className="w-4 h-4 text-white" />
+                <span>Kirim WA</span>
+              </button>
+            )}
 
             {canEdit && (
               <>

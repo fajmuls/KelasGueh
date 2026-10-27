@@ -17,6 +17,7 @@ import { WhatsAppShareModal } from './components/Doodle/WhatsAppShareModal.tsx';
 import { ClassShareModal } from './components/Doodle/ClassShareModal.tsx';
 import { SplitBillModal } from './components/Doodle/SplitBillModal.tsx';
 import { AnimatedIntroScreen } from './components/Doodle/AnimatedIntroScreen.tsx';
+import { showConfirm } from "./components/UI/DoodleDialog.tsx";
 import { DoodleWalkthrough } from './components/Doodle/DoodleWalkthrough.tsx';
 import { AdminSettingsView } from './components/Doodle/AdminSettingsView.tsx';
 import {
@@ -151,12 +152,25 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Auto trigger walkthrough on first visit after intro
+  // Welcome dialog on first login offering interactive walkthrough tour
   useEffect(() => {
     if (isLoggedIn && !showIntro) {
-      const completed = localStorage.getItem('kelasgue_walkthrough_completed_v1');
-      if (completed !== 'true') {
-        const timer = setTimeout(() => setIsWalkthroughOpen(true), 600);
+      const welcomed = localStorage.getItem('kelasgue_tour_welcomed_v1');
+      if (!welcomed) {
+        localStorage.setItem('kelasgue_tour_welcomed_v1', 'true');
+        const timer = setTimeout(async () => {
+          const wantTour = await showConfirm({
+            title: '👋 Selamat Datang di Kelas Gue!',
+            message: 'Hai! Ingin mengikuti tur panduan interaktif singkat untuk mengenal fitur-fitur kelas (Hub, Buku Kas Bendahara, dan Sekretariat)?',
+            confirmLabel: '🚀 Mulai Tur Panduan',
+            cancelLabel: 'Lewati (Skip)',
+            isDanger: false
+          });
+          if (wantTour) {
+            sfx.playOptionSelect();
+            setIsWalkthroughOpen(true);
+          }
+        }, 800);
         return () => clearTimeout(timer);
       }
     }

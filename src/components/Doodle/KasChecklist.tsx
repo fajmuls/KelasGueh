@@ -31,7 +31,7 @@ interface KasChecklistProps {
   members: KasMember[];
   settings: ClassSettings;
   onToggleWeek: (memberId: string, weekKey: string) => void;
-  onToggleAllWeek?: (weekKey: string, shouldPay: boolean) => void;
+  onToggleAllWeek?: (weekKey: string, shouldPay: boolean) => Promise<void> | void;
   onAddMember: (name: string, studentId: string, phone?: string) => void;
   onAddMembers?: (newMembersList: { name: string; studentId: string; phone?: string }[]) => void;
   onUpdateMember?: (memberId: string, updates: Partial<KasMember>) => void;
@@ -144,30 +144,34 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
     onToggleWeek(memberId, weekKey);
   };
 
-  const handleSafeToggleAllWeek = (weekIdx: number) => {
+  const handleSafeToggleAllWeek = async (weekIdx: number) => {
     if (!canEditKas || !onToggleAllWeek) return;
     const wKey = getWeekKey(weekIdx);
     const allPaid = filteredMembers.length > 0 && filteredMembers.every(m => !!m.weeklyStatus?.[wKey]);
     const shouldPay = !allPaid;
 
-    sfx.playClick();
+    sfx.playOptionSelect();
     setBulkLoadingWeek({
       weekKey: wKey,
       weekLabel: `Minggu ke-${weekIdx + 1} (${MONTHS[selectedMonth]} ${selectedYear})`,
       shouldPay
     });
 
-    setTimeout(() => {
-      onToggleAllWeek(wKey, shouldPay);
+    try {
+      await onToggleAllWeek(wKey, shouldPay);
       sfx.playBulkLoadingSuccess();
-      setBulkLoadingWeek(null);
       showToast(
         shouldPay
-          ? `Berhasil memperbarui kas: Seluruh siswa ditandai Lunas untuk Minggu ke-${weekIdx + 1}!`
+          ? `Berhasil sinkronisasi kas: Seluruh siswa ditandai Lunas untuk Minggu ke-${weekIdx + 1}!`
           : `Status lunas Minggu ke-${weekIdx + 1} telah dibatalkan untuk seluruh siswa.`,
         'success'
       );
-    }, 650);
+    } catch (err) {
+      console.error('Bulk toggle error:', err);
+      showToast('Gagal sinkronisasi kas massal.', 'error');
+    } finally {
+      setBulkLoadingWeek(null);
+    }
   };
 
   const membersWithArrears = members.filter(m => {

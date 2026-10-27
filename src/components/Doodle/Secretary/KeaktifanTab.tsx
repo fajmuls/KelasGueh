@@ -30,9 +30,9 @@ interface KeaktifanTabProps {
 }
 
 const PRESET_CATEGORIES = [
-  { key: 'tanya', label: 'Bertanya di Kelas', points: 5, color: 'bg-sky-100 text-sky-800 border-sky-400' },
+  { key: 'tanya', label: 'Bertanya di Kelas', points: 1, color: 'bg-sky-100 text-sky-800 border-sky-400' },
   { key: 'presentasi', label: 'Presentasi Materi', points: 10, color: 'bg-emerald-100 text-emerald-800 border-emerald-400' },
-  { key: 'menjawab', label: 'Menjawab Pertanyaan', points: 5, color: 'bg-amber-100 text-amber-800 border-amber-400' },
+  { key: 'menjawab', label: 'Menjawab Pertanyaan', points: 1, color: 'bg-amber-100 text-amber-800 border-amber-400' },
   { key: 'inisiatif', label: 'Inisiatif Diskusi', points: 10, color: 'bg-purple-100 text-purple-800 border-purple-400' },
   { key: 'tugas', label: 'Tugas Tepat Waktu', points: 5, color: 'bg-blue-100 text-blue-800 border-blue-400' },
   { key: 'terlambat', label: 'Terlambat Masuk Sesi', points: -5, color: 'bg-rose-100 text-rose-800 border-rose-400' },
@@ -57,7 +57,7 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
   const [selectedMemberId, setSelectedMemberId] = useState<string>(members[0]?.id || '');
   const [selectedCategory, setSelectedCategory] = useState<typeof PRESET_CATEGORIES[number]['key']>('tanya');
   const [formCourseId, setFormCourseId] = useState<string>('');
-  const [customPoints, setCustomPoints] = useState<number>(5);
+  const [customPoints, setCustomPoints] = useState<number>(1);
   const [reason, setReason] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
 
@@ -152,8 +152,7 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
       `\n\nTetap semangat aktif bertanya, presentasi, dan berdiskusi! ✨\n` +
       `_— Dicatat via Sekretariat Kelas Gue_`;
 
-    navigator.clipboard.writeText(message);
-    showToast('Klasemen poin berhasil disalin untuk WhatsApp!', 'success');
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const filteredScores = memberScores.filter(ms => {
@@ -188,13 +187,16 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              onClick={handleCopyWhatsAppLeaderboard}
-              className="btn-doodle px-3.5 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
-            >
-              <Share2 className="w-4 h-4 text-emerald-700" />
-              <span>Salin Klasemen WA</span>
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleCopyWhatsAppLeaderboard}
+                className="btn-doodle px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
+                title="Kirim Klasemen Poin Langsung ke WhatsApp"
+              >
+                <Share2 className="w-4 h-4 text-white" />
+                <span>Kirim WA</span>
+              </button>
+            )}
 
             {canEdit && (
               <button

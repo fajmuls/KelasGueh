@@ -19,7 +19,10 @@ import {
   Settings,
   Sun,
   Moon,
-  BookOpen
+  BookOpen,
+  Coins,
+  FileText,
+  Eye
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWA/PWAInstallButton.tsx';
 import { subscribeCloudSync, getCloudSyncStatus, CloudSyncStatus } from '../../services/supabaseClient.ts';
@@ -63,7 +66,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   onOpenWalkthrough,
   onOpenAdminSettings
 }) => {
-  const { user, role, isSuperAdmin, isRealSuperAdmin, isBendahara, canEditKas, logout, switchRole, loginWithGooglePrompt } = useAuth();
+  const { user, role, isSuperAdmin, isRealSuperAdmin, isBendahara, isSekretaris, canEditKas, canEditSecretary, logout, switchRole, loginWithGooglePrompt } = useAuth();
   const { theme, setTheme } = useTheme();
   const [bgmPlaying, setBgmPlaying] = useState(() => sfx.getIsBgmPlaying());
   const [sfxEnabled, setSfxEnabled] = useState(() => sfx.isEnabled());
@@ -279,13 +282,18 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                 </>
               ) : isBendahara ? (
                 <>
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <Coins className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span className="hidden sm:inline font-black">Bendahara</span>
+                </>
+              ) : isSekretaris ? (
+                <>
+                  <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span className="hidden sm:inline font-black">Sekretaris</span>
                 </>
               ) : (
                 <>
-                  <User className="w-4 h-4 text-sky-600 shrink-0" />
-                  <span className="hidden sm:inline font-bold">Anggota</span>
+                  <Eye className="w-4 h-4 text-sky-600 shrink-0" />
+                  <span className="hidden sm:inline font-bold">Anggota (Lihat)</span>
                 </>
               )}
               <span className="text-[10px] text-slate-500">▼</span>
@@ -338,8 +346,20 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                           role === 'bendahara' ? 'bg-emerald-100 text-emerald-900 border border-slate-900 font-black' : 'hover:bg-slate-100'
                         }`}
                       >
-                        <span>🛡️ Preview Bendahara</span>
+                        <span>💰 Preview Bendahara</span>
                         {role === 'bendahara' && <span>✓</span>}
+                      </button>
+                      <button
+                        onClick={() => {
+                          switchRole('sekretaris');
+                          setShowRoleMenu(false);
+                        }}
+                        className={`w-full min-h-[36px] text-left px-2 py-1 text-xs font-bold rounded flex items-center justify-between ${
+                          role === 'sekretaris' ? 'bg-indigo-100 text-indigo-900 border border-slate-900 font-black' : 'hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>📝 Preview Sekretaris</span>
+                        {role === 'sekretaris' && <span>✓</span>}
                       </button>
                       <button
                         onClick={() => {
@@ -350,7 +370,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                           role === 'anggota' ? 'bg-sky-100 text-sky-900 border border-slate-900 font-black' : 'hover:bg-slate-100'
                         }`}
                       >
-                        <span>👀 Preview Anggota</span>
+                        <span>👀 Preview Anggota (Hanya Lihat)</span>
                         {role === 'anggota' && <span>✓</span>}
                       </button>
                     </div>
@@ -512,32 +532,61 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                 </button>
               )}
 
-              {/* Pengaturan Button ONLY for Bendahara & Super Admin (canEditKas) */}
-              {canEditKas && (
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    sfx.playToggle();
-                    onSelectTab('pengaturan');
-                  }}
-                  className={`w-full min-h-[48px] px-4 py-2.5 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
-                    currentTab === 'pengaturan'
-                      ? 'bg-amber-300 text-slate-900 shadow-[2px_2px_0px_#1E293B]'
-                      : 'bg-white text-slate-800 hover:bg-amber-50'
-                  }`}
-                >
-                  <span className="flex items-center gap-2.5">
-                    <Settings className="w-4 h-4 text-indigo-600" />
-                    <span>Pengaturan Iuran & Semester</span>
-                  </span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded border border-slate-900 bg-indigo-100 text-indigo-900">
-                    KAS
-                  </span>
-                </button>
+              {/* Pengaturan Pengurus Section (Bendahara & Sekretaris) */}
+              {(canEditKas || canEditSecretary) && (
+                <div className="p-3 bg-amber-50/80 rounded-xl border-2 border-slate-900 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                      <Settings className="w-3.5 h-3.5 text-indigo-600" />
+                      Pengaturan Pengurus
+                    </span>
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded border border-slate-900 bg-amber-200 text-slate-900">
+                      PENGURUS
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {canEditKas && (
+                      <button
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          sfx.playToggle();
+                          onSelectDomain('bendahara', 'pengaturan');
+                        }}
+                        className={`p-2.5 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center gap-2 text-left transition-all ${
+                          currentTab === 'pengaturan'
+                            ? 'bg-amber-300 text-slate-900 shadow-[2px_2px_0px_#1E293B]'
+                            : 'bg-white text-slate-800 hover:bg-amber-100'
+                        }`}
+                      >
+                        <Coins className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          <div className="font-black text-xs leading-tight">Pengaturan Bendahara</div>
+                          <div className="text-[9px] text-slate-500">Iuran, kas & semester</div>
+                        </div>
+                      </button>
+                    )}
+                    {canEditSecretary && (
+                      <button
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          sfx.playToggle();
+                          onSelectDomain('sekretaris', 'keaktifan');
+                        }}
+                        className="p-2.5 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center gap-2 text-left bg-white text-slate-800 hover:bg-sky-100 transition-all"
+                      >
+                        <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <div>
+                          <div className="font-black text-xs leading-tight">Pengaturan Sekretaris</div>
+                          <div className="text-[9px] text-slate-500">Presensi & kelompok</div>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
 
-              {/* Pengaturan Admin Button (For SuperAdmin / Admin) */}
-              {(isSuperAdmin || isRealSuperAdmin) && (
+              {/* Pengaturan Admin Button (STRICTLY ONLY FOR SUPER ADMIN) */}
+              {isSuperAdmin && (
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
@@ -551,7 +600,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                     <span>Pengaturan Master Admin</span>
                   </span>
                   <span className="text-[10px] font-black px-2 py-0.5 rounded border border-slate-900 bg-slate-900 text-amber-300">
-                    ADMIN
+                    SUPER ADMIN
                   </span>
                 </button>
               )}
