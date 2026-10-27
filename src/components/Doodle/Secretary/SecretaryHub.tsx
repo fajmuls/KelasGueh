@@ -187,7 +187,11 @@ export const SecretaryHub: React.FC<SecretaryHubProps> = ({
       )}
 
       {currentSubTab === 'kelompok' && (
-        <KelompokTab members={members} />
+        <KelompokTab
+          members={members}
+          courseSchedules={courseSchedules}
+          onAddAssignment={onAddAssignment}
+        />
       )}
     </div>
   );

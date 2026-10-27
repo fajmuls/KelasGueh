@@ -134,6 +134,11 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
 
   const handleSafeSingleToggle = (memberId: string, weekKey: string) => {
     if (!canEditKas) return;
+    const targetMember = members.find(m => m.id === memberId);
+    if (targetMember?.isActive === false) {
+      showToast('Siswa berstatus Tidak Aktif / Pindah dan tidak ditagih iuran.', 'info');
+      return;
+    }
     const now = Date.now();
     if (now - lastSingleClickRef.current < 280) {
       // Throttled to prevent fast clicking race condition
@@ -147,7 +152,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   const handleSafeToggleAllWeek = async (weekIdx: number) => {
     if (!canEditKas || !onToggleAllWeek) return;
     const wKey = getWeekKey(weekIdx);
-    const allPaid = filteredMembers.length > 0 && filteredMembers.every(m => !!m.weeklyStatus?.[wKey]);
+    const activeInFiltered = filteredMembers.filter(m => m.isActive !== false);
+    const allPaid = activeInFiltered.length > 0 && activeInFiltered.every(m => !!m.weeklyStatus?.[wKey]);
     const shouldPay = !allPaid;
 
     sfx.playOptionSelect();
@@ -162,8 +168,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
       sfx.playBulkLoadingSuccess();
       showToast(
         shouldPay
-          ? `Berhasil sinkronisasi kas: Seluruh siswa ditandai Lunas untuk Minggu ke-${weekIdx + 1}!`
-          : `Status lunas Minggu ke-${weekIdx + 1} telah dibatalkan untuk seluruh siswa.`,
+          ? `Berhasil sinkronisasi kas: Seluruh siswa aktif ditandai Lunas untuk Minggu ke-${weekIdx + 1}!`
+          : `Status lunas Minggu ke-${weekIdx + 1} telah dibatalkan untuk seluruh siswa aktif.`,
         'success'
       );
     } catch (err) {
@@ -175,6 +181,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
   };
 
   const membersWithArrears = members.filter(m => {
+    if (m.isActive === false) return false;
     const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
     return monthWeekKeys.some(key => !m.weeklyStatus?.[key]);
   });
@@ -567,8 +574,33 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
           {/* Student Tap Cards Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-[55vh] overflow-y-auto p-1 select-none">
             {filteredMembers.map((member) => {
+              const isInactive = member.isActive === false;
               const currentWKey = getWeekKey(selectedFastTapWeek);
-              const isPaid = !!member.weeklyStatus?.[currentWKey];
+              const isPaid = !isInactive && !!member.weeklyStatus?.[currentWKey];
+
+              if (isInactive) {
+                return (
+                  <div
+                    key={member.id}
+                    className="p-3 rounded-lg border-2 border-dashed border-slate-400 bg-slate-100/80 opacity-60 flex flex-col justify-between select-none cursor-not-allowed"
+                  >
+                    <div className="flex items-start justify-between gap-1 mb-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-500 truncate leading-tight line-through">{toTitleCase(member.name)}</p>
+                        <p className="text-[9px] font-mono text-slate-400">{member.studentId}</p>
+                      </div>
+                      <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded bg-slate-200 text-slate-600 border border-slate-300">
+                        Pindah
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] font-mono font-bold pt-1 border-t border-slate-300">
+                      <span className="text-slate-400">Tidak Ditagih</span>
+                      <span className="text-slate-400 line-through">Rp 0</span>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <div
@@ -654,16 +686,24 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                   <tr><td colSpan={13} className="py-8 text-center text-slate-500 font-medium italic text-[11px]">Tidak ada data.</td></tr>
                 ) : (
                   filteredMembers.map((member, index) => {
+                    const isInactive = member.isActive === false;
                     const monthWeekKeys = [0, 1, 2, 3].map(idx => getWeekKey(idx));
-                    const paidWeeksInMonth = monthWeekKeys.filter(key => !!member.weeklyStatus?.[key]).length;
+                    const paidWeeksInMonth = isInactive ? 0 : monthWeekKeys.filter(key => !!member.weeklyStatus?.[key]).length;
                     const totalPaid = paidWeeksInMonth * currentMonthDues;
-                    const hasArrears = paidWeeksInMonth < 4;
+                    const hasArrears = !isInactive && paidWeeksInMonth < 4;
                     const isEditing = editingId === member.id;
 
                     return (
-                      <tr key={member.id} className="hover:bg-amber-50/30 transition-colors group">
+                      <tr
+                        key={member.id}
+                        className={`transition-colors group ${
+                          isInactive
+                            ? 'bg-slate-100/80 opacity-65 text-slate-500'
+                            : 'hover:bg-amber-50/30'
+                        }`}
+                      >
                         <td className="py-1 px-1 text-center font-mono text-[9px] text-slate-500">{index + 1}</td>
-                        <td className="py-1 px-2 font-bold text-slate-900 sticky left-0 z-20 bg-white group-hover:bg-amber-50 transition-colors border-r border-slate-200">
+                        <td className="py-1 px-2 font-bold sticky left-0 z-20 bg-white group-hover:bg-amber-50 transition-colors border-r border-slate-200">
                           {isEditing ? (
                             <input
                               className="w-full bg-amber-50 border border-amber-300 rounded px-1 py-0.5 text-[10px] focus:outline-none"
@@ -671,9 +711,21 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                               onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                             />
                           ) : (
-                            <span className="block text-[10px] sm:text-xs font-bold text-slate-900 leading-tight line-clamp-2 max-w-[130px] sm:max-w-none break-words" title={member.name}>
-                              {toTitleCase(member.name)}
-                            </span>
+                            <div>
+                              <span
+                                className={`block text-[10px] sm:text-xs font-bold leading-tight line-clamp-2 max-w-[130px] sm:max-w-none break-words ${
+                                  isInactive ? 'line-through text-slate-500' : 'text-slate-900'
+                                }`}
+                                title={member.name}
+                              >
+                                {toTitleCase(member.name)}
+                              </span>
+                              {isInactive && (
+                                <span className="inline-block mt-0.5 px-1 py-0.2 bg-slate-200 text-slate-700 rounded text-[7px] font-black uppercase border border-slate-300">
+                                  Tidak Aktif / Pindah
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
                       <td className="py-1 px-2 font-mono text-[8px] text-slate-500 text-center hidden sm:table-cell">
@@ -684,13 +736,27 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                             onChange={e => setEditForm({ ...editForm, studentId: e.target.value })}
                           />
                         ) : (
-                          member.studentId
+                          <span className={isInactive ? 'line-through text-slate-400' : ''}>{member.studentId}</span>
                         )}
                       </td>
 
                       {/* Weekly checkboxes */}
                       {monthWeekKeys.map((wKey, idx) => {
-                        const isPaid = !!member.weeklyStatus?.[wKey];
+                        const isPaid = !isInactive && !!member.weeklyStatus?.[wKey];
+
+                        if (isInactive) {
+                          return (
+                            <td key={idx} className="py-1 px-0.5 text-center">
+                              <div
+                                className="w-5 h-5 mx-auto rounded bg-slate-200 border border-slate-300 flex items-center justify-center text-slate-400 text-[10px] font-mono select-none"
+                                title="Siswa tidak aktif/pindah (tidak ditagih kas)"
+                              >
+                                -
+                              </div>
+                            </td>
+                          );
+                        }
+
                         return (
                           <td key={idx} className="py-1 px-0.5 text-center">
                             {canEditKas ? (
@@ -712,10 +778,16 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                         );
                       })}
 
-                      <td className="py-1 px-2 text-right font-mono font-black tabular-nums text-slate-900 text-[9px]">{formatRupiah(totalPaid)}</td>
+                      <td className={`py-1 px-2 text-right font-mono font-black tabular-nums text-[9px] ${isInactive ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                        {formatRupiah(totalPaid)}
+                      </td>
 
                       <td className="py-1 px-1 text-center">
-                        {hasArrears ? (
+                        {isInactive ? (
+                          <span className="text-[7px] text-slate-600 font-black bg-slate-200 px-1 py-0.2 rounded border border-slate-300 uppercase">
+                            Pindah
+                          </span>
+                        ) : hasArrears ? (
                           <span className="text-[7px] text-rose-700 font-black bg-rose-50 px-1 py-0.2 rounded border border-rose-200">-{4 - paidWeeksInMonth}</span>
                         ) : (
                           <span className="text-[7px] text-emerald-700 font-black bg-emerald-50 px-1 py-0.2 rounded border border-emerald-300 uppercase">Lunas</span>
@@ -723,9 +795,12 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                       </td>
 
                       <td className="py-1 px-1 text-center">
-                        <button
-                          type="button"
-                          onClick={() => {
+                        {isInactive ? (
+                          <span className="text-[9px] text-slate-300 font-mono">-</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
                             if (isEditing) {
                               // If editing, phone input is in edit form
                             } else {
@@ -740,6 +815,7 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                         >
                           <MessageCircle className="w-3 h-3" />
                         </button>
+                        )}
                       </td>
 
                       {canEditKas && (

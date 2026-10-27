@@ -11,37 +11,34 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: "4.4.0",
-  codename: "Admin Isolation, WhatsApp Direct Actions & Student Active Toggle",
+  version: "4.5.0",
+  codename: "Student Active State, Kasbook Edit & Multi-Select, Group Project Sync",
   releaseDate: "2026-10-27",
   changes: [
-    "Hak Akses Super Admin: Isolasi mutlak menu Master Admin dari Anggota, Bendahara, dan Sekretaris.",
-    "Menu Pengaturan Pengurus: Pengaturan Iuran & Semester diganti menjadi Pengaturan Pengurus dengan opsi Bendahara & Sekretaris di drawer hamburger.",
-    "Preview Role Sekretaris & Ikon Baru: Penambahan opsi simulasi Sekretaris di akun terhubung serta pembaruan ikon Bendahara (Koin), Sekretaris (Dokumen), dan Anggota (Mata/Hanya Lihat).",
-    "Perbaikan Tampilan Master Admin: Perbaikan z-index layer banner Master Admin agar tidak tertimpa dan tabel Whitelist kini dapat di-scroll horizontal pada HP.",
-    "Penyatuan Manajemen Siswa: Penyatuan form siswa dan kelamin, fitur edit nama/NIM/gender, serta toggle status aktif/keluar yang tersimpan ke database.",
-    "Pembagian Kelompok Sekretaris: Terhubung database siswa master admin (siswa tidak aktif otomatis dilewati), rentang 3-10 kelompok, penguncian permanen setelah generate, dan posisi tombol acak ulang.",
-    "Integrasi Kirim WA Pengurus: Mengganti semua tombol salin WA di modul Sekretaris menjadi Kirim WA langsung via WhatsApp Web/App, khusus pengurus.",
-    "Perbaikan Audio & Kas Checklist: Chime suara tunggal tanpa spam saat toggle massal ALL dan loading screen menunggu sinkronisasi database selesai penuh.",
-    "Kompresi Struk & Kwitansi: Kompresi otomatis gambar struk transaksi kas (maks 800px) untuk arsip jangka panjang di database dan binder cetak.",
-    "Slider Volume Audio: Pengaturan volume BGM dan SFX (0-100%) tersimpan di preferensi lokal.",
-    "Dialog Sambutan Pengguna Baru: Pop-up sambutan ramah saat login pertama menawarkan tur panduan interaktif."
+    "Manajemen Siswa Terpadu: Penggantian gender (L/P) perorangan seketika, penghapusan siswa, serta toggle status 'Aktif' vs 'Tidak Aktif / Pindah' yang tersimpan otomatis ke database.",
+    "Integrasi Siswa Non-Aktif di Kas: Siswa non-aktif tetap tampil di checklist dengan nomor absen asli, ditandai coret (line-through), dikecualikan dari tagihan dan perhitungan tunggakan.",
+    "Perbaikan Bug Check ALL Iuran: Sinkronisasi data menyeluruh sebelum eksekusi centang massal, mencegah pemotongan data parsial dan mencegah saldo minus saat uncheck.",
+    "Edit Transaksi Buku Kas: Penambahan modal Edit Transaksi lengkap (uraian, nominal, kategori, tanggal, nota) khusus untuk Bendahara & Super Admin.",
+    "Hapus Massal Transaksi Kas (Multi-Select): Checkbox pilihan ganda pada tabel kas dengan floating bar aksi hapus transaksi terpilih sekaligus.",
+    "Pencatatan Kelompok & Tugas Terintegrasi: Pemilihan mata kuliah, penamaan otomatis per matkul dengan fitur inline rename kelompok, pencatatan proyek per kelompok, dan tombol simpan langsung ke Jadwal & Tugas.",
+    "Pengelolaan Audit Log Master Admin: Pengembalian tombol hapus log individual dan tombol bersihkan seluruh log audit dengan konfirmasi aman.",
+    "Slider Volume Universal: Slider volume BGM dan SFX (0-100%) ditempatkan di drawer hamburger agar dapat diakses semua pengguna, serta tab audio dihapus dari Master Admin."
   ],
   suggestedUpdates: [
     {
       category: "fitur",
-      title: "Auto-Sync Presensi dengan Poin Keaktifan",
-      description: "Memberikan bonus poin keaktifan otomatis saat siswa hadir dalam presensi sesi kelas."
+      title: "Sinkronisasi Otomatis Progres Tugas Kelompok",
+      description: "Menghubungkan status penyelesaian tugas proyek kelompok dari modul Kelompok ke kartu penugasan di Jadwal & Tugas secara dua arah."
     },
     {
       category: "optimasi",
-      title: "Smart Batching Transaksi Kas Offline",
-      description: "Antrian transaksi lokal yang otomatis melakukan batch sync saat koneksi internet kembali stabil."
+      title: "Riwayat Perubahan Transaksi Kas (Audit Trail Edit)",
+      description: "Mencatat nilai awal sebelum diedit dan nilai baru setelah diedit ke dalam audit log agar seluruh riwayat revisi transparan."
     },
     {
       category: "keamanan",
-      title: "Audit Trail Detail untuk Perubahan Kelompok & Presensi",
-      description: "Pencatatan riwayat perubahan kelompok dan presensi ke dalam log audit Super Admin."
+      title: "Konfirmasi PIN Keamanan untuk Hapus Massal Transaksi",
+      description: "Mewajibkan verifikasi PIN keamanan kelas jika menghapus lebih dari 5 transaksi kas sekaligus atau total nominal melebihi Rp 500.000."
     }
   ]
 };

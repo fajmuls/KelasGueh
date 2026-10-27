@@ -357,6 +357,49 @@ export class LocalKasRepository {
     }
   }
 
+  public static async updateTransaction(id: string, updates: Partial<KasTransaction>): Promise<KasTransaction | null> {
+    const current = this.getTransactions();
+    const idx = current.findIndex(t => t.id === id);
+    if (idx === -1) return null;
+    const updatedTx = { ...current[idx], ...updates };
+    current[idx] = updatedTx;
+    localStorage.setItem(this.KEY_TX, JSON.stringify(current));
+
+    const client = getSupabaseClient();
+    if (client) {
+      setCloudSyncStatus('syncing');
+      const payload: any = {};
+      if (updates.type !== undefined) payload.type = updates.type;
+      if (updates.title !== undefined) payload.title = updates.title;
+      if (updates.amount !== undefined) payload.amount = updates.amount;
+      if (updates.category !== undefined) payload.category = updates.category;
+      if (updates.date !== undefined) payload.date = updates.date;
+      if (updates.recordedBy !== undefined) payload.recorded_by = updates.recordedBy;
+      if (updates.receiptUrl !== undefined) payload.receipt_url = updates.receiptUrl;
+      if (updates.notes !== undefined) payload.notes = updates.notes;
+
+      const { error } = await client.from('kas_transactions').update(payload).eq('id', id);
+      if (error) setCloudSyncStatus('offline');
+      else setCloudSyncStatus('synced');
+    }
+    return updatedTx;
+  }
+
+  public static async deleteMultipleTransactions(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const current = this.getTransactions();
+    const idSet = new Set(ids);
+    localStorage.setItem(this.KEY_TX, JSON.stringify(current.filter(t => !idSet.has(t.id))));
+
+    const client = getSupabaseClient();
+    if (client) {
+      setCloudSyncStatus('syncing');
+      const { error } = await client.from('kas_transactions').delete().in('id', ids);
+      if (error) setCloudSyncStatus('offline');
+      else setCloudSyncStatus('synced');
+    }
+  }
+
   // ---------------- ANGGOTA ----------------
   public static getMembers(): KasMember[] {
     const data = localStorage.getItem(this.KEY_MEMBERS);
@@ -459,10 +502,14 @@ export class LocalKasRepository {
 
   public static async toggleAllMembersWeek(weekKey: string, shouldPay: boolean): Promise<KasMember[]> {
     const members = this.getMembers();
-    const updated = members.map(m => ({
-      ...m,
-      weeklyStatus: { ...(m.weeklyStatus || {}), [weekKey]: shouldPay }
-    }));
+    // Only toggle status for active members; inactive members remain untouched
+    const updated = members.map(m => {
+      if (m.isActive === false) return m;
+      return {
+        ...m,
+        weeklyStatus: { ...(m.weeklyStatus || {}), [weekKey]: shouldPay }
+      };
+    });
     localStorage.setItem(this.KEY_MEMBERS, JSON.stringify(updated));
 
     const client = getSupabaseClient();
@@ -472,7 +519,9 @@ export class LocalKasRepository {
         id: m.id,
         name: m.name,
         student_id: m.studentId,
-        weekly_status: m.weeklyStatus
+        weekly_status: m.weeklyStatus,
+        gender: m.gender || null,
+        is_active: m.isActive !== false
       }));
       const { error } = await client.from('kas_members').upsert(payload);
       if (error) setCloudSyncStatus('offline');
@@ -492,6 +541,15 @@ export class LocalKasRepository {
     const client = getSupabaseClient();
     if (client) {
       await client.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+  }
+
+  public static async deleteAuditLog(id: string): Promise<void> {
+    const logs = this.getAuditLogs().filter(l => l.id !== id);
+    localStorage.setItem(this.KEY_AUDIT, JSON.stringify(logs));
+    const client = getSupabaseClient();
+    if (client) {
+      await client.from('audit_logs').delete().eq('id', id);
     }
   }
   
@@ -551,8 +609,24 @@ export class LocalKasRepository {
       if (updates.studentId) payload.student_id = updates.studentId;
       if (updates.phone !== undefined) payload.phone = updates.phone;
       if (updates.weeklyStatus) payload.weekly_status = updates.weeklyStatus;
+      if (updates.gender !== undefined) payload.gender = updates.gender;
+      if (updates.isActive !== undefined) payload.is_active = updates.isActive;
 
       const { error } = await client.from('kas_members').update(payload).eq('id', memberId);
+      if (error) setCloudSyncStatus('offline');
+      else setCloudSyncStatus('synced');
+    }
+  }
+
+  public static async deleteMember(memberId: string): Promise<void> {
+    const current = this.getMembers();
+    const updated = current.filter(m => m.id !== memberId);
+    localStorage.setItem(this.KEY_MEMBERS, JSON.stringify(updated));
+
+    const client = getSupabaseClient();
+    if (client) {
+      setCloudSyncStatus('syncing');
+      const { error } = await client.from('kas_members').delete().eq('id', memberId);
       if (error) setCloudSyncStatus('offline');
       else setCloudSyncStatus('synced');
     }

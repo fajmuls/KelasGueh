@@ -70,6 +70,8 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   const { theme, setTheme } = useTheme();
   const [bgmPlaying, setBgmPlaying] = useState(() => sfx.getIsBgmPlaying());
   const [sfxEnabled, setSfxEnabled] = useState(() => sfx.isEnabled());
+  const [bgmVol, setBgmVol] = useState(() => sfx.getBgmVolume());
+  const [sfxVol, setSfxVol] = useState(() => sfx.getSfxVolume());
   const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>(() => getCloudSyncStatus());
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -605,47 +607,98 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                 </button>
               )}
 
-              {/* Audio Controls Grid: BGM (Left) & SFX (Right) */}
-              <div className="grid grid-cols-2 gap-2">
-                {/* BGM Toggle */}
-                <button
-                  onClick={handleToggleBgm}
-                  aria-pressed={bgmPlaying}
-                  className={`min-h-[48px] px-3 py-2 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
-                    bgmPlaying
-                      ? 'bg-amber-300 text-slate-950 shadow-[2px_2px_0px_#1E293B]'
-                      : 'bg-white text-slate-700 hover:bg-slate-50'
-                  }`}
-                  title={bgmPlaying ? 'Jeda Musik Latar (BGM)' : 'Putar Musik Latar (BGM)'}
-                >
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    {bgmPlaying ? <Volume2 className="w-4 h-4 text-slate-900 animate-pulse shrink-0" /> : <VolumeX className="w-4 h-4 text-slate-400 shrink-0" />}
-                    <span className="truncate">Musik Latar</span>
-                  </span>
-                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border border-slate-900 shrink-0 ${bgmPlaying ? 'bg-emerald-300 text-slate-900' : 'bg-slate-200 text-slate-600'}`}>
-                    {bgmPlaying ? 'AKTIF' : 'MUTE'}
-                  </span>
-                </button>
+              {/* Audio Controls Grid: BGM (Left) & SFX (Right) with Volume Sliders */}
+              <div className="space-y-2.5 p-3 bg-amber-50/80 rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000]">
+                <div className="grid grid-cols-2 gap-2">
+                  {/* BGM Toggle */}
+                  <button
+                    onClick={handleToggleBgm}
+                    aria-pressed={bgmPlaying}
+                    className={`min-h-[44px] px-2.5 py-1.5 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
+                      bgmPlaying
+                        ? 'bg-amber-300 text-slate-950 shadow-[1.5px_1.5px_0px_#1E293B]'
+                        : 'bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                    title={bgmPlaying ? 'Jeda Musik Latar (BGM)' : 'Putar Musik Latar (BGM)'}
+                  >
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      {bgmPlaying ? <Volume2 className="w-4 h-4 text-slate-900 animate-pulse shrink-0" /> : <VolumeX className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span className="truncate">Musik Latar</span>
+                    </span>
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border border-slate-900 shrink-0 ${bgmPlaying ? 'bg-emerald-300 text-slate-900' : 'bg-slate-200 text-slate-600'}`}>
+                      {bgmPlaying ? 'AKTIF' : 'MUTE'}
+                    </span>
+                  </button>
 
-                {/* SFX Toggle */}
-                <button
-                  onClick={handleToggleSfx}
-                  aria-pressed={sfxEnabled}
-                  className={`min-h-[48px] px-3 py-2 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
-                    sfxEnabled
-                      ? 'bg-emerald-300 text-slate-950 shadow-[2px_2px_0px_#1E293B]'
-                      : 'bg-white text-slate-700 hover:bg-slate-50'
-                  }`}
-                  title={sfxEnabled ? 'Matikan Efek Suara (SFX)' : 'Aktifkan Efek Suara (SFX)'}
-                >
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    {sfxEnabled ? <Volume2 className="w-4 h-4 text-slate-900 shrink-0" /> : <VolumeX className="w-4 h-4 text-slate-400 shrink-0" />}
-                    <span className="truncate">Efek Suara</span>
-                  </span>
-                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border border-slate-900 shrink-0 ${sfxEnabled ? 'bg-amber-300 text-slate-900' : 'bg-slate-200 text-slate-600'}`}>
-                    {sfxEnabled ? 'AKTIF' : 'MUTE'}
-                  </span>
-                </button>
+                  {/* SFX Toggle */}
+                  <button
+                    onClick={handleToggleSfx}
+                    aria-pressed={sfxEnabled}
+                    className={`min-h-[44px] px-2.5 py-1.5 rounded-lg border-2 border-slate-900 font-bold text-xs flex items-center justify-between transition-all ${
+                      sfxEnabled
+                        ? 'bg-emerald-300 text-slate-950 shadow-[1.5px_1.5px_0px_#1E293B]'
+                        : 'bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                    title={sfxEnabled ? 'Matikan Efek Suara (SFX)' : 'Aktifkan Efek Suara (SFX)'}
+                  >
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      {sfxEnabled ? <Volume2 className="w-4 h-4 text-slate-900 shrink-0" /> : <VolumeX className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span className="truncate">Efek Suara</span>
+                    </span>
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border border-slate-900 shrink-0 ${sfxEnabled ? 'bg-amber-300 text-slate-900' : 'bg-slate-200 text-slate-600'}`}>
+                      {sfxEnabled ? 'AKTIF' : 'MUTE'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Sliding Volume Sliders for BGM & SFX */}
+                <div className="space-y-2 pt-2 border-t border-slate-900/10 text-xs">
+                  <div>
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-700 mb-1">
+                      <span className="flex items-center gap-1">
+                        <Volume2 className="w-3 h-3 text-amber-700" />
+                        <span>Volume Musik Latar (BGM):</span>
+                      </span>
+                      <span className="font-mono text-slate-900 font-black">{Math.round(bgmVol * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={bgmVol}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        setBgmVol(v);
+                        sfx.setBgmVolume(v);
+                      }}
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-700 mb-1">
+                      <span className="flex items-center gap-1">
+                        <Volume2 className="w-3 h-3 text-emerald-700" />
+                        <span>Volume Efek Suara (SFX):</span>
+                      </span>
+                      <span className="font-mono text-slate-900 font-black">{Math.round(sfxVol * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={sfxVol}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        setSfxVol(v);
+                        sfx.setSfxVolume(v);
+                      }}
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Share Portal Button */}

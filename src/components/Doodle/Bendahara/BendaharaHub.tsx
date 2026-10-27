@@ -38,7 +38,9 @@ interface BendaharaHubProps {
   
   // Handlers
   onAddTransaction: (tx: Omit<KasTransaction, 'id' | 'createdAt'>) => Promise<void>;
+  onUpdateTransaction?: (id: string, updates: Partial<KasTransaction>) => Promise<void>;
   onDeleteTransaction: (id: string, skipLinkedSync?: boolean) => Promise<void>;
+  onDeleteMultipleTransactions?: (ids: string[]) => Promise<void>;
   onToggleWeek: (memberId: string, weekKey: string) => Promise<void>;
   onToggleAllWeek: (weekKey: string, shouldPay: boolean) => Promise<void>;
   onAddMember: (name: string, studentId: string, phone?: string) => Promise<void>;
@@ -79,7 +81,9 @@ export const BendaharaHub: React.FC<BendaharaHubProps> = ({
   isSuperAdmin,
   canViewAudit,
   onAddTransaction,
+  onUpdateTransaction,
   onDeleteTransaction,
+  onDeleteMultipleTransactions,
   onToggleWeek,
   onToggleAllWeek,
   onAddMember,
@@ -189,7 +193,9 @@ export const BendaharaHub: React.FC<BendaharaHubProps> = ({
           members={members}
           settings={settings}
           onAddTransaction={onAddTransaction}
+          onUpdateTransaction={onUpdateTransaction}
           onDeleteTransaction={onDeleteTransaction}
+          onDeleteMultipleTransactions={onDeleteMultipleTransactions}
           onUpdateSettings={onSaveSettings}
           isModalOpen={isAddTxModalOpen}
           onCloseModal={onCloseNewTxModal}

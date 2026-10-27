@@ -48,6 +48,7 @@ import {
   Filter,
   ArrowUpRight,
   ArrowDownRight,
+  ArrowDownLeft,
   X,
   Upload,
   Loader2,
@@ -56,7 +57,8 @@ import {
   ScanLine,
   Sparkles,
   CheckCheck,
-  Check
+  Check,
+  Edit2
 } from 'lucide-react';
 import { uploadReceiptToSupabase, LocalKasRepository } from '../../services/supabaseClient.ts';
 import { scanReceiptOcr, OcrDetectionResult } from '../../utils/receiptOcr.ts';
@@ -76,7 +78,9 @@ interface KasBookProps {
   members?: KasMember[];
   settings: ClassSettings;
   onAddTransaction: (tx: Omit<KasTransaction, 'id' | 'createdAt'>) => void;
+  onUpdateTransaction?: (id: string, updates: Partial<KasTransaction>) => void;
   onDeleteTransaction: (id: string) => void;
+  onDeleteMultipleTransactions?: (ids: string[]) => void;
   onUpdateSettings?: (settings: ClassSettings) => void;
   isModalOpen: boolean;
   onCloseModal: () => void;
@@ -101,7 +105,9 @@ export const KasBook: React.FC<KasBookProps> = ({
   members = [],
   settings,
   onAddTransaction,
+  onUpdateTransaction,
   onDeleteTransaction,
+  onDeleteMultipleTransactions,
   onUpdateSettings,
   isModalOpen,
   onCloseModal,
@@ -123,6 +129,19 @@ export const KasBook: React.FC<KasBookProps> = ({
     kasTargetAmount: settings.kasTargetAmount,
     academicYear: settings.academicYear
   });
+
+  // Multi-select state for bulk actions
+  const [selectedTxIds, setSelectedTxIds] = useState<string[]>([]);
+
+  // Edit transaction state
+  const [editingTx, setEditingTx] = useState<KasTransaction | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editAmount, setEditAmount] = useState<number | ''>('');
+  const [editType, setEditType] = useState<'income' | 'expense'>('expense');
+  const [editCategory, setEditCategory] = useState(CATEGORIES[1]);
+  const [editDate, setEditDate] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editReceipt, setEditReceipt] = useState<string>('');
 
   // PIN Verification State
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -318,6 +337,78 @@ export const KasBook: React.FC<KasBookProps> = ({
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
   };
 
+  const handleToggleSelectTx = (id: string) => {
+    sfx.playToggle();
+    setSelectedTxIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    sfx.playOptionSelect();
+    if (selectedTxIds.length === filtered.length && filtered.length > 0) {
+      setSelectedTxIds([]);
+    } else {
+      setSelectedTxIds(filtered.map(t => t.id));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedTxIds.length === 0) return;
+    const ok = await showConfirm({
+      title: 'Hapus Transaksi Terpilih',
+      message: `Apakah Anda yakin ingin menghapus ${selectedTxIds.length} data transaksi kas terpilih sekaligus?`,
+      confirmLabel: `Ya, Hapus (${selectedTxIds.length})`,
+      cancelLabel: 'Batal',
+      isDanger: true
+    });
+    if (!ok) return;
+
+    sfx.playDeleteConfirm();
+    if (onDeleteMultipleTransactions) {
+      await onDeleteMultipleTransactions(selectedTxIds);
+    } else {
+      for (const id of selectedTxIds) {
+        onDeleteTransaction(id);
+      }
+    }
+    setSelectedTxIds([]);
+    showToast(`Berhasil menghapus ${selectedTxIds.length} transaksi kas.`, 'success');
+  };
+
+  const handleStartEdit = (tx: KasTransaction) => {
+    sfx.playClick();
+    setEditingTx(tx);
+    setEditTitle(tx.title);
+    setEditAmount(tx.amount);
+    setEditType(tx.type);
+    setEditCategory(tx.category || CATEGORIES[1]);
+    setEditDate(tx.date);
+    setEditNotes(tx.notes || '');
+    setEditReceipt(tx.receiptUrl || '');
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTx || !editTitle.trim() || !editAmount || Number(editAmount) <= 0) {
+      showToast('Mohon isi keterangan dan nominal uang kas dengan benar!', 'error');
+      return;
+    }
+    sfx.playPaymentConfirmed();
+    if (onUpdateTransaction) {
+      onUpdateTransaction(editingTx.id, {
+        title: editTitle.trim(),
+        amount: Number(editAmount),
+        type: editType,
+        category: editCategory,
+        date: editDate,
+        notes: editNotes.trim(),
+        receiptUrl: editReceipt || undefined
+      });
+    }
+    setEditingTx(null);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header & Action Controls */}
@@ -508,102 +599,172 @@ export const KasBook: React.FC<KasBookProps> = ({
         </div>
       </div>
 
+      {/* Bulk Selection Action Bar */}
+      {canEditKas && selectedTxIds.length > 0 && (
+        <div className="flex items-center justify-between p-3 bg-amber-100 border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <span className="w-6 h-6 rounded-md bg-amber-300 border border-slate-900 flex items-center justify-center font-mono font-black text-xs text-slate-900">
+              {selectedTxIds.length}
+            </span>
+            <span className="text-xs font-black text-slate-900">
+              Transaksi kas terpilih
+            </span>
+            <button
+              onClick={() => setSelectedTxIds([])}
+              className="text-[11px] font-bold text-slate-600 underline hover:text-slate-900 ml-1"
+            >
+              Batal Pilih
+            </button>
+          </div>
+
+          <button
+            onClick={handleDeleteSelected}
+            className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5 active:translate-y-0.5 transition"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Hapus ({selectedTxIds.length}) Transaksi</span>
+          </button>
+        </div>
+      )}
+
       {/* Transactions Table (Minimalist Doodle Notebook Style) */}
       <div className="card-doodle rounded-xl bg-white overflow-hidden shadow-sm border-2 border-slate-900">
         <div className="overflow-x-auto max-h-[600px] relative">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-[#FAF7F2] border-b-2 border-slate-900 font-black uppercase text-slate-700 sticky top-0 z-20">
               <tr>
+                {canEditKas && (
+                  <th className="py-2 px-2 text-center w-8">
+                    <input
+                      type="checkbox"
+                      checked={filtered.length > 0 && selectedTxIds.length === filtered.length}
+                      onChange={handleToggleSelectAll}
+                      className="w-3.5 h-3.5 rounded border-2 border-slate-900 cursor-pointer accent-amber-500"
+                      title="Pilih Semua Transaksi"
+                    />
+                  </th>
+                )}
                 <th className="py-2 px-2.5 text-[10px] sm:text-xs">Tanggal</th>
                 <th className="py-2 px-2.5 min-w-[170px] text-[10px] sm:text-xs">Keterangan / Transaksi</th>
                 <th className="py-2 px-2.5 text-[10px] sm:text-xs">Kategori</th>
                 <th className="py-2 px-2.5 text-right text-[10px] sm:text-xs">Nominal</th>
                 <th className="py-2 px-2.5 text-center text-[10px] sm:text-xs">Bukti</th>
-                {canEditKas && <th className="py-2 px-2.5 text-center text-[10px] sm:text-xs">Aksi</th>}
+                {canEditKas && <th className="py-2 px-2.5 text-center text-[10px] sm:text-xs w-24">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={canEditKas ? 6 : 5} className="py-10 text-center text-slate-400 font-medium italic text-xs">
+                  <td colSpan={canEditKas ? 7 : 5} className="py-10 text-center text-slate-400 font-medium italic text-xs">
                     Belum ada data transaksi yang sesuai dengan filter pencarian.
                   </td>
                 </tr>
               ) : (
-                filtered.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-amber-50/30 transition-colors">
-                    {/* Tanggal */}
-                    <td className="py-1.5 px-2.5 whitespace-nowrap font-mono text-[10px] sm:text-[11px] text-slate-500">
-                      {tx.date}
-                    </td>
+                filtered.map((tx) => {
+                  const isSelected = selectedTxIds.includes(tx.id);
 
-                    {/* Judul & Catatan */}
-                    <td className="py-1.5 px-2.5">
-                      <div className="font-bold text-slate-900 leading-tight text-[11px] sm:text-xs">{tx.title}</div>
-                      {tx.notes && (
-                        <div className="text-[10px] text-slate-400 italic mt-0.5 line-clamp-1">{tx.notes}</div>
+                  return (
+                    <tr
+                      key={tx.id}
+                      className={`transition-colors ${
+                        isSelected ? 'bg-amber-100/60' : 'hover:bg-amber-50/30'
+                      }`}
+                    >
+                      {/* Checkbox Multi-Select */}
+                      {canEditKas && (
+                        <td className="py-1.5 px-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectTx(tx.id)}
+                            className="w-3.5 h-3.5 rounded border-2 border-slate-900 cursor-pointer accent-amber-500"
+                          />
+                        </td>
                       )}
-                    </td>
 
-                    {/* Kategori */}
-                    <td className="py-1.5 px-2.5 whitespace-nowrap">
-                      <span className="text-[9px] sm:text-[10px] font-bold bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded text-slate-700">
-                        {tx.category}
-                      </span>
-                    </td>
-
-                    {/* Nominal */}
-                    <td className="py-1.5 px-2.5 text-right whitespace-nowrap font-mono font-black tabular-nums text-[11px] sm:text-xs">
-                      <span className={tx.type === 'income' ? 'text-emerald-700' : 'text-rose-700'}>
-                        {tx.type === 'income' ? '+' : '-'} {formatRupiah(tx.amount)}
-                      </span>
-                    </td>
-
-                    {/* Bukti Nota */}
-                    <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
-                      {tx.receiptUrl ? (
-                        <button
-                          onClick={() => {
-                            sfx.playPaperRustle();
-                            setPreviewReceiptUrl(tx.receiptUrl!);
-                          }}
-                          className="btn-doodle px-1.5 py-0.5 text-[9px] sm:text-[10px] bg-amber-200 hover:bg-amber-300 text-slate-900 rounded font-black inline-flex items-center gap-1 cursor-pointer border border-slate-900"
-                        >
-                          <Eye className="w-3 h-3" />
-                          <span>Nota</span>
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-slate-300 italic">-</span>
-                      )}
-                    </td>
-
-                    {/* Aksi Hapus */}
-                    {canEditKas && (
-                      <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
-                        <button
-                          onClick={async () => {
-                            const ok = await showConfirm({
-                              title: 'Hapus Transaksi?',
-                              message: `Apakah Anda yakin ingin menghapus transaksi "${tx.title}"?`,
-                              confirmLabel: 'Ya, Hapus',
-                              cancelLabel: 'Batal',
-                              isDanger: true,
-                            });
-                            if (ok) {
-                              sfx.playClick();
-                              onDeleteTransaction(tx.id);
-                              showToast('Transaksi berhasil dihapus.', 'info');
-                            }
-                          }}
-                          className="p-1 min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
-                          title="Hapus Transaksi"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      {/* Tanggal */}
+                      <td className="py-1.5 px-2.5 whitespace-nowrap font-mono text-[10px] sm:text-[11px] text-slate-500">
+                        {tx.date}
                       </td>
-                    )}
-                  </tr>
-                ))
+
+                      {/* Judul & Catatan */}
+                      <td className="py-1.5 px-2.5">
+                        <div className="font-bold text-slate-900 leading-tight text-[11px] sm:text-xs">{tx.title}</div>
+                        {tx.notes && (
+                          <div className="text-[10px] text-slate-400 italic mt-0.5 line-clamp-1">{tx.notes}</div>
+                        )}
+                      </td>
+
+                      {/* Kategori */}
+                      <td className="py-1.5 px-2.5 whitespace-nowrap">
+                        <span className="text-[9px] sm:text-[10px] font-bold bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded text-slate-700">
+                          {tx.category}
+                        </span>
+                      </td>
+
+                      {/* Nominal */}
+                      <td className="py-1.5 px-2.5 text-right whitespace-nowrap font-mono font-black tabular-nums text-[11px] sm:text-xs">
+                        <span className={tx.type === 'income' ? 'text-emerald-700' : 'text-rose-700'}>
+                          {tx.type === 'income' ? '+' : '-'} {formatRupiah(tx.amount)}
+                        </span>
+                      </td>
+
+                      {/* Bukti Nota */}
+                      <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
+                        {tx.receiptUrl ? (
+                          <button
+                            onClick={() => {
+                              sfx.playPaperRustle();
+                              setPreviewReceiptUrl(tx.receiptUrl!);
+                            }}
+                            className="btn-doodle px-1.5 py-0.5 text-[9px] sm:text-[10px] bg-amber-200 hover:bg-amber-300 text-slate-900 rounded font-black inline-flex items-center gap-1 cursor-pointer border border-slate-900"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>Nota</span>
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-slate-300 italic">-</span>
+                        )}
+                      </td>
+
+                      {/* Aksi Edit & Hapus */}
+                      {canEditKas && (
+                        <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleStartEdit(tx)}
+                              className="p-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg border border-slate-900 shadow-[1px_1px_0px_#000] transition active:scale-95"
+                              title="Edit Transaksi Ini"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              onClick={async () => {
+                                const ok = await showConfirm({
+                                  title: 'Hapus Transaksi?',
+                                  message: `Apakah Anda yakin ingin menghapus transaksi "${tx.title}"?`,
+                                  confirmLabel: 'Ya, Hapus',
+                                  cancelLabel: 'Batal',
+                                  isDanger: true,
+                                });
+                                if (ok) {
+                                  sfx.playClick();
+                                  onDeleteTransaction(tx.id);
+                                  showToast('Transaksi berhasil dihapus.', 'info');
+                                }
+                              }}
+                              className="p-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-lg border border-slate-900 shadow-[1px_1px_0px_#000] transition active:scale-95"
+                              title="Hapus Transaksi"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -855,6 +1016,185 @@ export const KasBook: React.FC<KasBookProps> = ({
                   className="btn-doodle px-5 py-2 bg-emerald-300 hover:bg-emerald-400 border-2 border-slate-900 rounded-md text-sm font-black text-slate-900"
                 >
                   Simpan Transaksi Kas
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit Transaksi Kas */}
+      {editingTx && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="card-doodle bg-white max-w-lg w-full rounded-xl p-6 relative my-8">
+            <ScotchTape className="absolute -top-3 left-1/2 -translate-x-1/2 rotate-1" />
+
+            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <DoodleReceipt className="w-5 h-5 text-indigo-700" />
+                <span>Edit Transaksi Kas Kelas</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  sfx.playCardClose();
+                  setEditingTx(null);
+                }}
+                className="w-8 h-8 btn-doodle bg-slate-100 rounded flex items-center justify-center text-slate-700 hover:bg-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              {/* Type Switcher */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.playClick();
+                    setEditType('income');
+                  }}
+                  className={`btn-doodle py-2 rounded-lg font-black text-xs sm:text-sm flex items-center justify-center gap-2 ${
+                    editType === 'income'
+                      ? 'bg-emerald-300 text-emerald-950 ring-2 ring-emerald-600'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  <ArrowDownLeft className="w-4 h-4 text-emerald-700" />
+                  <span>Uang Masuk (Debit)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.playClick();
+                    setEditType('expense');
+                  }}
+                  className={`btn-doodle py-2 rounded-lg font-black text-xs sm:text-sm flex items-center justify-center gap-2 ${
+                    editType === 'expense'
+                      ? 'bg-rose-300 text-rose-950 ring-2 ring-rose-600'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  <ArrowUpRight className="w-4 h-4 text-rose-700" />
+                  <span>Uang Keluar (Kredit)</span>
+                </button>
+              </div>
+
+              {/* Judul Transaksi */}
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  Keterangan / Uraian Transaksi *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Contoh: Beli Spidol, Konsumsi Rapat..."
+                  className="w-full px-3 py-2 text-sm border-2 border-slate-900 rounded-md focus:outline-none"
+                />
+              </div>
+
+              {/* Nominal & Kategori */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                    Nominal (Rupiah) *
+                  </label>
+                  <input
+                    type="number"
+                    min="100"
+                    step="500"
+                    required
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-3 py-2 text-sm font-mono border-2 border-slate-900 rounded-md focus:outline-none"
+                  />
+                  {editAmount !== '' && (
+                    <p className="text-[11px] font-mono font-bold text-emerald-700 mt-1">
+                      {formatRupiah(Number(editAmount))}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <DoodleSelect
+                    label="Kategori"
+                    value={editCategory}
+                    onChange={(val) => setEditCategory(val)}
+                    options={CATEGORIES}
+                  />
+                </div>
+              </div>
+
+              {/* Tanggal */}
+              <div>
+                <DoodleDatePicker
+                  label="Tanggal Transaksi"
+                  value={editDate}
+                  onChange={(val) => setEditDate(val)}
+                />
+              </div>
+
+              {/* Catatan Tambahan */}
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  Catatan Tambahan (Opsional)
+                </label>
+                <input
+                  type="text"
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Catatan rincian atau keterangan toko..."
+                  className="w-full px-3 py-2 text-xs border-2 border-slate-900 rounded-md focus:outline-none"
+                />
+              </div>
+
+              {/* Bukti Nota preview / remove */}
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
+                  Bukti Nota / Kwitansi
+                </label>
+                {editReceipt ? (
+                  <div className="space-y-2 p-2 border-2 border-slate-900 rounded-md bg-slate-50">
+                    <img
+                      src={editReceipt}
+                      alt="Nota"
+                      className="max-h-36 mx-auto rounded border border-slate-800 object-contain"
+                    />
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setEditReceipt('')}
+                        className="btn-doodle px-3 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold rounded flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus Nota Lampiran</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 italic">Tidak ada foto nota terlampir.</p>
+                )}
+              </div>
+
+              <div className="pt-3 border-t-2 border-slate-900 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.playCardClose();
+                    setEditingTx(null);
+                  }}
+                  className="btn-doodle px-4 py-2 border-2 border-slate-900 rounded-md text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="btn-doodle px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-md shadow-md"
+                >
+                  Simpan Perubahan
                 </button>
               </div>
             </form>

@@ -371,6 +371,68 @@ const AppContent: React.FC = () => {
     LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
   };
 
+  const handleUpdateTransaction = async (id: string, updates: Partial<KasTransaction>) => {
+    try {
+      const updated = await LocalKasRepository.updateTransaction(id, updates);
+      if (updated) {
+        await LocalKasRepository.addAuditLog({
+          action: 'UBAH TRANSAKSI',
+          details: `Memperbarui data transaksi "${updated.title}" (${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(updated.amount)})`,
+          performedBy: user?.name || 'Unknown',
+          userRole: role,
+        });
+      }
+      const txs = await LocalKasRepository.fetchTransactionsFromSupabase();
+      setTransactions(txs);
+      const logs = await LocalKasRepository.fetchAuditLogsFromSupabase();
+      setAuditLogs(logs);
+      showToast('Transaksi kas berhasil diperbarui!', 'success');
+    } catch (err) {
+      console.error('Update transaction error:', err);
+      showToast('Gagal memperbarui transaksi.', 'error');
+    }
+  };
+
+  const handleDeleteMultipleTransactions = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    try {
+      // Reconcile any linked dues back to unpaid checklist
+      const allTxs = LocalKasRepository.getTransactions();
+      const idSet = new Set(ids);
+      const toDelete = allTxs.filter(t => idSet.has(t.id));
+
+      for (const tx of toDelete) {
+        if (tx.notes?.startsWith('LINKED_IURAN:')) {
+          const parts = tx.notes.split(':');
+          if (parts.length >= 3) {
+            const memberId = parts[1];
+            const weekKey = parts[2];
+            await LocalKasRepository.setMemberWeekStatus(memberId, weekKey, false);
+          }
+        }
+      }
+
+      await LocalKasRepository.deleteMultipleTransactions(ids);
+      await LocalKasRepository.addAuditLog({
+        action: 'HAPUS MASSAL TRANSAKSI',
+        details: `Menghapus ${ids.length} data transaksi kas sekaligus`,
+        performedBy: user?.name || 'Unknown',
+        userRole: role,
+      });
+
+      const [freshTxs, freshMembers] = await Promise.all([
+        LocalKasRepository.fetchTransactionsFromSupabase(),
+        LocalKasRepository.fetchMembersFromSupabase()
+      ]);
+      setTransactions(freshTxs);
+      setMembers(freshMembers);
+      showToast(`Berhasil menghapus ${ids.length} transaksi kas terpilih!`, 'success');
+    } catch (err) {
+      console.error('Delete multiple transactions error:', err);
+      showToast('Gagal menghapus beberapa transaksi.', 'error');
+    }
+  };
+
   // ---------------- CHECKLIST TOGGLE WITH MUTEX & IDEMPOTENT GUARDS ----------------
   const isTogglingRef = useRef(false);
 
@@ -380,7 +442,7 @@ const AppContent: React.FC = () => {
 
     try {
       const targetMember = members.find(m => m.id === memberId);
-      if (!targetMember) return;
+      if (!targetMember || targetMember.isActive === false) return;
 
       const isNowPaid = !targetMember.weeklyStatus?.[weekKey];
       const linkedTag = `LINKED_IURAN:${memberId}:${weekKey}`;
@@ -461,11 +523,18 @@ const AppContent: React.FC = () => {
     isTogglingRef.current = true;
 
     try {
-      // Optimistic update
-      setMembers(prev => prev.map(m => ({
-        ...m,
-        weeklyStatus: { ...(m.weeklyStatus || {}), [weekKey]: shouldPay }
-      })));
+      // 1. Load full complete member list directly from storage to ensure no un-loaded student is skipped
+      const allMembers = LocalKasRepository.getMembers();
+      const activeMembers = allMembers.filter(m => m.isActive !== false);
+
+      // Optimistic update for active members only
+      setMembers(prev => prev.map(m => {
+        if (m.isActive === false) return m;
+        return {
+          ...m,
+          weeklyStatus: { ...(m.weeklyStatus || {}), [weekKey]: shouldPay }
+        };
+      }));
 
       await LocalKasRepository.toggleAllMembersWeek(weekKey, shouldPay);
 
@@ -483,7 +552,7 @@ const AppContent: React.FC = () => {
       const currentTxs = LocalKasRepository.getTransactions();
 
       if (shouldPay) {
-        for (const m of members) {
+        for (const m of activeMembers) {
           const linkedTag = `LINKED_IURAN:${m.id}:${weekKey}`;
           const alreadyExists = currentTxs.some(t => t.notes === linkedTag);
 
@@ -501,18 +570,18 @@ const AppContent: React.FC = () => {
           }
         }
       } else {
-        // Delete all linked transactions for this specific week
+        // Delete all linked transactions for this specific week atomically
         const prefix = `LINKED_IURAN:`;
         const suffix = `:${weekKey}`;
         const txsToDelete = currentTxs.filter(t => t.notes?.startsWith(prefix) && t.notes?.endsWith(suffix));
-        for (const tx of txsToDelete) {
-          await LocalKasRepository.deleteTransaction(tx.id);
+        if (txsToDelete.length > 0) {
+          await LocalKasRepository.deleteMultipleTransactions(txsToDelete.map(t => t.id));
         }
       }
 
       LocalKasRepository.addAuditLog({
         action: 'IURAN MASSAL',
-        details: `${shouldPay ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Seluruh Siswa untuk ${weekKey}`,
+        details: `${shouldPay ? 'Mencatat LUNAS' : 'Membatalkan Lunas'} Seluruh Siswa Aktif (${activeMembers.length} Siswa) untuk ${weekKey}`,
         performedBy: user?.name || 'Unknown',
         userRole: role,
       });
@@ -783,7 +852,9 @@ const AppContent: React.FC = () => {
             isSuperAdmin={isSuperAdmin}
             canViewAudit={canViewAudit}
             onAddTransaction={handleAddTransaction}
+            onUpdateTransaction={handleUpdateTransaction}
             onDeleteTransaction={handleDeleteTransaction}
+            onDeleteMultipleTransactions={handleDeleteMultipleTransactions}
             onToggleWeek={handleToggleWeek}
             onToggleAllWeek={handleToggleAllWeek}
             onAddMember={handleAddMember}
