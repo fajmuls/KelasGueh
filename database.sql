@@ -1,6 +1,6 @@
--- SCRIPT SETUP DATABASE SUPABASE (KELAS GUE v3.9.0)
+-- SCRIPT SETUP DATABASE SUPABASE (KELAS GUE v4.5.0)
 -- 1. Jalankan di SQL Editor Supabase Dashboard (Klik "New Query")
--- 2. Pastikan Mode Realtime Aktif di Tabel-Tabel Ini via Dashboard
+-- 2. Aman dijalankan berulang kali (Idempotent & Type-Safe)
 
 -- [A] TABEL PENGATURAN KELAS (PENTING: Harus ada 1 row default)
 CREATE TABLE IF NOT EXISTS public.class_settings (
@@ -19,11 +19,9 @@ CREATE TABLE IF NOT EXISTS public.class_settings (
 -- Migrasi: Menangani transisi kolom target_amount ke kas_target_amount
 DO $$ 
 BEGIN 
-  -- Kasus 1: Hanya kolom lama yang ada -> Rename
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='target_amount') 
      AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='kas_target_amount') THEN
     ALTER TABLE public.class_settings RENAME COLUMN target_amount TO kas_target_amount;
-  -- Kasus 2: Kedua kolom ada -> Hapus yang lama (cleanup)
   ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='target_amount') 
      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='kas_target_amount') THEN
     ALTER TABLE public.class_settings DROP COLUMN target_amount;
@@ -35,15 +33,28 @@ INSERT INTO public.class_settings (id, class_name)
 VALUES (1, 'Kelas Gue')
 ON CONFLICT (id) DO NOTHING;
 
--- [B] TABEL ANGGOTA / SISWA
+-- [B] TABEL ANGGOTA / SISWA (Terupdate v4.5.0: Gender L/P & Status Aktif)
 CREATE TABLE IF NOT EXISTS public.kas_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     student_id TEXT NOT NULL UNIQUE,
     phone TEXT,
+    gender VARCHAR(1) DEFAULT 'L',
+    is_active BOOLEAN DEFAULT TRUE,
     weekly_status JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Migrasi: Menambahkan kolom gender dan is_active jika tabel lama sudah ada
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='kas_members' AND column_name='gender') THEN
+    ALTER TABLE public.kas_members ADD COLUMN gender VARCHAR(1) DEFAULT 'L';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='kas_members' AND column_name='is_active') THEN
+    ALTER TABLE public.kas_members ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+  END IF;
+END $$;
 
 -- [C] TABEL TRANSAKSI KAS (BUKU KAS)
 CREATE TABLE IF NOT EXISTS public.kas_transactions (
@@ -100,6 +111,20 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.role_claims ENABLE ROW LEVEL SECURITY;
 
+-- Drop policy lama jika sudah ada agar tidak error "policy already exists"
+DROP POLICY IF EXISTS "Public Read" ON public.class_settings;
+DROP POLICY IF EXISTS "Public Read" ON public.kas_members;
+DROP POLICY IF EXISTS "Public Read" ON public.kas_transactions;
+DROP POLICY IF EXISTS "Public Read" ON public.audit_logs;
+DROP POLICY IF EXISTS "Public Read" ON public.user_profiles;
+
+DROP POLICY IF EXISTS "Authed Write" ON public.class_settings;
+DROP POLICY IF EXISTS "Authed Write" ON public.kas_members;
+DROP POLICY IF EXISTS "Authed Write" ON public.kas_transactions;
+DROP POLICY IF EXISTS "Authed Write" ON public.audit_logs;
+DROP POLICY IF EXISTS "Authed Write" ON public.user_profiles;
+DROP POLICY IF EXISTS "Authed Write" ON public.role_claims;
+
 -- Kebijakan Akses: Publik BISA BACA (untuk transparansi)
 CREATE POLICY "Public Read" ON public.class_settings FOR SELECT USING (true);
 CREATE POLICY "Public Read" ON public.kas_members FOR SELECT USING (true);
@@ -107,14 +132,10 @@ CREATE POLICY "Public Read" ON public.kas_transactions FOR SELECT USING (true);
 CREATE POLICY "Public Read" ON public.audit_logs FOR SELECT USING (true);
 CREATE POLICY "Public Read" ON public.user_profiles FOR SELECT USING (true);
 
--- Kebijakan Akses: Hanya Authed BISA TULIS (Disederhanakan untuk kemudahan)
+-- Kebijakan Akses: Hanya Authed BISA TULIS (Type-Safe Casting untuk auth.uid())
 CREATE POLICY "Authed Write" ON public.class_settings FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Authed Write" ON public.kas_members FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Authed Write" ON public.kas_transactions FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Authed Write" ON public.audit_logs FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Authed Write" ON public.user_profiles FOR ALL USING (auth.uid() = id OR auth.role() = 'authenticated');
+CREATE POLICY "Authed Write" ON public.user_profiles FOR ALL USING (auth.uid()::text = id::text OR auth.role() = 'authenticated');
 CREATE POLICY "Authed Write" ON public.role_claims FOR ALL USING (auth.role() = 'authenticated');
-
--- [H] AKTIFKAN REALTIME
--- Jalankan ini di dashboard Supabase -> Database -> Replication -> "supabase_realtime" publication
--- Klik "Add Tables" dan pilih: class_settings, kas_members, kas_transactions, audit_logs, role_claims
