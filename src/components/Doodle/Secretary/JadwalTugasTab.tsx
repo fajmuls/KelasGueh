@@ -16,7 +16,8 @@ import {
   Trash2,
   Edit2,
   AlertCircle,
-  FileCheck
+  FileCheck,
+  Users
 } from 'lucide-react';
 
 interface JadwalTugasTabProps {
@@ -61,12 +62,28 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedCourseForAssign, setSelectedCourseForAssign] = useState<string>(courseSchedules[0]?.id || '');
   const [assignTitle, setAssignTitle] = useState('');
+  const [isGroupAssignment, setIsGroupAssignment] = useState(false);
+  const [groupTargetName, setGroupTargetName] = useState('');
   const [assignDeadline, setAssignDeadline] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 5);
     return d.toISOString().split('T')[0];
   });
   const [assignNotes, setAssignNotes] = useState('');
+
+  const handleOpenAddAssignment = (forGroup = false) => {
+    sfx.playClick();
+    if (courseSchedules.length === 0) {
+      showToast('Tambahkan mata kuliah terlebih dahulu sebelum mencatat tugas.', 'error');
+      return;
+    }
+    setSelectedCourseForAssign(courseSchedules[0].id);
+    setIsGroupAssignment(forGroup);
+    setGroupTargetName('');
+    setAssignTitle('');
+    setAssignNotes('');
+    setIsAssignModalOpen(true);
+  };
 
   const handleOpenAddCourse = () => {
     sfx.playClick();
@@ -146,17 +163,26 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
     }
 
     sfx.playSuccess();
+    const prefix = isGroupAssignment
+      ? `👥 [Tugas Kelompok${groupTargetName.trim() ? ': ' + groupTargetName.trim() : ''}] `
+      : '';
+    const finalTitle = assignTitle.trim().startsWith('👥')
+      ? assignTitle.trim()
+      : `${prefix}${assignTitle.trim()}`;
+
     onAddAssignment(selectedCourseForAssign, {
-      title: assignTitle.trim(),
+      title: finalTitle,
       deadline: assignDeadline,
       status: 'pending',
       notes: assignNotes.trim() || undefined
     });
 
-    showToast('Tugas kuliah baru berhasil dicatat!', 'success');
+    showToast(isGroupAssignment ? '👥 Tugas kelompok berhasil dicatat!' : 'Tugas kuliah baru berhasil dicatat!', 'success');
     setIsAssignModalOpen(false);
     setAssignTitle('');
     setAssignNotes('');
+    setIsGroupAssignment(false);
+    setGroupTargetName('');
   };
 
   // WhatsApp Recap
@@ -225,19 +251,20 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
             {canEdit && (
               <>
                 <button
-                  onClick={() => {
-                    sfx.playClick();
-                    if (courseSchedules.length === 0) {
-                      showToast('Tambahkan mata kuliah terlebih dahulu sebelum mencatat tugas.', 'error');
-                      return;
-                    }
-                    setSelectedCourseForAssign(courseSchedules[0].id);
-                    setIsAssignModalOpen(true);
-                  }}
+                  onClick={() => handleOpenAddAssignment(false)}
                   className="btn-doodle px-3.5 py-2 bg-amber-200 hover:bg-amber-300 text-slate-900 font-bold text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
                 >
                   <FileCheck className="w-4 h-4 text-amber-800" />
                   <span>Tugas Baru</span>
+                </button>
+
+                <button
+                  onClick={() => handleOpenAddAssignment(true)}
+                  className="btn-doodle px-3.5 py-2 bg-indigo-200 hover:bg-indigo-300 text-slate-900 font-bold text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
+                  title="Tambah tugas khusus proyek / kelompok"
+                >
+                  <Users className="w-4 h-4 text-indigo-900" />
+                  <span>+ Tugas Kelompok</span>
                 </button>
 
                 <button
@@ -394,12 +421,15 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                       <div className="space-y-1.5">
                         {assignments.map(asg => {
                           const isDone = asg.status === 'selesai';
+                          const isGroupTaskItem = asg.title.includes('Kelompok') || asg.notes?.includes('Kelompok');
                           return (
                             <div
                               key={asg.id}
                               className={`p-2.5 rounded-xl border flex items-start justify-between gap-2 transition-all ${
                                 isDone
                                   ? 'bg-slate-50 border-slate-300 opacity-60'
+                                  : isGroupTaskItem
+                                  ? 'bg-indigo-50/70 border-indigo-300'
                                   : 'bg-amber-50/50 border-amber-300'
                               }`}
                             >
@@ -414,11 +444,18 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                                 <div className="mt-0.5 shrink-0">
                                   {isDone ? (
                                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                  ) : isGroupTaskItem ? (
+                                    <Circle className="w-4 h-4 text-indigo-600" />
                                   ) : (
                                     <Circle className="w-4 h-4 text-amber-600" />
                                   )}
                                 </div>
                                 <div className="min-w-0">
+                                  {isGroupTaskItem && (
+                                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-indigo-200 text-indigo-950 border border-indigo-400 inline-flex items-center gap-1 mb-1">
+                                      <Users className="w-3 h-3 text-indigo-900" /> Tugas Kelompok
+                                    </span>
+                                  )}
                                   <p className={`text-xs font-bold leading-tight ${isDone ? 'line-through text-slate-500' : 'text-slate-900'}`}>
                                     {asg.title}
                                   </p>
@@ -632,6 +669,58 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
             </div>
 
             <form onSubmit={handleSaveAssignmentSubmit} className="space-y-3 text-xs">
+              {/* Type Switcher: Individu vs Kelompok */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Kategori Jenis Tugas</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfx.playClick();
+                      setIsGroupAssignment(false);
+                    }}
+                    className={`py-1.5 px-3 rounded-lg border-2 border-slate-900 font-bold flex items-center justify-center gap-1.5 transition ${
+                      !isGroupAssignment
+                        ? 'bg-amber-300 text-slate-900 shadow-[1.5px_1.5px_0px_#000]'
+                        : 'bg-slate-50 text-slate-600 hover:bg-amber-100'
+                    }`}
+                  >
+                    <FileCheck className="w-3.5 h-3.5 text-amber-900" />
+                    <span>Tugas Individu</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfx.playClick();
+                      setIsGroupAssignment(true);
+                    }}
+                    className={`py-1.5 px-3 rounded-lg border-2 border-slate-900 font-bold flex items-center justify-center gap-1.5 transition ${
+                      isGroupAssignment
+                        ? 'bg-indigo-300 text-slate-900 shadow-[1.5px_1.5px_0px_#000]'
+                        : 'bg-slate-50 text-slate-600 hover:bg-indigo-100'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5 text-indigo-900" />
+                    <span>Tugas Kelompok</span>
+                  </button>
+                </div>
+              </div>
+
+              {isGroupAssignment && (
+                <div>
+                  <label className="font-bold text-indigo-900 block mb-1">
+                    Nama / Nomor Kelompok Target (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Kelompok 1, Kelompok Alpha, atau Semua Kelompok"
+                    value={groupTargetName}
+                    onChange={e => setGroupTargetName(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg border-2 border-slate-900 font-bold bg-indigo-50/60 focus:bg-white focus:outline-hidden"
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Mata Kuliah</label>
                 <select
@@ -652,12 +741,12 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">
-                  Judul Tugas <span className="text-rose-500">*</span>
+                  Judul Tugas / Proyek <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Makalah Analisis Algoritma Dijkstra"
+                  placeholder={isGroupAssignment ? "Contoh: Makalah & Presentasi Proyek Akhir" : "Contoh: Makalah Analisis Algoritma Dijkstra"}
                   value={assignTitle}
                   onChange={e => setAssignTitle(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border-2 border-slate-900 font-bold bg-amber-50/40 focus:bg-white focus:outline-hidden"

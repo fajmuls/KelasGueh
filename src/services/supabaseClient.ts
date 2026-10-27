@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog, AttendanceRecord, MeetingMinute, ClassInventoryItem, CourseSchedule, CourseAssignment, UserRole } from '../types/kas.ts';
-import { getRegisteredUsers, registerOrUpdateUser, updateUserRole } from '../utils/userManagement.ts';
+import { getRegisteredUsers, registerOrUpdateUser, updateUserRole, autoDetectGenderByName } from '../utils/userManagement.ts';
+import { toTitleCase } from '../utils/textFormatting.ts';
 
 /**
  * CORE DATABASE SERVICE - KELAS GUE v4.3.0
@@ -198,8 +199,24 @@ export class LocalKasRepository {
     localStorage.setItem(this.KEY_TX, JSON.stringify(txs));
   }
 
-  public static saveMembers(members: KasMember[]): void {
+  public static async saveMembers(members: KasMember[]): Promise<void> {
     localStorage.setItem(this.KEY_MEMBERS, JSON.stringify(members));
+    const client = getSupabaseClient();
+    if (client) {
+      setCloudSyncStatus('syncing');
+      const payload = members.map(m => ({
+        id: m.id,
+        name: m.name,
+        student_id: m.studentId,
+        phone: m.phone || null,
+        gender: m.gender || autoDetectGenderByName(m.name),
+        is_active: m.isActive !== false,
+        weekly_status: m.weeklyStatus || {}
+      }));
+      const { error } = await client.from('kas_members').upsert(payload);
+      if (error) setCloudSyncStatus('offline');
+      else setCloudSyncStatus('synced');
+    }
   }
 
   // ---------------- SETTINGS ----------------
@@ -424,6 +441,8 @@ export class LocalKasRepository {
         name: m.name,
         studentId: m.student_id,
         phone: m.phone,
+        gender: m.gender || autoDetectGenderByName(m.name),
+        isActive: m.is_active !== false,
         weeklyStatus: typeof m.weekly_status === 'string' ? JSON.parse(m.weekly_status) : m.weekly_status
       }));
 
@@ -436,12 +455,16 @@ export class LocalKasRepository {
     }
   }
 
-  public static async addMember(name: string, studentId: string, phone?: string): Promise<KasMember> {
+  public static async addMember(name: string, studentId: string, phone?: string, gender?: 'L' | 'P'): Promise<KasMember> {
+    const formattedName = toTitleCase(name);
+    const detectedGender = gender || autoDetectGenderByName(formattedName);
     const newMember: KasMember = {
       id: generateUUID(),
-      name,
+      name: formattedName,
       studentId,
       phone,
+      gender: detectedGender,
+      isActive: true,
       weeklyStatus: {}
     };
 
@@ -453,9 +476,11 @@ export class LocalKasRepository {
       setCloudSyncStatus('syncing');
       const { error } = await client.from('kas_members').insert([{
         id: newMember.id,
-        name,
+        name: formattedName,
         student_id: studentId,
         phone,
+        gender: detectedGender,
+        is_active: true,
         weekly_status: {}
       }]);
       if (error) setCloudSyncStatus('offline');
@@ -463,6 +488,7 @@ export class LocalKasRepository {
     }
     return newMember;
   }
+
 
   public static async toggleMemberWeek(memberId: string, weekKey: string): Promise<void> {
     const members = this.getMembers();
@@ -681,6 +707,8 @@ export class LocalKasRepository {
           name: m.name,
           student_id: m.studentId,
           phone: m.phone || null,
+          gender: m.gender || autoDetectGenderByName(m.name),
+          is_active: m.isActive !== false,
           weekly_status: m.weeklyStatus || {}
         })));
         if (error) throw error;
