@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog, AttendanceRecord, MeetingMinute, ClassInventoryItem, CourseSchedule, CourseAssignment, UserRole } from '../types/kas.ts';
-import { getRegisteredUsers, registerOrUpdateUser, updateUserRole, autoDetectGenderByName } from '../utils/userManagement.ts';
+import { getRegisteredUsers, registerOrUpdateUser, updateUserRole, deleteRegisteredUser, autoDetectGenderByName } from '../utils/userManagement.ts';
 import { toTitleCase } from '../utils/textFormatting.ts';
 
 /**
@@ -840,21 +840,40 @@ export class LocalKasRepository {
     }
   }
 
-  public static async updateWhitelist(email: string, role: 'bendahara' | 'anggota'): Promise<void> {
-    // Update locally
-    updateUserRole(email, role);
+  public static async updateWhitelist(email: string, role: 'bendahara' | 'sekretaris' | 'anggota', userName?: string): Promise<void> {
+    const emailLower = email.toLowerCase().trim();
+    // Update locally first
+    updateUserRole(emailLower, role, userName);
 
     const client = getSupabaseClient();
     if (!client) return;
 
-    if (role === 'anggota') {
-      await client.from('authorized_whitelist').delete().eq('email', email.toLowerCase());
-    } else {
-      await client.from('authorized_whitelist').upsert([{ email: email.toLowerCase(), role }]);
+    try {
+      if (role === 'anggota') {
+        await client.from('authorized_whitelist').delete().eq('email', emailLower);
+        await client.from('user_profiles').update({ role: 'anggota' }).eq('email', emailLower);
+      } else {
+        await client.from('authorized_whitelist').upsert([{ email: emailLower, role }]);
+        await client.from('user_profiles').update({ role }).eq('email', emailLower);
+      }
+    } catch (err) {
+      console.error('Error updating whitelist in Supabase:', err);
     }
-    
-    // Also update existing profile if any
-    await client.from('user_profiles').update({ role }).eq('email', email.toLowerCase());
+  }
+
+  public static async deleteWhitelistUser(email: string): Promise<void> {
+    const emailLower = email.toLowerCase().trim();
+    deleteRegisteredUser(emailLower);
+
+    const client = getSupabaseClient();
+    if (!client) return;
+
+    try {
+      await client.from('authorized_whitelist').delete().eq('email', emailLower);
+      await client.from('user_profiles').update({ role: 'anggota' }).eq('email', emailLower);
+    } catch (err) {
+      console.error('Error deleting whitelist user in Supabase:', err);
+    }
   }
 
   // ---------------- KOLEKTIF BILLS (IURAN KHUSUS / ACARA) ----------------

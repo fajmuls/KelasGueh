@@ -192,3 +192,16 @@ export const updateUserLinkedMember = (
   localStorage.setItem(STORAGE_KEY_REGISTERED, JSON.stringify(updated));
   return updated;
 };
+
+export const deleteRegisteredUser = (email: string): RegisteredUser[] => {
+  const emailLower = email.toLowerCase().trim();
+  let bendaharas = getBendaharaWhitelist().filter(e => e !== emailLower);
+  let sekretarisList = getSekretarisWhitelist().filter(e => e !== emailLower);
+  saveBendaharaWhitelist(bendaharas);
+  saveSekretarisWhitelist(sekretarisList);
+
+  const currentList = getRegisteredUsers();
+  const updated = currentList.filter(u => u.email.toLowerCase() !== emailLower);
+  localStorage.setItem(STORAGE_KEY_REGISTERED, JSON.stringify(updated));
+  return updated;
+};

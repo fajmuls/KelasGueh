@@ -129,7 +129,8 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
     }
 
     sfx.playPaymentConfirmed();
-    await updateUserRole(emailToAdd, whitelistRole, nameToAdd);
+    await LocalKasRepository.updateWhitelist(emailToAdd, whitelistRole, nameToAdd);
+    showToast(`Role ${whitelistRole.toUpperCase()} untuk "${nameToAdd}" berhasil disimpan ke database!`, 'success');
     setWhitelistSearchInput('');
     setSelectedStudentForWhitelist(null);
     await loadData();
@@ -137,7 +138,24 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
 
   const handleRoleChange = async (email: string, role: 'bendahara' | 'sekretaris' | 'anggota') => {
     sfx.playOptionSelect();
-    await updateUserRole(email, role);
+    await LocalKasRepository.updateWhitelist(email, role);
+    showToast(`Role ${email} berhasil diubah ke ${role.toUpperCase()} & tersimpan di database!`, 'success');
+    await loadData();
+  };
+
+  const handleDeleteWhitelist = async (email: string, name: string) => {
+    const ok = await showConfirm({
+      title: 'Hapus / Reset Whitelist Role',
+      message: `Hapus role whitelist untuk "${name}" (${email})? Pengguna akan dikembalikan ke role Anggota Biasa.`,
+      confirmLabel: 'Ya, Hapus / Reset',
+      cancelLabel: 'Batal',
+      isDanger: true
+    });
+    if (!ok) return;
+
+    sfx.playDeleteConfirm();
+    await LocalKasRepository.deleteWhitelistUser(email);
+    showToast(`Role whitelist untuk ${name} berhasil dihapus dari database!`, 'info');
     await loadData();
   };
 
@@ -572,15 +590,25 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                         {u.role === 'superadmin' ? (
                           <span className="text-[10px] text-slate-400 italic font-bold">Super Admin Utama</span>
                         ) : (
-                          <select
-                            value={u.role}
-                            onChange={(e) => handleRoleChange(u.email, e.target.value as any)}
-                            className="px-2 py-1 border-2 border-slate-900 rounded-lg bg-white text-[11px] font-bold shadow-[1px_1px_0px_#000] cursor-pointer"
-                          >
-                            <option value="bendahara">Bendahara</option>
-                            <option value="sekretaris">Sekretaris</option>
-                            <option value="anggota">Anggota Biasa</option>
-                          </select>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <select
+                              value={u.role}
+                              onChange={(e) => handleRoleChange(u.email, e.target.value as any)}
+                              className="px-2 py-1 border-2 border-slate-900 rounded-lg bg-white text-[11px] font-bold shadow-[1px_1px_0px_#000] cursor-pointer"
+                            >
+                              <option value="bendahara">Bendahara</option>
+                              <option value="sekretaris">Sekretaris</option>
+                              <option value="anggota">Anggota Biasa</option>
+                            </select>
+
+                            <button
+                              onClick={() => handleDeleteWhitelist(u.email, u.name || u.email.split('@')[0])}
+                              className="btn-doodle p-1 bg-rose-100 hover:bg-rose-200 text-rose-800 border-2 border-slate-900 rounded-lg shadow-[1px_1px_0px_#000]"
+                              title="Hapus / Reset whitelist pengguna ini"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
