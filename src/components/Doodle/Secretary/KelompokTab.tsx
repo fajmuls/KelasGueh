@@ -18,7 +18,9 @@ import {
   Edit2,
   Calendar,
   ClipboardList,
-  Plus
+  Plus,
+  Sparkles,
+  Info
 } from 'lucide-react';
 
 interface KelompokTabProps {
@@ -44,23 +46,28 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
 
   // Course selection state
   const [selectedCourseId, setSelectedCourseId] = useState<string>(() => {
+    const saved = localStorage.getItem('kelasgue_kelompok_course_id');
+    if (saved) return saved;
     return courseSchedules.length > 0 ? courseSchedules[0].id : 'custom';
   });
-  const [customCourseName, setCustomCourseName] = useState<string>('Matematika');
+  const [customCourseName, setCustomCourseName] = useState<string>(() => {
+    return localStorage.getItem('kelasgue_kelompok_custom_course') || 'Matematika Diskrit';
+  });
 
-  // Custom group names & project tasks
-  const [groupCustomNames, setGroupCustomNames] = useState<Record<number, string>>(() => {
+  // Unified course project task (1 task per course shared across all groups)
+  const [unifiedCourseTasks, setUnifiedCourseTasks] = useState<Record<string, { title: string; deadline: string }>>(() => {
     try {
-      const saved = localStorage.getItem('kelasgue_kelompok_names');
+      const saved = localStorage.getItem('kelasgue_kelompok_unified_tasks');
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
     }
   });
 
-  const [groupTasks, setGroupTasks] = useState<Record<number, { title: string; deadline: string }>>(() => {
+  // Custom group names (e.g. Kelompok 1 -> Kelompok Alpha)
+  const [groupCustomNames, setGroupCustomNames] = useState<Record<number, string>>(() => {
     try {
-      const saved = localStorage.getItem('kelasgue_kelompok_tasks');
+      const saved = localStorage.getItem('kelasgue_kelompok_names');
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
@@ -78,6 +85,11 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     return customCourseName.trim() || 'Mata Kuliah';
   }, [selectedCourseId, courseSchedules, customCourseName]);
 
+  // Unified task for the current active course
+  const currentCourseTask = useMemo(() => {
+    return unifiedCourseTasks[currentCourseName] || { title: '', deadline: '' };
+  }, [unifiedCourseTasks, currentCourseName]);
+
   // Filter only active students
   const activeMembers = useMemo(() => {
     return members
@@ -92,14 +104,14 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
   const males = useMemo(() => activeMembers.filter(m => m.gender === 'L'), [activeMembers]);
   const females = useMemo(() => activeMembers.filter(m => m.gender === 'P'), [activeMembers]);
 
-  // Divide into groups based on seed and mode
+  // Divide into groups based on seed and mode ONLY IF locked/generated
   const groups = useMemo(() => {
-    if (activeMembers.length === 0 || numGroups < 1) return [];
+    if (!isLocked || activeMembers.length === 0 || numGroups < 1) return [];
 
     const groupList: Array<{ id: number; name: string; members: typeof activeMembers }> = [];
     for (let i = 0; i < numGroups; i++) {
       const gId = i + 1;
-      const defaultName = `Kelompok ${currentCourseName} ${gId}`;
+      const defaultName = `Kelompok ${gId}`;
       const name = groupCustomNames[gId] || defaultName;
       groupList.push({ id: gId, name, members: [] });
     }
@@ -144,21 +156,37 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     }
 
     return groupList;
-  }, [activeMembers, numGroups, mode, seed, males, females, currentCourseName, groupCustomNames]);
+  }, [isLocked, activeMembers, numGroups, mode, seed, males, females, groupCustomNames]);
+
+  const handleSelectCourse = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    localStorage.setItem('kelasgue_kelompok_course_id', courseId);
+  };
+
+  const handleCustomCourseChange = (val: string) => {
+    setCustomCourseName(val);
+    localStorage.setItem('kelasgue_kelompok_custom_course', val);
+  };
 
   const handleGenerateOrShuffle = () => {
+    if (activeMembers.length === 0) {
+      showToast('Tidak ada siswa aktif terdaftar untuk dibuatkan kelompok!', 'error');
+      return;
+    }
     sfx.playOptionSelect();
     const newSeed = Date.now();
     setSeed(newSeed);
     setIsLocked(true);
     localStorage.setItem('kelasgue_kelompok_seed', String(newSeed));
     localStorage.setItem('kelasgue_kelompok_locked', 'true');
+    showToast(`✓ Kelompok untuk mata kuliah "${currentCourseName}" berhasil digenerate & dikunci!`, 'success');
   };
 
   const handleResetLock = () => {
     sfx.playDeleteConfirm();
     setIsLocked(false);
     localStorage.removeItem('kelasgue_kelompok_locked');
+    showToast('Tampilan kelompok dibuka kunci dan dikembalikan ke awal.', 'info');
   };
 
   const handleRenameGroup = (groupId: number, newName: string) => {
@@ -167,19 +195,19 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     localStorage.setItem('kelasgue_kelompok_names', JSON.stringify(updated));
   };
 
-  const handleUpdateGroupTask = (groupId: number, field: 'title' | 'deadline', value: string) => {
-    const current = groupTasks[groupId] || { title: '', deadline: '' };
+  const handleUpdateUnifiedCourseTask = (field: 'title' | 'deadline', value: string) => {
+    const current = unifiedCourseTasks[currentCourseName] || { title: '', deadline: '' };
     const updated = {
-      ...groupTasks,
-      [groupId]: { ...current, [field]: value }
+      ...unifiedCourseTasks,
+      [currentCourseName]: { ...current, [field]: value }
     };
-    setGroupTasks(updated);
-    localStorage.setItem('kelasgue_kelompok_tasks', JSON.stringify(updated));
+    setUnifiedCourseTasks(updated);
+    localStorage.setItem('kelasgue_kelompok_unified_tasks', JSON.stringify(updated));
   };
 
-  const handleSyncTaskToSchedule = (group: { id: number; name: string; members: typeof activeMembers }) => {
-    const task = groupTasks[group.id];
-    if (!task || !task.title.trim()) {
+  const handleSyncUnifiedTaskToSchedule = () => {
+    const task = currentCourseTask;
+    if (!task.title.trim()) {
       showToast('Mohon isi judul tugas / proyek kelompok terlebih dahulu!', 'error');
       return;
     }
@@ -199,12 +227,11 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
       targetCourseId = newCourse.id;
     }
 
-    const memberNames = group.members.map(m => m.name).join(', ');
     const assignmentPayload: Omit<CourseAssignment, 'id'> = {
-      title: `[${group.name}] ${task.title.trim()}`,
+      title: `[Tugas Kelompok ${currentCourseName}] ${task.title.trim()}`,
       deadline: task.deadline || new Date().toISOString().split('T')[0],
       status: 'pending',
-      notes: `Anggota (${group.members.length}): ${memberNames}`
+      notes: `Tugas proyek kelompok terpadu (${numGroups} Kelompok, ${activeMembers.length} Siswa Aktif)`
     };
 
     if (onAddAssignment) {
@@ -214,21 +241,27 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     }
 
     sfx.playLevelUp();
-    showToast(`✓ Tugas proyek "${group.name}" berhasil dicatat ke menu Jadwal & Tugas!`, 'success');
+    showToast(`✓ Tugas proyek "${task.title.trim()}" mata kuliah ${currentCourseName} berhasil disimpan ke Jadwal & Tugas!`, 'success');
   };
 
   const handleSendWhatsApp = () => {
+    if (!isLocked || groups.length === 0) {
+      showToast('Generate dan kunci kelompok terlebih dahulu sebelum mengirim ke WA!', 'error');
+      return;
+    }
+
     sfx.playFileDownload();
     let text = `📌 *PEMBAGIAN KELOMPOK - ${currentCourseName.toUpperCase()}*\n`;
-    text += `Mode: ${mode === 'seimbang_gender' ? '⚖️ Seimbang Gender (L/P)' : '🎲 Acak Campur'}\n`;
-    text += `Total Anggota Aktif: ${activeMembers.length} Siswa\n\n`;
+    const task = currentCourseTask;
+    if (task.title.trim()) {
+      text += `🎯 *Tugas/Proyek Kelompok:* ${task.title.trim()}\n`;
+      text += `📅 *Deadline:* ${task.deadline || 'Belum ditentukan'}\n`;
+    }
+    text += `⚖️ *Mode:* ${mode === 'seimbang_gender' ? 'Seimbang Gender (L/P)' : 'Acak Campur'}\n`;
+    text += `👥 *Total Siswa Aktif:* ${activeMembers.length} Orang (${numGroups} Kelompok)\n\n`;
 
     groups.forEach(g => {
       text += `*${g.name.toUpperCase()}* (${g.members.length} Orang)\n`;
-      const task = groupTasks[g.id];
-      if (task?.title) {
-        text += `🎯 *Tugas/Proyek:* ${task.title} (Deadline: ${task.deadline || '-'})\n`;
-      }
       g.members.forEach((m, idx) => {
         const gBadge = m.gender === 'P' ? '[P]' : '[L]';
         text += `${idx + 1}. ${toTitleCase(m.name)} ${gBadge}\n`;
@@ -253,10 +286,10 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
             </div>
             <div>
               <h3 className="font-black text-base text-slate-900 leading-tight">
-                Generator Pembagian Kelompok & Proyek Kelas
+                Pencatatan & Generator Kelompok Mata Kuliah
               </h3>
               <p className="text-[11px] text-slate-700 font-medium">
-                Pilih mata kuliah, acak tim seimbang gender, serta catat proyek langsung ke Jadwal & Tugas.
+                Pilih mata kuliah, tentukan jumlah kelompok, acak anggota seimbang gender, dan simpan tugas proyek ke Jadwal & Tugas.
               </p>
             </div>
           </div>
@@ -264,8 +297,8 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
           <div className="flex items-center gap-2 self-end sm:self-auto">
             <button
               onClick={handleSendWhatsApp}
-              disabled={groups.length === 0}
-              className="btn-doodle px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-black text-xs flex items-center gap-1.5 border-2 border-slate-900 shadow-[2px_2px_0px_#000] transition disabled:opacity-50"
+              disabled={!isLocked || groups.length === 0}
+              className="btn-doodle px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-900 font-black text-xs flex items-center gap-1.5 border-2 border-slate-900 shadow-[2px_2px_0px_#000] transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send className="w-3.5 h-3.5 text-emerald-950" />
               <span>Kirim WA</span>
@@ -274,20 +307,20 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
         </div>
       </div>
 
-      {/* Control Panel: Matkul Selection, Jumlah Kelompok, Mode, Shuffle */}
+      {/* Control Panel */}
       <div className="bg-white border-2 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[3px_3px_0px_#000] space-y-4">
-        {/* Pilih Mata Kuliah */}
-        <div className="p-3 bg-amber-50/70 border-2 border-slate-900 rounded-xl space-y-2">
+        {/* 1. Pilih Mata Kuliah */}
+        <div className="p-3.5 bg-amber-50/80 border-2 border-slate-900 rounded-xl space-y-2">
           <label className="block text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
             <BookOpen className="w-4 h-4 text-indigo-700" />
-            <span>Pilih Mata Kuliah / Pelajaran:</span>
+            <span>1. Pilih Mata Kuliah / Pelajaran:</span>
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <select
               value={selectedCourseId}
-              onChange={(e) => setSelectedCourseId(e.target.value)}
+              onChange={(e) => handleSelectCourse(e.target.value)}
               disabled={isLocked}
-              className="w-full px-3 py-2 text-xs font-bold bg-white border-2 border-slate-900 rounded-lg focus:outline-none"
+              className="w-full px-3 py-2 text-xs font-bold bg-white border-2 border-slate-900 rounded-lg focus:outline-none disabled:opacity-70 disabled:bg-slate-100"
             >
               {courseSchedules.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -302,19 +335,20 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                 type="text"
                 value={customCourseName}
                 disabled={isLocked}
-                onChange={(e) => setCustomCourseName(e.target.value)}
-                placeholder="Contoh: Matematika Diskrit, Desain Web..."
-                className="w-full px-3 py-2 text-xs font-bold border-2 border-slate-900 rounded-lg focus:outline-none bg-white"
+                onChange={(e) => handleCustomCourseChange(e.target.value)}
+                placeholder="Contoh: Matematika Diskrit, Pemrograman Web..."
+                className="w-full px-3 py-2 text-xs font-bold border-2 border-slate-900 rounded-lg focus:outline-none bg-white disabled:opacity-70 disabled:bg-slate-100"
               />
             )}
           </div>
         </div>
 
+        {/* 2. Jumlah Kelompok & Mode Distribusi */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Jumlah Kelompok (3 to 10) */}
+          {/* Jumlah Kelompok */}
           <div>
             <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
-              Jumlah Kelompok (3 - 10): <span className="text-amber-600 text-sm font-black">{numGroups} Kelompok</span>
+              2. Jumlah Kelompok: <span className="text-amber-600 text-sm font-black">{numGroups} Kelompok</span>
             </label>
             <div className="flex flex-wrap items-center gap-1.5">
               {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
@@ -329,7 +363,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                     numGroups === n
                       ? 'bg-amber-400 text-slate-900 shadow-[1.5px_1.5px_0px_#000] -translate-y-0.5'
                       : 'bg-slate-50 text-slate-700 hover:bg-amber-50 shadow-[1px_1px_0px_#000]'
-                  } ${isLocked ? 'opacity-75 cursor-not-allowed' : ''}`}
+                  } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
                   {n}
                 </button>
@@ -340,7 +374,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
           {/* Mode Distribusi */}
           <div>
             <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
-              Metode Distribusi
+              3. Metode Distribusi
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -353,7 +387,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                   mode === 'seimbang_gender'
                     ? 'bg-amber-400 text-slate-900 shadow-[1.5px_1.5px_0px_#000] -translate-y-0.5'
                     : 'bg-slate-50 text-slate-700 hover:bg-amber-50 shadow-[1px_1px_0px_#000]'
-                } ${isLocked ? 'opacity-75 cursor-not-allowed' : ''}`}
+                } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 <Scale className="w-3.5 h-3.5" />
                 Seimbang Gender (L/P)
@@ -369,7 +403,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                   mode === 'campur'
                     ? 'bg-amber-400 text-slate-900 shadow-[1.5px_1.5px_0px_#000] -translate-y-0.5'
                     : 'bg-slate-50 text-slate-700 hover:bg-amber-50 shadow-[1px_1px_0px_#000]'
-                } ${isLocked ? 'opacity-75 cursor-not-allowed' : ''}`}
+                } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 <Shuffle className="w-3.5 h-3.5" />
                 Acak Campur Full
@@ -378,9 +412,9 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
           </div>
         </div>
 
-        {/* Shuffle / Generate Button placed BELOW distribution mode */}
+        {/* Action Button & Student Count Info */}
         <div className="pt-3 border-t-2 border-slate-900 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3 text-xs text-slate-700 font-bold">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-700 font-bold">
             <span className="flex items-center gap-1">
               <UserCheck className="w-4 h-4 text-blue-600" /> Laki-laki: <strong>{males.length}</strong>
             </span>
@@ -388,7 +422,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
               <UserCheck className="w-4 h-4 text-pink-600" /> Perempuan: <strong>{females.length}</strong>
             </span>
             <span className="text-slate-400">·</span>
-            <span className="italic text-slate-500">Aktif: {activeMembers.length} Siswa</span>
+            <span className="text-emerald-700 font-black">Aktif: {activeMembers.length} Siswa</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -396,7 +430,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
               <button
                 onClick={handleResetLock}
                 className="btn-doodle px-4 py-2 bg-rose-200 hover:bg-rose-300 text-rose-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5"
-                title="Buka kunci untuk melakukan generate / acak ulang kelompok"
+                title="Buka kunci untuk memilih mata kuliah baru atau mengacak ulang kelompok"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Buka Kunci (Reset Acak)</span>
@@ -404,9 +438,9 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
             ) : (
               <button
                 onClick={handleGenerateOrShuffle}
-                className="btn-doodle px-5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5"
+                className="btn-doodle px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-2"
               >
-                <Lock className="w-3.5 h-3.5" />
+                <Lock className="w-4 h-4 text-slate-950" />
                 <span>Generate & Kunci Kelompok</span>
               </button>
             )}
@@ -414,137 +448,213 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
         </div>
       </div>
 
-      {/* Group Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {groups.map((group) => {
-          const groupMales = group.members.filter(m => m.gender === 'L').length;
-          const groupFemales = group.members.filter(m => m.gender === 'P').length;
-          const isRenaming = editingGroupId === group.id;
-          const task = groupTasks[group.id] || { title: '', deadline: '' };
-
-          return (
-            <div
-              key={group.id}
-              className="bg-white border-2 border-slate-900 rounded-xl p-4 shadow-[3px_3px_0px_#000] flex flex-col justify-between hover:translate-y-[-2px] transition"
+      {/* Main Content Area: Conditional rendering based on isLocked */}
+      {!isLocked ? (
+        /* INITIAL EMPTY STATE BEFORE GENERATE */
+        <div className="bg-amber-50/40 border-2 border-dashed border-slate-400 rounded-2xl p-8 text-center space-y-4 my-4 shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-amber-200 border-2 border-slate-900 flex items-center justify-center mx-auto text-slate-900 shadow-[3px_3px_0px_#000]">
+            <Sparkles className="w-8 h-8 text-amber-700" />
+          </div>
+          <div className="max-w-md mx-auto space-y-2">
+            <h4 className="font-black text-lg text-slate-900">
+              Belum Ada Kelompok Digenerate
+            </h4>
+            <p className="text-xs text-slate-600 font-medium leading-relaxed">
+              Silakan pilih mata kuliah <strong>({currentCourseName})</strong>, tentukan jumlah kelompok ({numGroups}), dan pilih metode pengacakan di atas, lalu klik <span className="underline font-bold text-amber-900">"Generate & Kunci Kelompok"</span>.
+            </p>
+          </div>
+          <div className="pt-2 flex justify-center">
+            <button
+              onClick={handleGenerateOrShuffle}
+              className="btn-doodle px-5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-2"
             >
-              <div>
-                {/* Header Group: ID, Name (Inline editable), Member Count */}
-                <div className="flex items-center justify-between pb-3 border-b-2 border-slate-900 mb-3 gap-2">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="w-8 h-8 rounded-lg bg-amber-300 border-2 border-slate-900 text-slate-900 font-black text-xs flex items-center justify-center shadow-[1px_1px_0px_#000] shrink-0">
-                      #{group.id}
-                    </span>
-                    {isRenaming ? (
-                      <div className="flex items-center gap-1 flex-1">
-                        <input
-                          type="text"
-                          value={group.name}
-                          onChange={(e) => handleRenameGroup(group.id, e.target.value)}
-                          className="px-2 py-0.5 text-xs font-black border-2 border-slate-900 rounded bg-amber-50 w-full"
-                          autoFocus
-                          onBlur={() => setEditingGroupId(null)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') setEditingGroupId(null);
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setEditingGroupId(null)}
-                          className="p-1 bg-emerald-300 text-slate-900 rounded border border-slate-900"
-                        >
-                          <Check className="w-3 h-3 stroke-[3]" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        <h4 className="font-black text-xs sm:text-sm text-slate-900 truncate">
-                          {group.name}
-                        </h4>
-                        <button
-                          type="button"
-                          onClick={() => setEditingGroupId(group.id)}
-                          className="p-1 text-slate-500 hover:text-slate-900 transition"
-                          title="Ubah nama kelompok"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-lg border-2 border-slate-900 bg-amber-100 text-amber-950 shrink-0">
-                    {group.members.length} Orang
-                  </span>
-                </div>
+              <Lock className="w-4 h-4 text-slate-950" />
+              <span>Generate Kelompok Sekarang</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* GENERATED STATE: UNIFIED COURSE TASK & GROUPS GRID */
+        <div className="space-y-6">
+          {/* Header Title of Generated Course */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b-2 border-slate-900 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-md bg-amber-400 border-2 border-slate-900 font-black text-[11px] uppercase tracking-wider text-slate-900 shadow-[1px_1px_0px_#000]">
+                  Ter-kunci
+                </span>
+                <h3 className="font-black text-lg sm:text-xl text-slate-900">
+                  Kelompok Mata Kuliah: {currentCourseName}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-600 font-medium mt-0.5">
+                {numGroups} Kelompok · {activeMembers.length} Siswa Aktif · Mode: {mode === 'seimbang_gender' ? 'Seimbang Gender (L/P)' : 'Acak Campur'}
+              </p>
+            </div>
 
-                {/* Member List */}
-                <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1 custom-scrollbar mb-3">
-                  {group.members.map((m, idx) => (
-                    <div
-                      key={m.id}
-                      className="text-xs py-1 px-2.5 rounded-lg bg-amber-50/60 border border-slate-900 flex items-center justify-between"
-                    >
-                      <span className="font-bold text-slate-900 truncate">
-                        {idx + 1}. {toTitleCase(m.name)}
-                      </span>
-                      <span
-                        className={`text-[9px] font-black px-1.5 py-0.2 rounded border border-slate-900 shrink-0 ${
-                          m.gender === 'P'
-                            ? 'bg-pink-200 text-pink-900'
-                            : 'bg-blue-200 text-blue-900'
-                        }`}
-                      >
-                        {m.gender === 'P' ? 'P' : 'L'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            <button
+              onClick={handleResetLock}
+              className="text-xs font-bold text-slate-600 hover:text-rose-600 flex items-center gap-1 transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Acak Ulang / Matkul Lain</span>
+            </button>
+          </div>
 
-                {/* Tugas / Proyek Kelompok Box */}
-                <div className="p-2.5 bg-slate-50 border-2 border-dashed border-slate-400 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase text-slate-700 flex items-center gap-1">
-                      <ClipboardList className="w-3 h-3 text-indigo-600" />
-                      <span>Proyek / Tugas Kelompok:</span>
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    value={task.title}
-                    onChange={(e) => handleUpdateGroupTask(group.id, 'title', e.target.value)}
-                    placeholder="Judul Proyek (contoh: Makalah Bab 3)..."
-                    className="w-full px-2 py-1 text-xs border border-slate-900 rounded bg-white"
-                  />
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={task.deadline}
-                      onChange={(e) => handleUpdateGroupTask(group.id, 'deadline', e.target.value)}
-                      className="px-2 py-1 text-[11px] border border-slate-900 rounded bg-white flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleSyncTaskToSchedule(group)}
-                      className="btn-doodle px-2.5 py-1 bg-indigo-500 hover:bg-indigo-600 text-white font-black text-[10px] rounded flex items-center gap-1 shadow-sm shrink-0"
-                      title="Simpan tugas ini ke menu Jadwal & Tugas kelas"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Ke Jadwal Tugas</span>
-                    </button>
-                  </div>
+          {/* Unified Course Project Assignment Card */}
+          <div className="bg-sky-50 border-2 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[3px_3px_0px_#000] space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2 border-b border-sky-200 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-sky-400 border border-slate-900 text-slate-900 flex items-center justify-center font-black shrink-0">
+                  <ClipboardList className="w-4 h-4 text-slate-950" />
+                </div>
+                <div>
+                  <h4 className="font-black text-sm text-slate-900">
+                    Tugas / Proyek Kelompok Mata Kuliah ({currentCourseName})
+                  </h4>
+                  <p className="text-[11px] text-slate-600">
+                    Tugas ini berlaku seragam untuk seluruh kelompok di bawah.
+                  </p>
                 </div>
               </div>
 
-              {/* Footer Ratio */}
-              <div className="mt-3 pt-2 border-t-2 border-slate-900 flex items-center justify-between text-[11px] text-slate-700 font-bold">
-                <span>Rasio L/P:</span>
-                <span className="font-black text-slate-900">
-                  {groupMales} 👦 | {groupFemales} 👧
-                </span>
+              <button
+                type="button"
+                onClick={handleSyncUnifiedTaskToSchedule}
+                className="btn-doodle px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-lg border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5 shrink-0"
+                title="Simpan tugas proyek ini secara otomatis ke jadwal dan tugas kelas"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Simpan ke Jadwal & Tugas</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="sm:col-span-2 space-y-1">
+                <label className="block text-[11px] font-black uppercase text-slate-800">
+                  Judul Tugas / Proyek Kelompok:
+                </label>
+                <input
+                  type="text"
+                  value={currentCourseTask.title}
+                  onChange={(e) => handleUpdateUnifiedCourseTask('title', e.target.value)}
+                  placeholder="Contoh: Makalah & Presentasi Bab 4, Demo Aplikasi Android..."
+                  className="w-full px-3 py-2 text-xs font-bold border-2 border-slate-900 rounded-lg bg-white focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-black uppercase text-slate-800">
+                  Deadline Pengumpulan:
+                </label>
+                <input
+                  type="date"
+                  value={currentCourseTask.deadline}
+                  onChange={(e) => handleUpdateUnifiedCourseTask('deadline', e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-bold border-2 border-slate-900 rounded-lg bg-white focus:outline-none"
+                />
               </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
+
+          {/* Group Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {groups.map((group) => {
+              const groupMales = group.members.filter(m => m.gender === 'L').length;
+              const groupFemales = group.members.filter(m => m.gender === 'P').length;
+              const isRenaming = editingGroupId === group.id;
+
+              return (
+                <div
+                  key={group.id}
+                  className="bg-white border-2 border-slate-900 rounded-xl p-4 shadow-[3px_3px_0px_#000] flex flex-col justify-between hover:translate-y-[-2px] transition"
+                >
+                  <div>
+                    {/* Header Group: ID, Name (Inline editable), Member Count */}
+                    <div className="flex items-center justify-between pb-3 border-b-2 border-slate-900 mb-3 gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="w-8 h-8 rounded-lg bg-amber-300 border-2 border-slate-900 text-slate-900 font-black text-xs flex items-center justify-center shadow-[1px_1px_0px_#000] shrink-0">
+                          #{group.id}
+                        </span>
+                        {isRenaming ? (
+                          <div className="flex items-center gap-1 flex-1">
+                            <input
+                              type="text"
+                              value={group.name}
+                              onChange={(e) => handleRenameGroup(group.id, e.target.value)}
+                              className="px-2 py-0.5 text-xs font-black border-2 border-slate-900 rounded bg-amber-50 w-full"
+                              autoFocus
+                              onBlur={() => setEditingGroupId(null)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') setEditingGroupId(null);
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setEditingGroupId(null)}
+                              className="p-1 bg-emerald-300 text-slate-900 rounded border border-slate-900"
+                            >
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                            <h4 className="font-black text-xs sm:text-sm text-slate-900 truncate">
+                              {group.name}
+                            </h4>
+                            <button
+                              type="button"
+                              onClick={() => setEditingGroupId(group.id)}
+                              className="p-1 text-slate-500 hover:text-slate-900 transition"
+                              title="Ubah nama kelompok"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-lg border-2 border-slate-900 bg-amber-100 text-amber-950 shrink-0">
+                        {group.members.length} Orang
+                      </span>
+                    </div>
+
+                    {/* Member List */}
+                    <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 custom-scrollbar mb-3">
+                      {group.members.map((m, idx) => (
+                        <div
+                          key={m.id}
+                          className="text-xs py-1 px-2.5 rounded-lg bg-amber-50/60 border border-slate-900 flex items-center justify-between"
+                        >
+                          <span className="font-bold text-slate-900 truncate">
+                            {idx + 1}. {toTitleCase(m.name)}
+                          </span>
+                          <span
+                            className={`text-[9px] font-black px-1.5 py-0.2 rounded border border-slate-900 shrink-0 ${
+                              m.gender === 'P'
+                                ? 'bg-pink-200 text-pink-900'
+                                : 'bg-blue-200 text-blue-900'
+                            }`}
+                          >
+                            {m.gender === 'P' ? 'P' : 'L'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Footer Ratio */}
+                  <div className="pt-2.5 border-t-2 border-slate-900 flex items-center justify-between text-[11px] text-slate-700 font-bold">
+                    <span>Rasio L/P:</span>
+                    <span className="font-black text-slate-900">
+                      {groupMales} 👦 | {groupFemales} 👧
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
