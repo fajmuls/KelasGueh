@@ -279,12 +279,40 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
+  // Helper to parse weekKey (e.g. 2026_1_W1) into an accurate month-matching date (e.g. 2026-01-05)
+  const getDuesTransactionDate = (weekKey: string): string => {
+    try {
+      const parts = weekKey.split('_');
+      if (parts.length >= 3) {
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
+        const weekNum = parseInt(parts[2].replace('W', '')) || 1;
+
+        const day = Math.min(28, Math.max(1, (weekNum - 1) * 7 + 5));
+        const paddedMonth = String(month).padStart(2, '0');
+        const paddedDay = String(day).padStart(2, '0');
+
+        return `${year}-${paddedMonth}-${paddedDay}`;
+      }
+    } catch (err) {
+      console.warn('Error parsing weekKey date:', err);
+    }
+    return new Date().toISOString().split('T')[0];
+  };
+
   // ---------------- INTEGRITY RECONCILIATION ROUTINE ----------------
   // Guarantees that if a member is not checked for a week, no money enters the cashbook
-  const handleSanitizeLinkedTransactions = async (currentTxs?: KasTransaction[], currentMembers?: KasMember[]) => {
+  // AND ensures all linked dues transactions have the correct date matching their month and correct rate matching monthlyDuesOverrides!
+  const handleSanitizeLinkedTransactions = async (
+    currentTxs?: KasTransaction[],
+    currentMembers?: KasMember[],
+    customSettings?: ClassSettings
+  ) => {
     const txList = currentTxs || transactions;
     const mList = currentMembers || members;
+    const activeSettings = customSettings || settings;
     let cleanedCount = 0;
+    let updatedCount = 0;
 
     // Track seen linked tags to prevent duplicates
     const seenLinkedTags = new Set<string>();
@@ -298,21 +326,42 @@ const AppContent: React.FC = () => {
           const member = mList.find(m => m.id === memberId);
           const isPaidInChecklist = !!member?.weeklyStatus?.[weekKey];
 
-          // If member does not exist, or checklist is false, or tag is duplicate:
+          // 1. If member does not exist, or checklist is false, or tag is duplicate -> delete orphan/duplicate
           if (!member || !isPaidInChecklist || seenLinkedTags.has(tx.notes)) {
             await LocalKasRepository.deleteTransaction(tx.id);
             cleanedCount++;
           } else {
             seenLinkedTags.add(tx.notes);
+
+            // 2. Sync date & special month dues amount with weekKey and monthlyDuesOverrides
+            const expectedDate = getDuesTransactionDate(weekKey);
+            const year = weekKey.split('_')[0];
+            const month = parseInt(weekKey.split('_')[1]);
+            const monthKey = `${year}_${month}`;
+
+            const expectedAmount = activeSettings.monthlyDuesOverrides?.[monthKey] !== undefined
+              ? activeSettings.monthlyDuesOverrides[monthKey]
+              : activeSettings.weeklyDuesAmount;
+
+            const dateMismatch = tx.date !== expectedDate;
+            const amountMismatch = Number(tx.amount) !== Number(expectedAmount);
+
+            if (dateMismatch || amountMismatch) {
+              await LocalKasRepository.updateTransaction(tx.id, {
+                date: expectedDate,
+                amount: expectedAmount
+              });
+              updatedCount++;
+            }
           }
         }
       }
     }
 
-    if (cleanedCount > 0) {
+    if (cleanedCount > 0 || updatedCount > 0) {
       const freshTxs = await LocalKasRepository.fetchTransactionsFromSupabase();
       setTransactions(freshTxs);
-      console.log(`[Kelas Gue Integrity] Dibersihkan ${cleanedCount} transaksi iuran duplikat/anomali.`);
+      console.log(`[Kelas Gue Integrity] Sanitized: Dibersihkan ${cleanedCount} duplikat, diperbarui ${updatedCount} tanggal/tarif iuran bulan.`);
     }
   };
 
@@ -484,7 +533,7 @@ const AppContent: React.FC = () => {
             title: `Iuran: ${targetMember.name} (${weekLabel})`,
             amount: duesAmount,
             category: 'Iuran Kas',
-            date: new Date().toISOString().split('T')[0],
+            date: getDuesTransactionDate(weekKey),
             recordedBy: user?.name || 'Sistem',
             notes: linkedTag
           };
@@ -562,7 +611,7 @@ const AppContent: React.FC = () => {
               title: `Iuran: ${m.name} (${weekLabel})`,
               amount: duesAmount,
               category: 'Iuran Kas',
-              date: new Date().toISOString().split('T')[0],
+              date: getDuesTransactionDate(weekKey),
               recordedBy: user?.name || 'Sistem',
               notes: linkedTag
             };
@@ -631,7 +680,8 @@ const AppContent: React.FC = () => {
   const handleSaveSettings = async (newSettings: ClassSettings) => {
     await LocalKasRepository.saveSettings(newSettings);
     setSettings(newSettings);
-    LocalKasRepository.fetchSettingsFromSupabase().then(setSettings);
+    await LocalKasRepository.fetchSettingsFromSupabase().then(setSettings);
+    await handleSanitizeLinkedTransactions(undefined, undefined, newSettings);
   };
 
   const handleResetData = () => {
