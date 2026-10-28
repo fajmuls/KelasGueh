@@ -17,7 +17,8 @@ import {
   Edit2,
   AlertCircle,
   FileCheck,
-  Users
+  Users,
+  ExternalLink
 } from 'lucide-react';
 
 interface JadwalTugasTabProps {
@@ -252,19 +253,11 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
               <>
                 <button
                   onClick={() => handleOpenAddAssignment(false)}
-                  className="btn-doodle px-3.5 py-2 bg-amber-200 hover:bg-amber-300 text-slate-900 font-bold text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
+                  className="btn-doodle px-3.5 py-2 bg-amber-300 hover:bg-amber-400 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
+                  title="Tambah tugas perkuliahan (Individu atau Kelompok)"
                 >
-                  <FileCheck className="w-4 h-4 text-amber-800" />
-                  <span>Tugas Baru</span>
-                </button>
-
-                <button
-                  onClick={() => handleOpenAddAssignment(true)}
-                  className="btn-doodle px-3.5 py-2 bg-indigo-200 hover:bg-indigo-300 text-slate-900 font-bold text-xs rounded-xl border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#1E293B]"
-                  title="Tambah tugas khusus proyek / kelompok"
-                >
-                  <Users className="w-4 h-4 text-indigo-900" />
-                  <span>+ Tugas Kelompok</span>
+                  <FileCheck className="w-4 h-4 text-slate-950" />
+                  <span>+ Tugas Baru</span>
                 </button>
 
                 <button
@@ -422,6 +415,16 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                         {assignments.map(asg => {
                           const isDone = asg.status === 'selesai';
                           const isGroupTaskItem = asg.title.includes('Kelompok') || asg.notes?.includes('Kelompok');
+
+                          // Extract URL if present in notes or title
+                          const combinedText = `${asg.title} ${asg.notes || ''}`;
+                          const urlMatch = combinedText.match(/(https?:\/\/[^\s]+|drive\.google\.com[^\s]+|docs\.google\.com[^\s]+)/i);
+                          let extractedUrl: string | null = null;
+                          if (urlMatch) {
+                            extractedUrl = urlMatch[0];
+                            if (!extractedUrl.startsWith('http')) extractedUrl = 'https://' + extractedUrl;
+                          }
+
                           return (
                             <div
                               key={asg.id}
@@ -450,7 +453,7 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                                     <Circle className="w-4 h-4 text-amber-600" />
                                   )}
                                 </div>
-                                <div className="min-w-0">
+                                <div className="min-w-0 flex-1">
                                   {isGroupTaskItem && (
                                     <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-indigo-200 text-indigo-950 border border-indigo-400 inline-flex items-center gap-1 mb-1">
                                       <Users className="w-3 h-3 text-indigo-900" /> Tugas Kelompok
@@ -463,25 +466,54 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                                     Deadline: {asg.deadline}
                                   </p>
                                   {asg.notes && (
-                                    <p className="text-[10px] text-slate-500 italic mt-0.5">
+                                    <p className="text-[10px] text-slate-600 italic mt-0.5 leading-snug">
                                       {asg.notes}
                                     </p>
+                                  )}
+
+                                  {extractedUrl && (
+                                    <a
+                                      href={extractedUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-lg bg-sky-200 hover:bg-sky-300 text-slate-900 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#000]"
+                                    >
+                                      <ExternalLink className="w-3 h-3 text-slate-950" />
+                                      <span>Buka Link Pengumpulan / Drive</span>
+                                    </a>
                                   )}
                                 </div>
                               </div>
 
-                              {canEdit && (
+                              <div className="flex items-center gap-1 shrink-0">
                                 <button
-                                  onClick={() => {
-                                    sfx.playDelete();
-                                    onDeleteAssignment(course.id, asg.id);
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    sfx.playClick();
+                                    const msg = `📌 *TUGAS: ${asg.title}*\n📚 Mata Kuliah: ${course.courseName}\n📅 Deadline: ${asg.deadline}\n📝 Catatan/Link: ${asg.notes || '-'}\n\n_— Dicatat via Aplikasi Kelas Gue_ ✨`;
+                                    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
                                   }}
-                                  className="text-rose-500 hover:text-rose-700 p-1 text-xs shrink-0"
-                                  title="Hapus Tugas"
+                                  className="p-1 hover:bg-emerald-200 text-emerald-800 rounded border border-emerald-400 text-xs"
+                                  title="Bagikan Informasi Tugas ke WhatsApp"
                                 >
-                                  ✕
+                                  <Share2 className="w-3.5 h-3.5" />
                                 </button>
-                              )}
+
+                                {canEdit && (
+                                  <button
+                                    onClick={() => {
+                                      sfx.playDelete();
+                                      onDeleteAssignment(course.id, asg.id);
+                                    }}
+                                    className="text-rose-500 hover:text-rose-700 p-1 text-xs"
+                                    title="Hapus Tugas"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -705,21 +737,6 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                   </button>
                 </div>
               </div>
-
-              {isGroupAssignment && (
-                <div>
-                  <label className="font-bold text-indigo-900 block mb-1">
-                    Nama / Nomor Kelompok Target (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Kelompok 1, Kelompok Alpha, atau Semua Kelompok"
-                    value={groupTargetName}
-                    onChange={e => setGroupTargetName(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-lg border-2 border-slate-900 font-bold bg-indigo-50/60 focus:bg-white focus:outline-hidden"
-                  />
-                </div>
-              )}
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Mata Kuliah</label>

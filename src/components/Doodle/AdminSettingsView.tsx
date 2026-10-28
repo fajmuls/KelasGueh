@@ -6,6 +6,7 @@ import {
   getBendaharaWhitelist,
   getSekretarisWhitelist,
   updateUserRole,
+  updateUserLinkedMember,
   autoDetectGenderByName
 } from '../../utils/userManagement.ts';
 import { CURRENT_APP_VERSION } from '../../version.ts';
@@ -29,7 +30,8 @@ import {
   Edit2,
   Check,
   X,
-  AlertTriangle
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react';
 
 interface AdminSettingsViewProps {
@@ -72,6 +74,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [auditFilter, setAuditFilter] = useState<'semua' | 'transaksi' | 'iuran' | 'sekretaris'>('semua');
   const [auditSearch, setAuditSearch] = useState('');
+  const [selectedLogIds, setSelectedLogIds] = useState<string[]>([]);
 
   // Student list state
   const [memberList, setMemberList] = useState<KasMember[]>(members);
@@ -130,6 +133,9 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
 
     sfx.playPaymentConfirmed();
     await LocalKasRepository.updateWhitelist(emailToAdd, whitelistRole, nameToAdd);
+    if (selectedStudentForWhitelist) {
+      updateUserLinkedMember(emailToAdd, selectedStudentForWhitelist.id, selectedStudentForWhitelist.name);
+    }
     showToast(`Role ${whitelistRole.toUpperCase()} untuk "${nameToAdd}" berhasil disimpan ke database!`, 'success');
     setWhitelistSearchInput('');
     setSelectedStudentForWhitelist(null);
@@ -344,7 +350,70 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
     sfx.playPaperRustle();
     await LocalKasRepository.clearAuditLogs();
     setAuditLogs([]);
+    setSelectedLogIds([]);
     showToast("Semua riwayat audit log telah dibersihkan.", "info");
+  };
+
+  const performUndoAction = async (log: AuditLogEntry) => {
+    const actionUpper = log.action.toUpperCase();
+    if (actionUpper.includes("PEMASUKAN") || actionUpper.includes("PENGELUARAN") || actionUpper.includes("TRANSAKSI")) {
+      const txs = await LocalKasRepository.getTransactions();
+      const match = txs.find(t => (t.title && log.details.includes(t.title)) || (t.id && log.details.includes(t.id)));
+      if (match) {
+        await LocalKasRepository.deleteTransaction(match.id);
+      }
+    } else if (actionUpper.includes("IURAN") || actionUpper.includes("KAS MINGGUAN")) {
+      const weekMatch = log.details.match(/Minggu\s*(\d+)/i);
+      if (weekMatch) {
+        const weekNum = parseInt(weekMatch[1], 10);
+        const memberMatch = memberList.find(m => log.details.toLowerCase().includes(m.name.toLowerCase()));
+        if (memberMatch) {
+          const updatedWeekly = { ...memberMatch.weeklyStatus, [weekNum]: false };
+          await handleUpdateStudent(memberMatch.id, { weeklyStatus: updatedWeekly });
+        }
+      }
+    } else if (actionUpper.includes("TAMBAH ANGGOTA") || actionUpper.includes("TAMBAH SISWA")) {
+      const memberMatch = memberList.find(m => log.details.toLowerCase().includes(m.name.toLowerCase()));
+      if (memberMatch) {
+        await handleDeleteStudent(memberMatch.id, memberMatch.name);
+      }
+    }
+    await LocalKasRepository.deleteAuditLog(log.id);
+  };
+
+  const handleUndoSingleLog = async (log: AuditLogEntry) => {
+    const ok = await showConfirm({
+      title: "Undo Aksi Audit Log",
+      message: `Apakah Anda yakin ingin membatalkan/meng-undo aksi "${log.action}" (${log.details})?`,
+      confirmLabel: "Ya, Undo Aksi",
+      cancelLabel: "Batal"
+    });
+    if (!ok) return;
+
+    sfx.playPaperRustle();
+    await performUndoAction(log);
+    setAuditLogs(prev => prev.filter(l => l.id !== log.id));
+    setSelectedLogIds(prev => prev.filter(id => id !== log.id));
+    showToast(`Aksi "${log.action}" telah berhasil di-undo!`, "success");
+  };
+
+  const handleBulkUndo = async (logIds: string[]) => {
+    const ok = await showConfirm({
+      title: "Undo Massal Audit Log",
+      message: `Apakah Anda yakin ingin meng-undo ${logIds.length} aksi audit log yang dipilih sekaligus?`,
+      confirmLabel: `Undo ${logIds.length} Aksi`,
+      cancelLabel: "Batal"
+    });
+    if (!ok) return;
+
+    sfx.playPaperRustle();
+    const selectedLogs = auditLogs.filter(l => logIds.includes(l.id));
+    for (const log of selectedLogs) {
+      await performUndoAction(log);
+    }
+    setAuditLogs(prev => prev.filter(l => !logIds.includes(l.id)));
+    setSelectedLogIds([]);
+    showToast(`Berhasil meng-undo ${selectedLogs.length} aksi audit log!`, "success");
   };
 
   const handleAutoDetectAllGenders = () => {
@@ -567,10 +636,20 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {users.map((u) => (
-                    <tr key={u.email} className="hover:bg-amber-50/60">
-                      <td className="p-3 font-bold text-slate-900">{toTitleCase(u.name || u.email.split('@')[0])}</td>
-                      <td className="p-3 text-slate-600 font-mono text-[11px]">{u.email}</td>
+                  {users.map((u) => {
+                    const matchedMember = memberList.find(m => 
+                      (m.email && m.email.toLowerCase() === u.email.toLowerCase()) ||
+                      m.name.toLowerCase() === (u.name || '').toLowerCase()
+                    );
+                    return (
+                      <tr key={u.email} className="hover:bg-amber-50/60">
+                        <td className="p-3">
+                          <p className="font-bold text-slate-900">{toTitleCase(u.name || matchedMember?.name || u.email.split('@')[0])}</p>
+                          {matchedMember?.studentId && (
+                            <p className="text-[10px] text-slate-500 font-mono font-semibold">🎓 NIM: {matchedMember.studentId}</p>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-600 font-mono text-[11px]">{u.email}</td>
                       <td className="p-3">
                         <span
                           className={`px-2.5 py-0.5 rounded-lg font-black text-[10px] uppercase border-2 border-slate-900 shadow-[1px_1px_0px_#000] ${
@@ -612,7 +691,8 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -968,59 +1048,130 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
               </div>
             </div>
 
-            <div className="border-2 border-slate-900 rounded-xl overflow-hidden max-h-96 overflow-y-auto shadow-[2px_2px_0px_#000]">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-amber-100 border-b-2 border-slate-900 font-black text-slate-900 sticky top-0 z-10">
-                  <tr>
-                    <th className="p-2.5">Waktu</th>
-                    <th className="p-2.5">Aksi</th>
-                    <th className="p-2.5">Oleh</th>
-                    <th className="p-2.5">Rincian Detail</th>
-                    <th className="p-2.5 text-center w-12">Hapus</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {filteredLogs.length === 0 ? (
+            {/* Bulk Undo Action Floating Bar */}
+            {selectedLogIds.length > 0 && (
+              <div className="p-3 bg-purple-100 border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] flex items-center justify-between animate-in fade-in">
+                <span className="text-xs font-black text-purple-950 flex items-center gap-2">
+                  <RotateCcw className="w-4 h-4 text-purple-700" />
+                  <span>{selectedLogIds.length} Catatan Audit Terpilih untuk Di-Undo</span>
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleBulkUndo(selectedLogIds)}
+                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-lg border-2 border-slate-900 shadow-[1px_1px_0px_#000] flex items-center gap-1.5 active:translate-y-0.5 transition"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Undo ({selectedLogIds.length}) Aksi Terpilih</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedLogIds([])}
+                    className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-lg border border-slate-900"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Scrollable Audit Table */}
+            <div className="border-2 border-slate-900 rounded-xl overflow-x-auto shadow-[2px_2px_0px_#000]">
+              <div className="max-h-96 overflow-y-auto min-w-[720px]">
+                <table className="w-full text-left text-xs min-w-[720px]">
+                  <thead className="bg-amber-100 border-b-2 border-slate-900 font-black text-slate-900 sticky top-0 z-10">
                     <tr>
-                      <td colSpan={5} className="p-4 text-center text-slate-500 italic">
-                        Tidak ada catatan audit yang cocok.
-                      </td>
+                      <th className="p-2.5 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={filteredLogs.length > 0 && filteredLogs.every(l => selectedLogIds.includes(l.id))}
+                          onChange={() => {
+                            const allSelected = filteredLogs.length > 0 && filteredLogs.every(l => selectedLogIds.includes(l.id));
+                            if (allSelected) {
+                              setSelectedLogIds([]);
+                            } else {
+                              setSelectedLogIds(filteredLogs.map(l => l.id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-2 border-slate-900 accent-amber-500 cursor-pointer"
+                        />
+                      </th>
+                      <th className="p-2.5">Waktu</th>
+                      <th className="p-2.5">Aksi</th>
+                      <th className="p-2.5">Oleh</th>
+                      <th className="p-2.5">Rincian Detail</th>
+                      <th className="p-2.5 text-center w-28">Aksi Reversal</th>
+                      <th className="p-2.5 text-center w-12">Hapus</th>
                     </tr>
-                  ) : (
-                    filteredLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-amber-50/60">
-                        <td className="p-2.5 text-[11px] text-slate-500 font-mono whitespace-nowrap">
-                          {new Date(log.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
-                        </td>
-                        <td className="p-2.5">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border border-slate-900 ${
-                            log.action.includes("PEMASUKAN") ? "bg-emerald-200 text-emerald-950" :
-                            log.action.includes("PENGELUARAN") || log.action.includes("HAPUS") ? "bg-rose-200 text-rose-950" :
-                            log.action.includes("IURAN") ? "bg-amber-200 text-amber-950" :
-                            log.action.includes("PRESENSI") || log.action.includes("SEKRETARIS") ? "bg-sky-200 text-sky-950" :
-                            "bg-purple-200 text-purple-950"
-                          }`}>
-                            {log.action}
-                          </span>
-                        </td>
-                        <td className="p-2.5 text-slate-700">
-                          {log.performedBy} <span className="text-[10px] text-slate-400">({log.userRole})</span>
-                        </td>
-                        <td className="p-2.5 text-slate-600">{log.details}</td>
-                        <td className="p-2.5 text-center">
-                          <button
-                            onClick={() => handleDeleteAuditLog(log.id)}
-                            className="p-1 hover:bg-rose-100 text-rose-600 rounded transition"
-                            title="Hapus baris audit log ini"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {filteredLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-4 text-center text-slate-500 italic">
+                          Tidak ada catatan audit yang cocok.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      filteredLogs.map((log) => {
+                        const isSelected = selectedLogIds.includes(log.id);
+                        return (
+                          <tr key={log.id} className={`hover:bg-amber-50/60 ${isSelected ? 'bg-amber-100/70' : ''}`}>
+                            <td className="p-2.5 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  setSelectedLogIds(prev =>
+                                    prev.includes(log.id)
+                                      ? prev.filter(id => id !== log.id)
+                                      : [...prev, log.id]
+                                  );
+                                }}
+                                className="w-4 h-4 rounded border-2 border-slate-900 accent-amber-500 cursor-pointer"
+                              />
+                            </td>
+                            <td className="p-2.5 text-[11px] text-slate-500 font-mono whitespace-nowrap">
+                              {new Date(log.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                            <td className="p-2.5">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border border-slate-900 ${
+                                log.action.includes("PEMASUKAN") ? "bg-emerald-200 text-emerald-950" :
+                                log.action.includes("PENGELUARAN") || log.action.includes("HAPUS") ? "bg-rose-200 text-rose-950" :
+                                log.action.includes("IURAN") ? "bg-amber-200 text-amber-950" :
+                                log.action.includes("PRESENSI") || log.action.includes("SEKRETARIS") ? "bg-sky-200 text-sky-950" :
+                                "bg-purple-200 text-purple-950"
+                              }`}>
+                                {log.action}
+                              </span>
+                            </td>
+                            <td className="p-2.5 text-slate-700">
+                              {log.performedBy} <span className="text-[10px] text-slate-400">({log.userRole})</span>
+                            </td>
+                            <td className="p-2.5 text-slate-600">{log.details}</td>
+                            <td className="p-2.5 text-center">
+                              <button
+                                onClick={() => handleUndoSingleLog(log)}
+                                className="px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-900 font-bold text-[11px] rounded-lg border border-purple-400 flex items-center gap-1 mx-auto shadow-[1px_1px_0px_#000] active:translate-y-0.5 transition"
+                                title="Batalkan / Undo aksi ini"
+                              >
+                                <RotateCcw className="w-3 h-3 text-purple-700" />
+                                <span>Undo</span>
+                              </button>
+                            </td>
+                            <td className="p-2.5 text-center">
+                              <button
+                                onClick={() => handleDeleteAuditLog(log.id)}
+                                className="p-1 hover:bg-rose-100 text-rose-600 rounded transition"
+                                title="Hapus baris audit log ini"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

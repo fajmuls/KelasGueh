@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { useTheme, ThemeType } from '../../context/ThemeContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
@@ -25,7 +25,9 @@ import {
   Eye
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWA/PWAInstallButton.tsx';
-import { subscribeCloudSync, getCloudSyncStatus, CloudSyncStatus } from '../../services/supabaseClient.ts';
+import { subscribeCloudSync, getCloudSyncStatus, CloudSyncStatus, LocalKasRepository } from '../../services/supabaseClient.ts';
+import { getRegisteredUsers } from '../../utils/userManagement.ts';
+import { toTitleCase } from '../../utils/textFormatting.ts';
 import { CURRENT_APP_VERSION } from '../../version.ts';
 import { showConfirm, showToast } from '../UI/DoodleDialog.tsx';
 
@@ -98,6 +100,36 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   }, []);
 
 
+
+  // User profile matching logic
+  const userEmailLower = (user?.email || '').toLowerCase().trim();
+
+  const matchedRegUser = useMemo(() => {
+    const regUsers = getRegisteredUsers();
+    return regUsers.find(u => u.email.toLowerCase() === userEmailLower);
+  }, [showRoleMenu, userEmailLower]);
+
+  const matchedMember = useMemo(() => {
+    const allMembers = LocalKasRepository.getMembers();
+    return allMembers.find(m =>
+      ((m as any).email && (m as any).email.toLowerCase() === userEmailLower) ||
+      (matchedRegUser?.linkedMemberId && m.id === matchedRegUser.linkedMemberId) ||
+      (m.name.toLowerCase() === (user?.name || '').toLowerCase())
+    );
+  }, [showRoleMenu, matchedRegUser, userEmailLower, user?.name]);
+
+  const officialStudentName = matchedRegUser?.linkedMemberName ||
+    (matchedMember ? toTitleCase(matchedMember.name) : (matchedRegUser?.name || user?.name || 'Siswa Terdaftar'));
+
+  const officialStudentNim = matchedMember?.studentId || matchedRegUser?.linkedMemberId || user?.nim || '';
+
+  const roleDescription = isSuperAdmin
+    ? '👑 Master Admin (Hak Akses Penuh)'
+    : isBendahara
+    ? '💰 Bendahara (Keuangan & Kas)'
+    : isSekretaris
+    ? '📝 Sekretaris (Presensi & Notulensi)'
+    : '👤 Anggota (Akses Lihat Data)';
 
   const handleToggleBgm = () => {
     sfx.playClick();
@@ -309,17 +341,51 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                   onClick={() => setShowRoleMenu(false)}
                 />
                 
-                <div className="absolute right-0 top-full mt-2 w-64 card-doodle p-3.5 rounded-xl z-[100] bg-white shadow-2xl border-2 border-slate-900 animate-in fade-in zoom-in duration-150">
-                  <div className="mb-2 border-b border-slate-200 pb-2">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      Akun Terhubung
-                    </p>
-                    <p className="text-xs font-black text-slate-900 truncate">
-                      {user?.name || 'M Rachman Fajri M'}
-                    </p>
-                    <p className="text-[10px] font-mono text-slate-600 truncate">
-                      {user?.email || 'mrachmanfm@gmail.com'}
-                    </p>
+                <div className="absolute right-0 top-full mt-2 w-72 card-doodle p-3.5 rounded-xl z-[100] bg-white shadow-2xl border-2 border-slate-900 animate-in fade-in zoom-in duration-150">
+                  <div className="mb-3 border-b-2 border-slate-900 pb-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                        Akun Terhubung & Profil
+                      </p>
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border-2 border-slate-900 shadow-[1px_1px_0px_#000] ${
+                        isSuperAdmin ? 'bg-amber-300 text-slate-950' :
+                        isBendahara ? 'bg-emerald-300 text-slate-950' :
+                        isSekretaris ? 'bg-sky-300 text-slate-950' : 'bg-slate-200 text-slate-800'
+                      }`}>
+                        {isSuperAdmin ? '👑 Super Admin' : isBendahara ? '💰 Bendahara' : isSekretaris ? '📝 Sekretaris' : '👤 Anggota'}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 bg-amber-50/90 rounded-xl border-2 border-slate-900 space-y-1.5 shadow-[1.5px_1.5px_0px_#000]">
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                          Nama Mahasiswa / Siswa Terdaftar:
+                        </p>
+                        <p className="text-xs font-black text-slate-900 truncate">
+                          {officialStudentName}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1 pt-1.5 border-t border-slate-900/20 text-[10px]">
+                        <div>
+                          <span className="text-slate-500 font-bold block text-[8.5px] uppercase">NIM / No. Absen:</span>
+                          <strong className="font-mono text-slate-900 font-black text-[11px]">
+                            {officialStudentNim || '-'}
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 font-bold block text-[8.5px] uppercase">Email Google:</span>
+                          <span className="font-mono text-slate-800 font-semibold truncate block text-[10px]" title={user?.email || 'mrachmanfm@gmail.com'}>
+                            {user?.email || 'mrachmanfm@gmail.com'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2 bg-slate-100 rounded-lg border border-slate-300 text-[10px] font-bold text-slate-700 flex items-center justify-between">
+                      <span>Jabatan / Wewenang:</span>
+                      <span className="font-black text-slate-900">{roleDescription}</span>
+                    </div>
                   </div>
 
                   {isRealSuperAdmin && (

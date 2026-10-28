@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { KasMember, CourseSchedule, CourseAssignment } from '../../../types/kas.ts';
 import { LocalKasRepository } from '../../../services/supabaseClient.ts';
 import { autoDetectGenderByName } from '../../../utils/userManagement.ts';
 import { sfx } from '../../../utils/soundEffects.ts';
 import { toTitleCase } from '../../../utils/textFormatting.ts';
-import { showToast } from '../../UI/DoodleDialog.tsx';
+import { showToast, showConfirm } from '../../UI/DoodleDialog.tsx';
 import {
   Users,
   Shuffle,
@@ -20,8 +20,30 @@ import {
   ClipboardList,
   Plus,
   Sparkles,
-  Info
+  Save,
+  CheckSquare,
+  Square,
+  ExternalLink,
+  Trash2,
+  UserPlus
 } from 'lucide-react';
+
+export interface SavedGroupItem {
+  id: number;
+  name: string;
+  members: Array<{ id: string; name: string; studentId?: string; gender?: 'L' | 'P' }>;
+  isCompleted?: boolean;
+  submissionUrl?: string;
+}
+
+export interface SavedGroupCollection {
+  id: string;
+  courseName: string;
+  taskTitle: string;
+  taskDeadline: string;
+  savedAt: string;
+  groups: SavedGroupItem[];
+}
 
 interface KelompokTabProps {
   members: KasMember[];
@@ -35,6 +57,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
   onAddAssignment
 }) => {
   const [numGroups, setNumGroups] = useState<number>(4);
+  const [distributionType, setDistributionType] = useState<'auto' | 'manual'>('auto');
   const [mode, setMode] = useState<'campur' | 'seimbang_gender'>('seimbang_gender');
   const [seed, setSeed] = useState<number>(() => {
     const saved = localStorage.getItem('kelasgue_kelompok_seed');
@@ -54,7 +77,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     return localStorage.getItem('kelasgue_kelompok_custom_course') || 'Matematika Diskrit';
   });
 
-  // Unified course project task (1 task per course shared across all groups)
+  // Unified course project task
   const [unifiedCourseTasks, setUnifiedCourseTasks] = useState<Record<string, { title: string; deadline: string }>>(() => {
     try {
       const saved = localStorage.getItem('kelasgue_kelompok_unified_tasks');
@@ -64,13 +87,33 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     }
   });
 
-  // Custom group names (e.g. Kelompok 1 -> Kelompok Alpha)
+  // Custom group names
   const [groupCustomNames, setGroupCustomNames] = useState<Record<number, string>>(() => {
     try {
       const saved = localStorage.getItem('kelasgue_kelompok_names');
       return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
+    }
+  });
+
+  // Manual group assignment mapping: groupId -> memberId[]
+  const [manualAssignments, setManualAssignments] = useState<Record<number, string[]>>(() => {
+    try {
+      const saved = localStorage.getItem('kelasgue_kelompok_manual');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Saved group collections archive
+  const [savedCollections, setSavedCollections] = useState<SavedGroupCollection[]>(() => {
+    try {
+      const saved = localStorage.getItem('kelasgue_saved_group_collections');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
   });
 
@@ -116,7 +159,17 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
       groupList.push({ id: gId, name, members: [] });
     }
 
-    // Deterministic shuffle using seed
+    if (distributionType === 'manual') {
+      // Manual mapping
+      for (let i = 0; i < numGroups; i++) {
+        const gId = i + 1;
+        const assignedIds = manualAssignments[gId] || [];
+        groupList[i].members = activeMembers.filter(m => assignedIds.includes(m.id));
+      }
+      return groupList;
+    }
+
+    // Automatic shuffle using seed
     const customShuffle = <T,>(arr: T[]): T[] => {
       const copy = [...arr];
       let currentIndex = copy.length;
@@ -156,7 +209,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     }
 
     return groupList;
-  }, [isLocked, activeMembers, numGroups, mode, seed, males, females, groupCustomNames]);
+  }, [isLocked, activeMembers, numGroups, distributionType, mode, seed, males, females, groupCustomNames, manualAssignments]);
 
   const handleSelectCourse = (courseId: string) => {
     setSelectedCourseId(courseId);
@@ -166,6 +219,25 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
   const handleCustomCourseChange = (val: string) => {
     setCustomCourseName(val);
     localStorage.setItem('kelasgue_kelompok_custom_course', val);
+  };
+
+  const handleManualMemberToggle = (groupId: number, memberId: string) => {
+    const currentList = manualAssignments[groupId] || [];
+    let updatedList: string[];
+    if (currentList.includes(memberId)) {
+      updatedList = currentList.filter(id => id !== memberId);
+    } else {
+      // Remove from any other group first
+      const cleanedObj: Record<number, string[]> = {};
+      Object.keys(manualAssignments).forEach(k => {
+        const numKey = Number(k);
+        cleanedObj[numKey] = (manualAssignments[numKey] || []).filter(id => id !== memberId);
+      });
+      updatedList = [...(cleanedObj[groupId] || []), memberId];
+    }
+    const nextManual = { ...manualAssignments, [groupId]: updatedList };
+    setManualAssignments(nextManual);
+    localStorage.setItem('kelasgue_kelompok_manual', JSON.stringify(nextManual));
   };
 
   const handleGenerateOrShuffle = () => {
@@ -179,7 +251,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     setIsLocked(true);
     localStorage.setItem('kelasgue_kelompok_seed', String(newSeed));
     localStorage.setItem('kelasgue_kelompok_locked', 'true');
-    showToast(`✓ Kelompok untuk mata kuliah "${currentCourseName}" berhasil digenerate & dikunci!`, 'success');
+    showToast(`✓ Kelompok untuk mata kuliah "${currentCourseName}" berhasil dikunci!`, 'success');
   };
 
   const handleResetLock = () => {
@@ -205,6 +277,91 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     localStorage.setItem('kelasgue_kelompok_unified_tasks', JSON.stringify(updated));
   };
 
+  const handleSaveGroupCollection = () => {
+    if (groups.length === 0) {
+      showToast('Belum ada kelompok yang ter-generate!', 'error');
+      return;
+    }
+
+    const newCollection: SavedGroupCollection = {
+      id: `collection_${Date.now()}`,
+      courseName: currentCourseName,
+      taskTitle: currentCourseTask.title.trim() || 'Tugas Proyek Kelompok',
+      taskDeadline: currentCourseTask.deadline || new Date().toISOString().split('T')[0],
+      savedAt: new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' }),
+      groups: groups.map(g => ({
+        id: g.id,
+        name: g.name,
+        members: g.members.map(m => ({ id: m.id, name: m.name, studentId: m.studentId, gender: m.gender })),
+        isCompleted: false,
+        submissionUrl: ''
+      }))
+    };
+
+    const updatedCollections = [newCollection, ...savedCollections];
+    setSavedCollections(updatedCollections);
+    localStorage.setItem('kelasgue_saved_group_collections', JSON.stringify(updatedCollections));
+
+    sfx.playLevelUp();
+    showToast(`✓ Kelompok Mata Kuliah "${currentCourseName}" berhasil disimpan ke Arsip Kelompok!`, 'success');
+  };
+
+  const handleDeleteSavedCollection = async (collectionId: string, courseName: string) => {
+    const ok = await showConfirm({
+      title: 'Hapus Simpanan Kelompok?',
+      message: `Hapus kelompok tersimpan untuk mata kuliah "${courseName}"?`,
+      confirmLabel: 'Hapus',
+      cancelLabel: 'Batal',
+      isDanger: true
+    });
+    if (!ok) return;
+
+    sfx.playDeleteConfirm();
+    const updated = savedCollections.filter(c => c.id !== collectionId);
+    setSavedCollections(updated);
+    localStorage.setItem('kelasgue_saved_group_collections', JSON.stringify(updated));
+    showToast(`Kelompok ${courseName} dihapus dari simpanan.`, 'info');
+  };
+
+  const handleToggleGroupTaskCompleted = (collectionId: string, groupId: number) => {
+    sfx.playToggle();
+    const updated = savedCollections.map(c => {
+      if (c.id === collectionId) {
+        return {
+          ...c,
+          groups: c.groups.map(g => {
+            if (g.id === groupId) {
+              return { ...g, isCompleted: !g.isCompleted };
+            }
+            return g;
+          })
+        };
+      }
+      return c;
+    });
+    setSavedCollections(updated);
+    localStorage.setItem('kelasgue_saved_group_collections', JSON.stringify(updated));
+  };
+
+  const handleUpdateGroupSubmissionUrl = (collectionId: string, groupId: number, url: string) => {
+    const updated = savedCollections.map(c => {
+      if (c.id === collectionId) {
+        return {
+          ...c,
+          groups: c.groups.map(g => {
+            if (g.id === groupId) {
+              return { ...g, submissionUrl: url };
+            }
+            return g;
+          })
+        };
+      }
+      return c;
+    });
+    setSavedCollections(updated);
+    localStorage.setItem('kelasgue_saved_group_collections', JSON.stringify(updated));
+  };
+
   const handleSyncUnifiedTaskToSchedule = () => {
     const task = currentCourseTask;
     if (!task.title.trim()) {
@@ -212,10 +369,8 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
       return;
     }
 
-    // Determine target courseId
     let targetCourseId = selectedCourseId;
     if (targetCourseId === 'custom' || !courseSchedules.some(c => c.id === targetCourseId)) {
-      // Create new course schedule if not exists
       const newCourse = LocalKasRepository.saveCourseSchedule({
         courseName: currentCourseName,
         lecturerName: 'Dosen Pengampu',
@@ -257,7 +412,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
       text += `🎯 *Tugas/Proyek Kelompok:* ${task.title.trim()}\n`;
       text += `📅 *Deadline:* ${task.deadline || 'Belum ditentukan'}\n`;
     }
-    text += `⚖️ *Mode:* ${mode === 'seimbang_gender' ? 'Seimbang Gender (L/P)' : 'Acak Campur'}\n`;
+    text += `⚖️ *Mode:* ${distributionType === 'manual' ? 'Penyusunan Manual' : mode === 'seimbang_gender' ? 'Seimbang Gender (L/P)' : 'Acak Campur'}\n`;
     text += `👥 *Total Siswa Aktif:* ${activeMembers.length} Orang (${numGroups} Kelompok)\n\n`;
 
     groups.forEach(g => {
@@ -289,7 +444,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                 Pencatatan & Generator Kelompok Mata Kuliah
               </h3>
               <p className="text-[11px] text-slate-700 font-medium">
-                Pilih mata kuliah, tentukan jumlah kelompok, acak anggota seimbang gender, dan simpan tugas proyek ke Jadwal & Tugas.
+                Pilih mata kuliah, tentukan kelompok otomatis/manual, dan simpan kelompok untuk diakses semua anggota.
               </p>
             </div>
           </div>
@@ -343,7 +498,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
           </div>
         </div>
 
-        {/* 2. Jumlah Kelompok & Mode Distribusi */}
+        {/* 2. Mode Distribusi (Otomatis vs Manual) & Jumlah Kelompok */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Jumlah Kelompok */}
           <div>
@@ -371,46 +526,104 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
             </div>
           </div>
 
-          {/* Mode Distribusi */}
+          {/* Mode Pengacakan / Manual */}
           <div>
             <label className="block text-xs font-black uppercase tracking-wider text-slate-900 mb-2">
-              3. Metode Distribusi
+              3. Metode Pembagian Kelompok
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 disabled={isLocked}
                 onClick={() => {
                   sfx.playOptionSelect();
+                  setDistributionType('auto');
                   setMode('seimbang_gender');
                 }}
-                className={`py-2 px-3 rounded-xl text-xs font-black border-2 border-slate-900 flex items-center justify-center gap-1.5 transition ${
-                  mode === 'seimbang_gender'
+                className={`py-2 px-2 rounded-xl text-[11px] font-black border-2 border-slate-900 flex items-center justify-center gap-1 transition ${
+                  distributionType === 'auto' && mode === 'seimbang_gender'
                     ? 'bg-amber-400 text-slate-900 shadow-[1.5px_1.5px_0px_#000] -translate-y-0.5'
                     : 'bg-slate-50 text-slate-700 hover:bg-amber-50 shadow-[1px_1px_0px_#000]'
                 } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                <Scale className="w-3.5 h-3.5" />
-                Seimbang Gender (L/P)
+                <Scale className="w-3.5 h-3.5 shrink-0" />
+                <span>Seimbang L/P</span>
               </button>
 
               <button
                 disabled={isLocked}
                 onClick={() => {
                   sfx.playOptionSelect();
+                  setDistributionType('auto');
                   setMode('campur');
                 }}
-                className={`py-2 px-3 rounded-xl text-xs font-black border-2 border-slate-900 flex items-center justify-center gap-1.5 transition ${
-                  mode === 'campur'
+                className={`py-2 px-2 rounded-xl text-[11px] font-black border-2 border-slate-900 flex items-center justify-center gap-1 transition ${
+                  distributionType === 'auto' && mode === 'campur'
                     ? 'bg-amber-400 text-slate-900 shadow-[1.5px_1.5px_0px_#000] -translate-y-0.5'
                     : 'bg-slate-50 text-slate-700 hover:bg-amber-50 shadow-[1px_1px_0px_#000]'
                 } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                <Shuffle className="w-3.5 h-3.5" />
-                Acak Campur Full
+                <Shuffle className="w-3.5 h-3.5 shrink-0" />
+                <span>Acak Full</span>
+              </button>
+
+              <button
+                disabled={isLocked}
+                onClick={() => {
+                  sfx.playOptionSelect();
+                  setDistributionType('manual');
+                }}
+                className={`py-2 px-2 rounded-xl text-[11px] font-black border-2 border-slate-900 flex items-center justify-center gap-1 transition ${
+                  distributionType === 'manual'
+                    ? 'bg-indigo-300 text-slate-900 shadow-[1.5px_1.5px_0px_#000] -translate-y-0.5'
+                    : 'bg-slate-50 text-slate-700 hover:bg-indigo-50 shadow-[1px_1px_0px_#000]'
+                } ${isLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                <UserPlus className="w-3.5 h-3.5 shrink-0" />
+                <span>Manual</span>
               </button>
             </div>
           </div>
         </div>
+
+        {/* Manual Group Picker Area if distributionType === 'manual' and not locked */}
+        {distributionType === 'manual' && !isLocked && (
+          <div className="p-3.5 bg-indigo-50/70 border-2 border-indigo-900 rounded-xl space-y-3">
+            <h4 className="font-black text-xs text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4 text-indigo-700" />
+              <span>Penyusunan Anggota Kelompok Manual ({numGroups} Kelompok)</span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
+              {Array.from({ length: numGroups }).map((_, idx) => {
+                const gId = idx + 1;
+                const assigned = manualAssignments[gId] || [];
+                return (
+                  <div key={gId} className="bg-white p-2.5 rounded-lg border-2 border-slate-900 space-y-1.5">
+                    <span className="font-black text-xs text-slate-900 block">Kelompok #{gId} ({assigned.length} Anggota)</span>
+                    <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                      {activeMembers.map(m => {
+                        const isSelectedInThisGroup = assigned.includes(m.id);
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => handleManualMemberToggle(gId, m.id)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
+                              isSelectedInThisGroup
+                                ? 'bg-indigo-600 text-white border-slate-900 font-black'
+                                : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-indigo-100'
+                            }`}
+                          >
+                            {m.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Action Button & Student Count Info */}
         <div className="pt-3 border-t-2 border-slate-900 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -488,16 +701,17 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                 </h3>
               </div>
               <p className="text-xs text-slate-600 font-medium mt-0.5">
-                {numGroups} Kelompok · {activeMembers.length} Siswa Aktif · Mode: {mode === 'seimbang_gender' ? 'Seimbang Gender (L/P)' : 'Acak Campur'}
+                {numGroups} Kelompok · {activeMembers.length} Siswa Aktif · Mode: {distributionType === 'manual' ? 'Penyusunan Manual' : mode === 'seimbang_gender' ? 'Seimbang Gender (L/P)' : 'Acak Campur'}
               </p>
             </div>
 
             <button
-              onClick={handleResetLock}
-              className="text-xs font-bold text-slate-600 hover:text-rose-600 flex items-center gap-1 transition"
+              onClick={handleSaveGroupCollection}
+              className="btn-doodle px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5"
+              title="Simpan pembagian kelompok ini secara permanen agar dapat dilihat oleh seluruh anggota"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Acak Ulang / Matkul Lain</span>
+              <Save className="w-4 h-4 text-slate-950" />
+              <span>Simpan Kelompok {currentCourseName}</span>
             </button>
           </div>
 
@@ -652,6 +866,114 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* SAVED GROUP COLLECTIONS ARCHIVE SECTION */}
+      {savedCollections.length > 0 && (
+        <div className="pt-6 border-t-3 border-slate-900 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded bg-emerald-300 border-2 border-slate-900 font-black text-xs text-slate-900 shadow-[1px_1px_0px_#000]">
+                📂 ARSIP
+              </span>
+              <h3 className="font-black text-lg text-slate-900">
+                Daftar Kelompok Tersimpan ({savedCollections.length})
+              </h3>
+            </div>
+            <p className="text-xs text-slate-600 font-medium hidden sm:block">
+              Seluruh anggota kelas dapat melihat daftar kelompok dan mengisi link pengumpulan tugas.
+            </p>
+          </div>
+
+          <div className="space-y-5">
+            {savedCollections.map((col) => (
+              <div key={col.id} className="bg-white border-3 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[4px_4px_0px_#000] space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b-2 border-slate-900 pb-3">
+                  <div>
+                    <h4 className="font-black text-base text-slate-900">
+                      Mata Kuliah: {col.courseName}
+                    </h4>
+                    <p className="text-xs font-bold text-slate-700">
+                      🎯 Proyek: <span className="text-indigo-900 font-black">{col.taskTitle}</span> (Deadline: {col.taskDeadline})
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">Disimpan pada: {col.savedAt}</p>
+                  </div>
+
+                  <button
+                    onClick={() => handleDeleteSavedCollection(col.id, col.courseName)}
+                    className="p-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-lg border-2 border-slate-900 shadow-[1px_1px_0px_#000] flex items-center gap-1 text-xs font-bold"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus Simpanan</span>
+                  </button>
+                </div>
+
+                {/* Groups in Collection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {col.groups.map((g) => (
+                    <div key={g.id} className="bg-amber-50/50 border-2 border-slate-900 rounded-xl p-3 space-y-2 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between border-b border-slate-900 pb-2 mb-2">
+                          <span className="font-black text-xs text-slate-900">{g.name}</span>
+                          
+                          {/* Checklist Status */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleGroupTaskCompleted(col.id, g.id)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-black border border-slate-900 flex items-center gap-1 transition ${
+                              g.isCompleted
+                                ? 'bg-emerald-300 text-slate-950 shadow-[1px_1px_0px_#000]'
+                                : 'bg-slate-100 text-slate-700 hover:bg-amber-200'
+                            }`}
+                          >
+                            {g.isCompleted ? <CheckSquare className="w-3 h-3 text-emerald-950" /> : <Square className="w-3 h-3 text-slate-500" />}
+                            <span>{g.isCompleted ? 'Selesai ✓' : 'Belum Selesai'}</span>
+                          </button>
+                        </div>
+
+                        {/* Members */}
+                        <div className="space-y-1 mb-2">
+                          {g.members.map((m, idx) => (
+                            <p key={m.id} className="text-[11px] font-bold text-slate-800">
+                              {idx + 1}. {toTitleCase(m.name)} <span className="text-[9px] text-slate-500 font-mono">[{m.gender || 'L'}]</span>
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Link Pengumpulan Input & Button */}
+                      <div className="pt-2 border-t border-slate-300 space-y-1.5">
+                        <label className="block text-[9.5px] font-black uppercase text-slate-700">
+                          Link Jawaban / Drive Pengumpulan:
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={g.submissionUrl || ''}
+                            onChange={(e) => handleUpdateGroupSubmissionUrl(col.id, g.id, e.target.value)}
+                            placeholder="Paste link Google Drive/Docs..."
+                            className="w-full px-2 py-1 text-[11px] font-bold border border-slate-900 rounded bg-white"
+                          />
+                          {g.submissionUrl && (
+                            <a
+                              href={g.submissionUrl.startsWith('http') ? g.submissionUrl : `https://${g.submissionUrl}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 bg-sky-300 text-slate-900 rounded border border-slate-900 shadow-[1px_1px_0px_#000] shrink-0"
+                              title="Buka Link Pengumpulan"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
