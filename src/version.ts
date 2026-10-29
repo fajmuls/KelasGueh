@@ -11,36 +11,33 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: "4.7.0",
-  codename: "Master Admin Audit Undo, Whitelist NIM Match & Sekretaris Kelompok Storage",
-  releaseDate: "2026-10-28",
+  version: "4.8.0",
+  codename: "Multi-Device Sync, Dark Chocolate Theme, Backup JSON & Whitelist Student Sync",
+  releaseDate: "2026-10-29",
   changes: [
-    "Fitur Undo Laporan Audit Log: Kemampuan membatalkan (undo) aksi log individual maupun massal dengan pemulihan data otomatis.",
-    "Perbaikan Tabel Scroll Audit Log: Tabel audit log dapat di-scroll horizontal secara fleksibel pada seluruh ukuran layar.",
-    "Preservasi & Penyimpanan Kelompok Matkul: Kelompok yang telah digenerate dapat disimpan secara permanen ke daftar 'Kelompok Tersimpan' untuk diakses seluruh anggota.",
-    "Pembagian Kelompok Manual: Penambahan opsi 'Buat Kelompok Manual' untuk menyusun anggota tim secara mandiri per kelompok.",
-    "Checklist & Link Pengumpulan Tugas Kelompok: Setiap kelompok dapat menandai status selesai tugas dan menyimpan URL link jawaban/drive pengumpulan.",
-    "Penyatuan Tombol Tugas Baru: Tombol pencatatan tugas disatukan menjadi '+ Tugas Baru' dengan navigasi jenis tugas internal yang lebih bersih.",
-    "Tautan Pengumpulan Interaktif & Share WA: Petunjuk tugas yang berisi tautan (Google Drive/e-learning) otomatis dapat diklik langsung dan dibagikan ke WhatsApp."
+    "Sinkronisasi Multi-Device & Tarif Iuran Spesial: Memperbaiki bug perbedaan tarif iuran bulanan antar perangkat dengan penyimpanan cloud Supabase otomatis.",
+    "Tema Cokelat (Dark Chocolate Espresso): Hadir dengan warna kopi gelap elegan dan tipografi krem kontras tinggi anti-glare.",
+    "Ekspor & Impor Cadangan Data JSON Pengurus: Memungkinkan Bendahara, Sekretaris, dan Super Admin mengunduh serta memulihkan data lengkap dengan konfirmasi audit log.",
+    "Penetapan Siswa di Whitelist Role: Super Admin dapat langsung menetapkan dan menghubungkan No. Absen/NIM serta nama siswa dari data kelas pada daftar Whitelist.",
+    "Pencarian & Akordeon Kelompok Tersimpan: Mempermudah pencarian nama matkul/kelompok serta fitur minimize/collapse per mata kuliah.",
+    "Optimalisasi Checklist Iuran Cepat: Respons instan 0.5 detik dengan animasi centang ringkas untuk pencatatan kas massal.",
+    "Opsi 3 Periode Rekap WhatsApp: Pilihan periode Minggu Ini, Bulan Ini, dan Keseluruhan sebelum menyalin dan mengirim laporan ke WhatsApp."
   ],
   suggestedUpdates: [
     {
       category: "fitur",
-      title: "Export Laporan Kelompok & Link Pengumpulan ke Excel",
-      description: "Memungkinkan sekretaris mengunduh rekapitulasi seluruh kelompok, status tugas, dan link pengumpulan Drive ke file Excel."
+      title: "Pemberitahuan Tagihan Iuran Otomatis ke WhatsApp",
+      description: "Kirim pesan reminder personal ke siswa yang menunggak iuran mingguan dengan 1 klik dari checklist."
     },
     {
       category: "optimasi",
-      title: "Notifikasi Otomatis Pengumpulan Tugas Kelompok",
-      description: "Peringatan otomatis ke grup WhatsApp kelas jika ada kelompok yang belum mengisi link pengumpulan 1 hari sebelum deadline."
+      title: "Kompresi Cadangan JSON Otomatis",
+      description: "Mengompresi file cadangan JSON menjadi format ringkas gzip saat diekspor untuk menghemat kuota data seluler."
     },
     {
       category: "keamanan",
-      title: "Proteksi Pengeditan Link Pengumpulan Kelompok",
-      description: "Verifikasi anggota kelompok sebelum dapat mengubah link pengumpulan jawaban tugas."
+      title: "Verifikasi Dua Langkah untuk Restore Data",
+      description: "Meminta PIN Keamanan Master sebelum menimpa database dari file cadangan JSON."
     }
   ]
 };
-
-
-

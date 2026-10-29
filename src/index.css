@@ -25,6 +25,16 @@
     --shadow-main: #5D4037;
     --bg-paper-lines: #D8CBB5;
   }
+
+  .theme-chocolate {
+    --bg-paper: #1A120B;
+    --bg-paper-dots: #382417;
+    --bg-card: #271A12;
+    --text-main: #FDF8F0;
+    --border-main: #7A533E;
+    --shadow-main: #0B0704;
+    --bg-paper-lines: #382417;
+  }
 }
 
 h1, h2, h3, .font-display {
@@ -42,7 +52,10 @@ body {
   background-color: var(--bg-paper);
   color: var(--text-main);
   transition: background-color 0.3s ease, color 0.3s ease;
-  color-scheme: light !important;
+}
+
+.theme-chocolate {
+  color-scheme: dark;
 }
 
 *, ::before, ::after {
@@ -163,6 +176,102 @@ body {
 /* Wobbly doodle border radius */
 .doodle-radius {
   border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+}
+
+/* Chocolate Theme Overrides (High-contrast Warm Dark Theme) */
+.theme-chocolate .card-doodle {
+  background-color: #271A12;
+  color: #FDF8F0;
+  border-color: #7A533E;
+  box-shadow: 4px 4px 0px #0B0704;
+}
+
+.theme-chocolate .card-doodle-yellow {
+  background-color: #3D2918;
+  color: #FEF3C7;
+  border-color: #B45309;
+  box-shadow: 4px 4px 0px #0B0704;
+}
+
+.theme-chocolate .card-doodle-blue {
+  background-color: #1A2E3D;
+  color: #E0F2FE;
+  border-color: #0369A1;
+  box-shadow: 4px 4px 0px #0B0704;
+}
+
+.theme-chocolate .card-doodle-mint {
+  background-color: #183325;
+  color: #D1FAE5;
+  border-color: #047857;
+  box-shadow: 4px 4px 0px #0B0704;
+}
+
+.theme-chocolate .card-doodle-rose {
+  background-color: #3B1B22;
+  color: #FFE4E6;
+  border-color: #BE123C;
+  box-shadow: 4px 4px 0px #0B0704;
+}
+
+.theme-chocolate input:not([type="checkbox"]):not([type="radio"]),
+.theme-chocolate select,
+.theme-chocolate textarea {
+  background-color: #2E1F16 !important;
+  color: #FDF8F0 !important;
+  border-color: #7A533E !important;
+}
+
+.theme-chocolate input::placeholder,
+.theme-chocolate textarea::placeholder {
+  color: #A88F80 !important;
+}
+
+.theme-chocolate .bg-white {
+  background-color: #271A12 !important;
+}
+
+.theme-chocolate .bg-slate-50,
+.theme-chocolate .bg-slate-100,
+.theme-chocolate .bg-amber-50,
+.theme-chocolate .bg-amber-50\/50,
+.theme-chocolate .bg-amber-50\/60,
+.theme-chocolate .bg-amber-50\/70 {
+  background-color: #23160F !important;
+}
+
+.theme-chocolate .bg-amber-100,
+.theme-chocolate .bg-amber-100\/60,
+.theme-chocolate .bg-amber-100\/70 {
+  background-color: #382417 !important;
+}
+
+.theme-chocolate .text-slate-900,
+.theme-chocolate .text-slate-800,
+.theme-chocolate .text-slate-700 {
+  color: #FDF8F0 !important;
+}
+
+.theme-chocolate .text-slate-600,
+.theme-chocolate .text-slate-500 {
+  color: #D5C2B4 !important;
+}
+
+.theme-chocolate .text-amber-900,
+.theme-chocolate .text-amber-950 {
+  color: #FDE68A !important;
+}
+
+.theme-chocolate .border-slate-900 {
+  border-color: #7A533E !important;
+}
+
+.theme-chocolate .shadow-\[4px_4px_0px_\#000\],
+.theme-chocolate .shadow-\[3px_3px_0px_\#000\],
+.theme-chocolate .shadow-\[2px_2px_0px_\#000\],
+.theme-chocolate .shadow-\[1\.5px_1\.5px_0px_\#000\],
+.theme-chocolate .shadow-\[1px_1px_0px_\#000\] {
+  box-shadow: 3px 3px 0px #0B0704 !important;
 }
 
 .doodle-radius-sm {

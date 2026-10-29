@@ -134,3 +134,20 @@ export interface CourseSchedule {
   createdAt: string;
 }
 
+export interface ClassBackupData {
+  version: string;
+  exportedAt: string;
+  exportedBy: string;
+  role: string;
+  settings: ClassSettings;
+  members: KasMember[];
+  transactions: KasTransaction[];
+  kolektifBills?: KolektifBill[];
+  savedGroupCollections?: any[];
+  auditLogs?: any[];
+  whitelist?: any[];
+  attendance?: AttendanceRecord[];
+  studentPoints?: StudentPointLog[];
+  minutes?: MeetingMinute[];
+}
+

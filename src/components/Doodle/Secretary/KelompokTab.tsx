@@ -25,7 +25,10 @@ import {
   Square,
   ExternalLink,
   Trash2,
-  UserPlus
+  UserPlus,
+  Search,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 export interface SavedGroupItem {
@@ -107,7 +110,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     }
   });
 
-  // Saved group collections archive
+  // Saved group collections archive & search/collapse states
   const [savedCollections, setSavedCollections] = useState<SavedGroupCollection[]>(() => {
     try {
       const saved = localStorage.getItem('kelasgue_saved_group_collections');
@@ -116,6 +119,30 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
       return [];
     }
   });
+
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
+  const [collapsedCollections, setCollapsedCollections] = useState<Record<string, boolean>>({});
+
+  const toggleCollapseCollection = (colId: string) => {
+    sfx.playToggle();
+    setCollapsedCollections(prev => ({
+      ...prev,
+      [colId]: !prev[colId]
+    }));
+  };
+
+  const filteredSavedCollections = useMemo(() => {
+    if (!groupSearchQuery.trim()) return savedCollections;
+    const q = groupSearchQuery.toLowerCase();
+    return savedCollections.filter(col => {
+      if (col.courseName.toLowerCase().includes(q)) return true;
+      if (col.taskTitle?.toLowerCase().includes(q)) return true;
+      return col.groups.some(g =>
+        g.name.toLowerCase().includes(q) ||
+        g.members.some(m => m.name.toLowerCase().includes(q) || (m.studentId && m.studentId.includes(q)))
+      );
+    });
+  }, [savedCollections, groupSearchQuery]);
 
   const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
 
@@ -873,7 +900,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
       {/* SAVED GROUP COLLECTIONS ARCHIVE SECTION */}
       {savedCollections.length > 0 && (
         <div className="pt-6 border-t-3 border-slate-900 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded bg-emerald-300 border-2 border-slate-900 font-black text-xs text-slate-900 shadow-[1px_1px_0px_#000]">
                 📂 ARSIP
@@ -882,36 +909,85 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                 Daftar Kelompok Tersimpan ({savedCollections.length})
               </h3>
             </div>
-            <p className="text-xs text-slate-600 font-medium hidden sm:block">
-              Seluruh anggota kelas dapat melihat daftar kelompok dan mengisi link pengumpulan tugas.
-            </p>
+
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-72">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari matkul, tugas, kelompok, siswa..."
+                value={groupSearchQuery}
+                onChange={(e) => setGroupSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 border-2 border-slate-900 rounded-xl text-xs bg-white font-medium focus:outline-none shadow-[1.5px_1.5px_0px_#000]"
+              />
+            </div>
           </div>
 
-          <div className="space-y-5">
-            {savedCollections.map((col) => (
-              <div key={col.id} className="bg-white border-3 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[4px_4px_0px_#000] space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b-2 border-slate-900 pb-3">
-                  <div>
-                    <h4 className="font-black text-base text-slate-900">
-                      Mata Kuliah: {col.courseName}
-                    </h4>
-                    <p className="text-xs font-bold text-slate-700">
-                      🎯 Proyek: <span className="text-indigo-900 font-black">{col.taskTitle}</span> (Deadline: {col.taskDeadline})
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">Disimpan pada: {col.savedAt}</p>
-                  </div>
+          <p className="text-xs text-slate-600 font-medium">
+            Seluruh anggota kelas dapat melihat daftar kelompok dan mengisi link pengumpulan tugas. Anda dapat mengecilkan (minimize) kelompok per mata kuliah.
+          </p>
 
-                  <button
-                    onClick={() => handleDeleteSavedCollection(col.id, col.courseName)}
-                    className="p-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-lg border-2 border-slate-900 shadow-[1px_1px_0px_#000] flex items-center gap-1 text-xs font-bold"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Hapus Simpanan</span>
-                  </button>
-                </div>
+          {filteredSavedCollections.length === 0 ? (
+            <div className="p-4 bg-amber-50 rounded-xl border-2 border-slate-900 text-center text-xs text-slate-600 italic">
+              Tidak ada kelompok tersimpan yang cocok dengan pencarian "{groupSearchQuery}".
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredSavedCollections.map((col) => {
+                const isCollapsed = !!collapsedCollections[col.id];
+                const completedCount = col.groups.filter(g => g.isCompleted).length;
 
-                {/* Groups in Collection */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                return (
+                  <div key={col.id} className="bg-white border-3 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[4px_4px_0px_#000] space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b-2 border-slate-900 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-black text-base text-slate-900">
+                            Mata Kuliah: {col.courseName}
+                          </h4>
+                          <span className="px-2 py-0.5 rounded-md bg-amber-200 border border-slate-900 text-[10px] font-black text-amber-950">
+                            {col.groups.length} Kelompok
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-md border border-slate-900 text-[10px] font-black ${completedCount === col.groups.length ? 'bg-emerald-200 text-emerald-950' : 'bg-slate-100 text-slate-700'}`}>
+                            {completedCount}/{col.groups.length} Tugas Selesai
+                          </span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-700 mt-1">
+                          🎯 Proyek: <span className="text-indigo-900 font-black">{col.taskTitle}</span> (Deadline: {col.taskDeadline})
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">Disimpan pada: {col.savedAt}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleCollapseCollection(col.id)}
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-amber-200 text-slate-900 rounded-lg border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#000] flex items-center gap-1.5 text-xs font-black active:translate-y-0.5 transition"
+                          title={isCollapsed ? 'Buka detail kelompok' : 'Kecilkan / Minimize tampilan'}
+                        >
+                          {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                          <span>{isCollapsed ? 'Buka Detail' : 'Minimize'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteSavedCollection(col.id, col.courseName)}
+                          className="p-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-lg border-2 border-slate-900 shadow-[1px_1px_0px_#000] flex items-center gap-1 text-xs font-bold"
+                          title="Hapus simpanan kelompok ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Hapus</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Collapsed Compact Preview */}
+                    {isCollapsed ? (
+                      <div className="p-3 bg-amber-50/70 rounded-xl border-2 border-dashed border-slate-400 text-xs text-slate-600 flex items-center justify-between">
+                        <span>ℹ️ Rincian {col.groups.length} kelompok disembunyikan. Klik <strong>"Buka Detail"</strong> untuk melihat pembagian siswa dan pengumpulan link.</span>
+                      </div>
+                    ) : (
+                      /* Groups in Collection */
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                   {col.groups.map((g) => (
                     <div key={g.id} className="bg-amber-50/50 border-2 border-slate-900 rounded-xl p-3 space-y-2 flex flex-col justify-between">
                       <div>
@@ -972,9 +1048,12 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                     </div>
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          );
+        })}
+            </div>
+          )}
         </div>
       )}
     </div>

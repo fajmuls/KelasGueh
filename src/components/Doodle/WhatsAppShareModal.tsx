@@ -20,18 +20,52 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 }) => {
   const { canEditKas } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<'minggu_ini' | 'bulan_ini' | 'keseluruhan'>('bulan_ini');
 
   if (!isOpen) return null;
 
-  const totalIncome = transactions
+  // Filter transactions by period
+  const now = new Date();
+  const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  
+  // Calculate 7 days ago for "minggu_ini"
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(now.getDate() - 7);
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+  const filteredTransactions = transactions.filter(t => {
+    if (selectedPeriod === 'minggu_ini') {
+      return t.date >= sevenDaysAgoStr;
+    }
+    if (selectedPeriod === 'bulan_ini') {
+      return t.date.startsWith(currentMonthPrefix);
+    }
+    return true; // keseluruhan
+  });
+
+  const periodLabel = selectedPeriod === 'minggu_ini'
+    ? '7 Hari Terakhir / Minggu Ini'
+    : selectedPeriod === 'bulan_ini'
+    ? `Bulan ${now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`
+    : 'Keseluruhan (All Time)';
+
+  const totalIncome = filteredTransactions
     .filter(t => t.type === 'income')
     .reduce((acc, curr) => acc + curr.amount, 0);
 
-  const totalExpense = transactions
+  const totalExpense = filteredTransactions
     .filter(t => t.type === 'expense')
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   const balance = totalIncome - totalExpense;
+
+  // All-time balance
+  const allTimeBalance = transactions
+    .filter(t => t.type === 'income')
+    .reduce((acc, curr) => acc + curr.amount, 0) -
+    transactions
+    .filter(t => t.type === 'expense')
+    .reduce((acc, curr) => acc + curr.amount, 0);
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
@@ -43,26 +77,28 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     year: 'numeric'
   });
 
-  // Recent 5 expenses with concise notation
-  const recentExpenses = transactions
+  // Recent 5 expenses in selected period
+  const recentExpenses = filteredTransactions
     .filter(t => t.type === 'expense')
     .slice(0, 5)
     .map(t => `- ${t.date} | ${t.title}: ${formatRupiah(t.amount)}`)
     .join('\n');
 
-  // WhatsApp formatted message text (Clean, official, no emoji clutter)
+  // WhatsApp formatted message text
   const messageText = `*LAPORAN PERTANGGUNGJAWABAN KAS - ${settings.className.toUpperCase()}*
-Tanggal: ${currentDate}
+Periode: *${periodLabel.toUpperCase()}*
+Tanggal Rilis: ${currentDate}
 Tahun Ajaran: ${settings.academicYear}
 
 RINGKASAN KEUANGAN KAS:
-• Saldo Kas Sekarang : ${formatRupiah(balance)}
-• Total Pemasukan    : ${formatRupiah(totalIncome)}
-• Total Pengeluaran  : ${formatRupiah(totalExpense)}
-• Tarif Iuran Kas    : ${formatRupiah(settings.weeklyDuesAmount)}/minggu
+• Saldo Kas Total Aktif : ${formatRupiah(allTimeBalance)}
+• Pemasukan (${periodLabel}) : ${formatRupiah(totalIncome)}
+• Pengeluaran (${periodLabel}) : ${formatRupiah(totalExpense)}
+• Selisih Periode Ini   : ${formatRupiah(balance)}
+• Tarif Iuran Mingguan  : ${formatRupiah(settings.weeklyDuesAmount)}/minggu
 
-5 PENGELUARAN TERAKHIR:
-${recentExpenses || '- Belum ada pengeluaran tercatat.'}
+DAFTAR PENGELUARAN (${periodLabel}):
+${recentExpenses || '- Belum ada pengeluaran tercatat pada periode ini.'}
 
 ---
 Laporan resmi kas kelas diverifikasi transparan melalui sistem Kelas Gue.
@@ -116,10 +152,43 @@ Foto kuitansi belanja & status checklist siswa dapat dicek langsung di aplikasi.
           </button>
         </div>
 
+        {/* Period Selector Tabs: Minggu Ini, Bulan Ini, Keseluruhan */}
+        <div className="mb-4 space-y-1.5">
+          <label className="block text-xs font-black uppercase text-slate-800">
+            Pilih Rentang Periode Laporan Rekap:
+          </label>
+          <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 border-2 border-slate-900 rounded-xl">
+            {[
+              { id: 'minggu_ini', label: '📅 Minggu Ini' },
+              { id: 'bulan_ini', label: '🗓️ Bulan Ini' },
+              { id: 'keseluruhan', label: '📊 Keseluruhan' }
+            ].map(p => {
+              const isActive = selectedPeriod === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    sfx.playOptionSelect();
+                    setSelectedPeriod(p.id as any);
+                  }}
+                  className={`py-2 px-1 sm:px-2 text-[11px] sm:text-xs font-black rounded-lg border-2 transition-all text-center ${
+                    isActive
+                      ? 'bg-emerald-400 text-slate-950 border-slate-900 shadow-[1.5px_1.5px_0px_#000] -translate-y-0.5'
+                      : 'bg-white border-transparent text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Message preview */}
         <div className="mb-4">
           <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-            Pratinjau Pesan WhatsApp:
+            Pratinjau Pesan WhatsApp ({periodLabel}):
           </label>
           <textarea
             readOnly

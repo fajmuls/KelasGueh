@@ -1,57 +1,155 @@
-# Implementation Plan - Kelas Gue v4.3.3
+# Rencana Implementasi Pembaruan Terpadu KelasGue (v4.8.0)
 
-## 1. Overview & Objectives
-This plan covers the comprehensive enhancements requested by the owner for **Kelas Gue v4.3.3**:
-1. **Master Admin & Security:** Hide Super Admin menu from non-admin roles; update Hamburger menu to "Pengaturan Pengurus" with sub-options; add Sekretaris role assignment & distinct icons; fix overlapping title text layer on "Ranah Master Admin" banner; add Whitelist table mobile horizontal scroll; unify student management & gender configuration with active/inactive status and database persistence.
-2. **Secretary Module & Group Generation:** Replace WhatsApp copy buttons with direct `kirim WA` buttons for staff; upgrade Group Division to connect with Master Admin student DB (respecting active/inactive status and L/P gender); place shuffle button below distribution mode; support 3 to 10 groups; screen-first generation with permanent lock after first generate + reset button.
-3. **Kas & Financials:** Minimize top banner padding/spacing across Kas and Secretary views; unify year dropdown in Kas Recap with `DoodleSelect`; ensure monthly/semester dues edits correctly save to database; fix sound effect spamming on Kas Checklist "All" button (play once with unique sound); ensure loading screen waits until database sync is fully complete; compress receipt images for long-term persistence and print binder recap visibility.
-4. **Interactive Guided Tour (Onboarding):** Implement a step-by-step interactive onboarding tour with a welcome dialog on first login, guiding users from Hub to Kas to Secretary with skip/start options.
-5. **Super Admin Settings & Volume Control:** Add configurable settings (e.g., activity points default = 1 instead of 5, student active status toggle, highlight styling for Audit Log, BGM & SFX volume slider from 0% to 100% stored in localStorage).
-6. **UI/Typography Alignment:** Improve font consistency across Hub KPI boxes and headers.
+Rencana ini merinci perbaikan sinkronisasi antar-perangkat, sistem cadangan data JSON pengurus ke Supabase, integrasi penetapan siswa pada Whitelist Role, pencarian dan accordion kelompok, penambahan Tema Cokelat gelap kontras tinggi, optimasi checklist iuran cepat, serta opsi 3 periode rekap WhatsApp.
 
 ---
 
-## 2. Proposed Changes & File Modifications
+## User Review & Critical Decisions
 
-### A. Version & Audio Configuration (`src/version.ts`, `src/utils/soundEffects.ts`)
-- Bump version to **v4.3.3**.
-- Add volume control settings (BGM volume & SFX volume) persisted in `localStorage` and applied to Web Audio API gain nodes.
-
-### B. Navigation & Auth (`src/context/AuthContext.tsx`, `src/components/Doodle/DoodleNavbar.tsx`, `src/App.tsx`)
-- Ensure Super Admin view/menu is strictly restricted to Super Admin (`isSuperAdmin`).
-- Update Hamburger menu ("Pengaturan Pengurus") with clear links to Bendahara, Sekretaris, and Master Admin settings.
-- Update Role Switcher and Account Popover icons and role options.
-
-### C. Master Admin & Student DB (`src/components/Doodle/AdminSettingsView.tsx`, `src/types/kas.ts`)
-- Fix CSS layer overlap on "Ranah Master Admin" banner (`relative z-10`).
-- Make Whitelist table scrollable horizontally on mobile (`overflow-x-auto`).
-- Unify Student Management & Gender settings with active/inactive toggle and database persistence (`isActive` boolean on `KasMember`).
-- Expand Super Admin settings: default point value (1 point), audit log color-coding/highlighting, and volume controls.
-
-### D. Secretary & Group Generation (`src/components/Doodle/Secretary/KelompokTab.tsx`, `src/components/Doodle/Secretary/SecretaryHub.tsx`)
-- Connect Group Division directly with Master Admin student database (`members`), filtering out inactive students.
-- Support group count from 3 to 10.
-- Place shuffle button below distribution mode.
-- Implement screen-first generation with a permanent lock after first generate and a dedicated reset button.
-- Replace WhatsApp copy buttons with direct `kirim WA` action links.
-
-### E. Kas & Financial Modules (`src/components/Doodle/KasOverview.tsx`, `src/components/Doodle/KasBook.tsx`, `src/components/Doodle/KasChecklist.tsx`, `src/components/Doodle/KasRecapView.tsx`, `src/utils/receiptOcr.ts`)
-- Reduce top spacing/padding in banner boxes across Kas and Secretary views.
-- Unify year dropdown in Kas Recap with `DoodleSelect`.
-- Ensure monthly/semester dues updates correctly save to database (`LocalKasRepository.saveSettings`).
-- Fix sound effect spamming on Kas Checklist "All" button (play once with unique sound) and ensure loading screen awaits full database sync before closing.
-- Compress receipt images (`canvas` downscaling to max 800px width/height, JPEG quality 0.7) for long-term database storage and print binder visibility.
-
-### F. Interactive Guided Tour (`src/components/Doodle/DoodleWalkthrough.tsx`, `src/App.tsx`)
-- Implement welcome dialog on first login with option to start interactive tour or skip.
-- Step-by-step guidance highlighting Hub, Kas, and Secretary modules.
+> [!IMPORTANT]
+> **Keputusan yang Telah Dikonfirmasi Pengguna:**
+> 1. **Nuansa Tema Cokelat**: Cokelat Kopi Gelap (*Espresso Roast*) dengan teks krem kontras tinggi (`#1E1510` & `#F7EBD9`) untuk memastikan semua elemen terbaca jelas dan tidak ada teks yang membaur dengan background.
+> 2. **Mekanisme Sinkronisasi Multi-Device**: Realtime auto-sync langsung dari Supabase saat aplikasi dibuka, memperbaiki isu inkonsistensi data antar HP (seperti iuran spesial September Rp15.000).
+> 3. **Penempatan Ekspor & Impor Data JSON**: Ditempatkan pada menu/tab khusus **"Cadangan Data"** di Pengaturan Pengurus (Bendahara & Sekretaris) serta Master Admin (Super Admin).
 
 ---
 
-## 3. Verification Plan
-1. **Compilation & Linting:** Run `compile_applet` and `lint_applet` to ensure zero TypeScript or syntax errors.
-2. **Behavioral Checks:**
-   - Verify Super Admin menu restriction.
-   - Verify group generation locking and 3-10 group count.
-   - Verify receipt compression and long-term storage.
-   - Verify BGM & SFX volume slider persistence.
+## 1. Overview & Core Concept
+
+- **Apa yang Dibangun**:
+  Aplikasi web manajemen kelas yang terintegrasi penuh untuk Pengurus Kelas (Super Admin, Bendahara, Sekretaris) dan Anggota Siswa. Pembaruan v4.8.0 memfokuskan pada stabilitas sinkronisasi data antar-perangkat, portabilitas data melalui ekspor/impor JSON terenkapsulasi, kemudahan pengorganisasian kelompok belajar, pengalaman visual baru yang ramah mata (Tema Cokelat), serta efisiensi operasional pengurus.
+- **Sasaran Pengguna**: Seluruh pengurus kelas (Bendahara, Sekretaris, Super Admin) dan anggota kelas pada perangkat mobile maupun desktop.
+- **Nilai Utama**: Menghilangkan ketidaksesuaian data antar-HP, mempercepat pencatatan kas mingguan, dan memberikan kontrol penuh kepada pengurus dalam membackup serta merestore seluruh data kelas.
+
+---
+
+## 2. User Experience & Visual Design
+
+### 2.1 Tema Cokelat (Dark Espresso & Cream High Contrast)
+Aplikasi mempertahankan ciri khas Doodle Notebook dengan estetika gelap baru:
+- **Latar Belakang Utama (`--bg-paper`)**: `#1A120B` (Dark Coffee Espresso) dengan tekstur dot halus `#2C1E14`.
+- **Kartu Konten (`--bg-card`)**: `#261A13` (Roasted Mocha) dengan batas kontras `#D4A373` dan bayangan tebal offset `#0D0805`.
+- **Teks Utama (`--text-main`)**: `#FDF8F0` / `#F7EBD9` (Krem Susu Hangat) dengan kontras tinggi (WCAG AAA compliant), menghilangkan masalah teks gelap tertelan latar.
+- **Aksen Doodle**:
+  - Kuning Emas: `#EAB308`
+  - Mint Sage: `#86EFAC`
+  - Sky Blue: `#7DD3FC`
+  - Karamel/Amber: `#F59E0B`
+  - Rose/Merah: `#FDA4AF`
+
+### 2.2 Alur Pengguna Baru
+1. **Penetapan Siswa pada Whitelist Role (Master Admin)**:
+   - Pada tabel Whitelist, terdapat kolom baru: **"Siswa Terhubung (No. Absen & Nama)"**.
+   - Admin dapat langsung memilih siswa dari daftar anggota yang sinkron secara dua arah dengan data manajemen siswa.
+2. **Pencarian & Minimalkan Kelompok (Sekretaris & Mahasiswa)**:
+   - Bar pencarian instan di atas daftar kelompok tersimpan (bisa mencari nama matkul, judul tugas, nama kelompok, atau anggota).
+   - Accordion toggle (tombol Buka/Tutup atau Minimize) per mata kuliah, sehingga daftar matkul yang banyak tidak memanjang ke bawah.
+3. **Modal Opsi Rekap WhatsApp Bendahara**:
+   - Saat klik tombol "Bagikan ke WhatsApp" atau "Salin Rekap", muncul dialog 3 pilihan:
+     1. 📅 **Minggu Ini**
+     2. 🗓️ **Bulan Ini**
+     3. 📊 **Keseluruhan**
+   - Setelah memilih, teks terformat otomatis digenerate dengan opsi Salin Teks dan Buka WhatsApp.
+4. **Ceklis Iuran Responsif**:
+   - Optimistic update langsung berubah dalam hitungan milidetik tanpa jeda.
+   - Delay animasi dan debounce sync ditekan menjadi 0,5 detik agar pengisian massal lancar tanpa lagging.
+5. **Cadangan Data JSON Terpadu (Semua Pengurus)**:
+   - Menu **"Cadangan Data"** di Pengaturan Pengurus & Master Admin.
+   - Tombol **"Ekspor Seluruh Data JSON"**: mengunduh file `.json` lengkap dan opsional mengunggah snapshot ke Supabase.
+   - Tombol **"Impor Cadangan JSON"**: validasi schema, modal konfirmasi peringatan, dan pencatatan riwayat ke Audit Log sehingga dapat di-undo.
+
+---
+
+## 3. Key Product Decisions & Trade-Offs
+
+| Keputusan | Pendekatan Terpilih | Rationale / Alasan | Alternatif Dipertimbangkan |
+| :--- | :--- | :--- | :--- |
+| **Penyimpanan Pengaturan Spesial Iuran** | Menyimpan `monthlyDuesOverrides` di Supabase (`class_settings.monthly_dues_overrides` jsonb / column) serta sinkron otomatis saat app load | Mengatasi bug di mana HP A menyimpan iuran September Rp15.000 hanya di `localStorage` lokal sedangkan HP B masih membaca default Rp5.000 | Mengandalkan localStorage saja (ditolak karena tidak sinkron antar gadget) |
+| **Skema Ekspor Data JSON** | Format JSON terpadu yang memuat seluruh relasi (transaksi, anggota, pengaturan, tagihan kolektif, presensi, kelompok, audit) | Semua pengurus (Bendahara, Sekretaris, Admin) dapat saling membackup data kelas tanpa format terpecah | File CSV terpisah per modul (merepotkan saat restore) |
+| **Toleransi Undo untuk Impor** | Sebelum data lama ditimpa oleh data impor, snapshot data sebelumnya disimpan ke snapshot audit | Memungkinkan super admin membatalkan impor jika pengurus salah memasukkan file JSON cadangan | Impor satu arah tanpa undo (berisiko kehilangan data kelas) |
+| **Respon Ceklis Iuran** | Optimistic UI update dengan debounce sync 500ms | Pengurus dapat mencentang iuran dengan cepat tanpa menunggu roundtrip server | Menunggu respon jaringan sebelum centang berganti (membuat UI terasa lambat) |
+
+---
+
+## 4. Technical Architecture & Data Strategy
+
+### 4.1 System Diagram
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                          APLIKASI KELASGUE                             │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│   ┌────────────────────┐   ┌───────────────────┐   ┌───────────────┐   │
+│   │    BENDAHARA       │   │    SEKRETARIS     │   │  SUPER ADMIN  │   │
+│   │ • Buku Kas         │   │ • Presensi        │   │ • Whitelist   │   │
+│   │ • Ceklis Iuran     │   │ • Kelompok &      │   │ • Kelola      │   │
+│   │ • Rekap WA (3 opsi)│   │   Pencarian/Min.  │   │   Siswa       │   │
+│   │ • Cadangan JSON    │   │ • Cadangan JSON   │   │ • Audit Log   │   │
+│   └─────────┬──────────┘   └─────────┬─────────┘   └───────┬───────┘   │
+│             │                        │                     │           │
+│             └────────────────┬───────┴─────────────────────┘           │
+│                              │                                         │
+│                ┌─────────────▼─────────────┐                           │
+│                │   LocalKasRepository      │                           │
+│                │ • Auto-Sync saat Start    │                           │
+│                │ • Optimistic Dues (0.5s)  │                           │
+│                │ • Import/Export JSON      │                           │
+│                └─────────────┬─────────────┘                           │
+│                              │                                         │
+└──────────────────────────────┼─────────────────────────────────────────┘
+                               │ Realtime Sync
+                               ▼
+        ┌──────────────────────────────────────────────┐
+        │              SUPABASE CLOUD DB               │
+        │ • kas_transactions   • class_settings        │
+        │ • kas_members        • class_group_coll.     │
+        │ • app_audit_logs     • json_snapshots        │
+        └──────────────────────────────────────────────┘
+```
+
+### 4.2 Pembaruan File & Modul yang Terlibat
+1. `src/types/kas.ts`:
+   - Menambahkan field `monthlyDuesOverrides` pada sync `ClassSettings`.
+   - Menambahkan tipe skema `ClassBackupData` untuk ekspor/impor JSON.
+2. `src/services/supabaseClient.ts`:
+   - Menambahkan serialisasi dan deserialisasi `monthly_dues_overrides` ke dalam Supabase `class_settings`.
+   - Menambahkan fungsi `exportFullBackupJSON()` dan `importFullBackupJSON()`.
+   - Mengoptimalkan auto-sync saat aplikasi dibuka agar data dari Supabase selalu menimpa cache lokal yang usang.
+3. `src/context/ThemeContext.tsx` & `src/index.css`:
+   - Menambahkan `'chocolate'` ke dalam `ThemeType`.
+   - Menambahkan variabel kelas `.theme-chocolate` dengan latar belakang espresso dan teks krem kontras tinggi serta styling card doodle khusus tema cokelat.
+4. `src/components/Doodle/AdminSettingsView.tsx`:
+   - Menambahkan kolom interaktif "Siswa Terhubung" (dengan No. Absen & Nama) di tabel Whitelist Role.
+   - Menambahkan sub-tab "Cadangan Data" untuk ekspor dan impor JSON.
+5. `src/components/Doodle/Secretary/KelompokTab.tsx`:
+   - Menambahkan input pencarian kelompok/anggota/mata kuliah.
+   - Menambahkan tombol collapsible (buka/tutup/minimize) per mata kuliah.
+6. `src/components/Doodle/KasChecklist.tsx`:
+   - Menerapkan optimistic toggle dengan delay animasi 0.5 detik dan background debounce sync.
+7. `src/components/Doodle/WhatsAppShareModal.tsx` / `KasRecapView.tsx`:
+   - Menambahkan selector 3 pilihan periode (Minggu Ini, Bulan Ini, Keseluruhan) sebelum menampilkan teks rekap dan tombol salin/kirim WA.
+8. `src/version.ts`:
+   - Menaikkan versi aplikasi menjadi `v4.8.0` dengan patch notes lengkap dan rekomendasi pembaruan masa depan.
+
+---
+
+## 5. Verification Plan
+
+1. **Sinkronisasi Multi-Device**:
+   - Menguji perubahan tarif iuran spesial (misal September menjadi Rp15.000) dan memastikan tersimpan serta terbaca konsisten saat dibuka di sesi baru/perangkat lain tanpa ter-reset ke Rp5.000.
+2. **Ekspor & Impor Data JSON**:
+   - Mengekspor data dalam format JSON.
+   - Mencoba melakukan impor kembali dan memeriksa apakah modal konfirmasi muncul serta tercatat di audit log.
+3. **Whitelist Siswa**:
+   - Mengubah penetapan siswa pada akun Google di whitelist dan memeriksa apakah No. Absen & Nama Siswa tersinkronisasi.
+4. **Pencarian & Minimize Kelompok**:
+   - Memasukkan kata kunci pencarian pada kelompok dan menguji toggle collapse/expand kelompok per mata kuliah.
+5. **Tema Cokelat**:
+   - Berpindah ke tema Cokelat dan memverifikasi kontras keterbacaan teks, navbar, kartu, serta elemen form.
+6. **Responsivitas Ceklis**:
+   - Menguji kecepatan pencentangan iuran berturut-turut untuk memastikan tidak ada lagging.
+7. **Rekap WhatsApp**:
+   - Menguji pemilihan 3 opsi periode (Minggu Ini, Bulan Ini, Keseluruhan) dan memastikan teks rekap sesuai periode yang dipilih.
+8. **Kompilasi & Lint**:
+   - Menjalankan `lint_applet` dan `compile_applet` untuk menjamin 0 error TypeScript.

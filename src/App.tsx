@@ -555,13 +555,8 @@ const AppContent: React.FC = () => {
         userRole: role,
       });
 
-      // Refresh data
-      const [freshTxs, freshMembers] = await Promise.all([
-        LocalKasRepository.fetchTransactionsFromSupabase(),
-        LocalKasRepository.fetchMembersFromSupabase()
-      ]);
-      setTransactions(freshTxs);
-      setMembers(freshMembers);
+      // Instantly update transactions state without blocking on full network re-fetch
+      setTransactions(LocalKasRepository.getTransactions());
     } finally {
       isTogglingRef.current = false;
     }

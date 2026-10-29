@@ -16,7 +16,9 @@ import { InventarisTab } from './InventarisTab.tsx';
 import { JadwalTugasTab } from './JadwalTugasTab.tsx';
 import { KelompokTab } from './KelompokTab.tsx';
 import { sfx } from '../../../utils/soundEffects.ts';
-import { Award, ClipboardCheck, FileText, ArrowLeft, Package, Calendar, Users } from 'lucide-react';
+import { Award, ClipboardCheck, FileText, ArrowLeft, Package, Calendar, Users, Download } from 'lucide-react';
+import { LocalKasRepository } from '../../../services/supabaseClient.ts';
+import { showToast } from '../../UI/DoodleDialog.tsx';
 
 interface SecretaryHubProps {
   initialSubTab?: 'keaktifan' | 'presensi' | 'notulensi' | 'inventaris' | 'jadwal' | 'kelompok';
@@ -96,6 +98,22 @@ export const SecretaryHub: React.FC<SecretaryHubProps> = ({
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Beranda Hub</span>
           </button>
+
+          {canEdit && (
+            <button
+              onClick={async () => {
+                sfx.playPaymentConfirmed();
+                await LocalKasRepository.exportFullBackupJSON('Sekretaris', 'sekretaris');
+                showToast('Cadangan data JSON kelas berhasil diekspor!', 'success');
+              }}
+              className="btn-doodle px-2.5 py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-950 rounded-lg border border-slate-900 text-xs font-black flex items-center gap-1 shrink-0 shadow-[1px_1px_0px_#000]"
+              title="Unduh seluruh data kelas ke file JSON"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Cadangan JSON</span>
+            </button>
+          )}
+
           <span className="text-slate-300 hidden sm:inline">|</span>
           <span className="text-xs font-black text-slate-900 hidden sm:inline">
             Sekretariat & Akademik

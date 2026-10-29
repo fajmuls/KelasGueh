@@ -22,7 +22,8 @@ import {
   BookOpen,
   Coins,
   FileText,
-  Eye
+  Eye,
+  Coffee
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWA/PWAInstallButton.tsx';
 import { subscribeCloudSync, getCloudSyncStatus, CloudSyncStatus, LocalKasRepository } from '../../services/supabaseClient.ts';
@@ -164,6 +165,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   const themes: { id: ThemeType; label: string; icon: any; color: string }[] = [
     { id: 'light', label: 'Terang', icon: Sun, color: 'bg-white' },
     { id: 'sepia', label: 'Sepia', icon: BookOpen, color: 'bg-[#F4ECD8]' },
+    { id: 'chocolate', label: 'Cokelat', icon: Coffee, color: 'bg-[#271A12]' },
   ];
 
   return (

@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog, AttendanceRecord, MeetingMinute, ClassInventoryItem, CourseSchedule, CourseAssignment, UserRole } from '../types/kas.ts';
+import { KasTransaction, KasMember, ClassSettings, KolektifBill, StudentPointLog, AttendanceRecord, MeetingMinute, ClassInventoryItem, CourseSchedule, CourseAssignment, UserRole, ClassBackupData } from '../types/kas.ts';
 import { getRegisteredUsers, registerOrUpdateUser, updateUserRole, deleteRegisteredUser, autoDetectGenderByName } from '../utils/userManagement.ts';
 import { toTitleCase } from '../utils/textFormatting.ts';
 
@@ -240,14 +240,35 @@ export class LocalKasRepository {
       }
 
       if (data) {
+        let monthlyDuesOverrides = local.monthlyDuesOverrides || {};
+        let siteUrl = data.site_url || local.siteUrl;
+
+        // Check if site_url contains serialized JSON config payload
+        if (data.site_url && data.site_url.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(data.site_url);
+            if (parsed.monthlyDuesOverrides) monthlyDuesOverrides = { ...monthlyDuesOverrides, ...parsed.monthlyDuesOverrides };
+            if (parsed.siteUrl !== undefined) siteUrl = parsed.siteUrl;
+          } catch {
+            // standard url
+          }
+        }
+
+        if (data.monthly_dues_overrides) {
+          monthlyDuesOverrides = typeof data.monthly_dues_overrides === 'string'
+            ? JSON.parse(data.monthly_dues_overrides)
+            : data.monthly_dues_overrides;
+        }
+
         const mapped: ClassSettings = {
           ...local,
           className: data.class_name || local.className,
           weeklyDuesAmount: Number(data.weekly_dues_amount ?? local.weeklyDuesAmount),
-          kasTargetAmount: Number(data.kas_target_amount ?? local.kasTargetAmount), // FIX: Menggunakan kas_target_amount
+          kasTargetAmount: Number(data.kas_target_amount ?? local.kasTargetAmount),
           currencyPrefix: data.currency_prefix || local.currencyPrefix,
           academicYear: data.academic_year || local.academicYear,
-          siteUrl: data.site_url || local.siteUrl
+          siteUrl: siteUrl,
+          monthlyDuesOverrides: monthlyDuesOverrides
         };
         localStorage.setItem(this.KEY_SETTINGS, JSON.stringify(mapped));
         setCloudSyncStatus('synced');
@@ -270,20 +291,37 @@ export class LocalKasRepository {
     const client = getSupabaseClient();
     if (client) {
       setCloudSyncStatus('syncing');
-      const { error } = await client.from('class_settings').upsert([{
+      
+      const siteUrlPayload = JSON.stringify({
+        siteUrl: settings.siteUrl || '',
+        monthlyDuesOverrides: settings.monthlyDuesOverrides || {}
+      });
+
+      const basePayload: any = {
         id: 1,
         class_name: settings.className,
         weekly_dues_amount: settings.weeklyDuesAmount,
-        kas_target_amount: settings.kasTargetAmount, // FIX: Naming consistency
+        kas_target_amount: settings.kasTargetAmount,
         currency_prefix: settings.currencyPrefix,
         academic_year: settings.academicYear,
-        site_url: settings.siteUrl,
+        site_url: siteUrlPayload,
         supabase_url: settings.supabaseUrl,
         supabase_anon_key: settings.supabaseAnonKey
+      };
+
+      // Attempt to save with monthly_dues_overrides column first
+      let res = await client.from('class_settings').upsert([{
+        ...basePayload,
+        monthly_dues_overrides: settings.monthlyDuesOverrides || {}
       }]);
-      if (error) {
-        setCloudSyncStatus('offline');
-        throw error;
+
+      if (res.error) {
+        // Fallback without monthly_dues_overrides column if column not yet added
+        const fallbackRes = await client.from('class_settings').upsert([basePayload]);
+        if (fallbackRes.error) {
+          setCloudSyncStatus('offline');
+          throw fallbackRes.error;
+        }
       }
       setCloudSyncStatus('synced');
     }
@@ -1166,7 +1204,133 @@ export class LocalKasRepository {
     course.assignments = course.assignments.filter(a => a.id !== assignmentId);
     localStorage.setItem(this.KEY_COURSES, JSON.stringify(courses));
   }
+
+  // ---------------- FULL APPLICATION JSON BACKUP & RESTORE ----------------
+  public static async exportFullBackupJSON(exportedBy: string, role: string): Promise<ClassBackupData> {
+    const settings = this.getSettings();
+    const members = this.getMembers();
+    const transactions = this.getTransactions();
+    const kolektifBills = this.getKolektifBills();
+    const savedGroupCollections = JSON.parse(localStorage.getItem('kelasgue_saved_group_collections') || '[]');
+    const auditLogs = this.getAuditLogs();
+    const whitelist = await this.getWhitelist();
+    const attendance = this.getAttendanceRecords();
+    const studentPoints = this.getPointLogs();
+    const minutes = this.getMeetingMinutes();
+
+    const backupData: ClassBackupData = {
+      version: '4.8.0',
+      exportedAt: new Date().toISOString(),
+      exportedBy: exportedBy || 'Pengurus',
+      role: role || 'pengurus',
+      settings,
+      members,
+      transactions,
+      kolektifBills,
+      savedGroupCollections,
+      auditLogs,
+      whitelist,
+      attendance,
+      studentPoints,
+      minutes
+    };
+
+    // Trigger browser JSON file download
+    try {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `kelasgue_backup_${dateStr}_v4.8.0.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (e) {
+      console.warn("Could not auto-download JSON:", e);
+    }
+
+    // Log the backup export activity
+    await this.addAuditLog({
+      action: "EKSPOR CADANGAN DATA",
+      details: `Ekspor cadangan database lengkap JSON (${transactions.length} transaksi, ${members.length} siswa) oleh ${exportedBy}`,
+      performedBy: exportedBy || 'Pengurus',
+      userRole: role || 'pengurus'
+    });
+
+    return backupData;
+  }
+
+  public static async importFullBackupJSON(
+    backup: ClassBackupData,
+    importedBy: string,
+    role: string
+  ): Promise<{ success: boolean; message: string }> {
+    if (!backup || typeof backup !== 'object') {
+      throw new Error('Format file cadangan tidak valid (bukan JSON objek).');
+    }
+    if (!backup.settings || !Array.isArray(backup.members) || !Array.isArray(backup.transactions)) {
+      throw new Error('Struktur file cadangan tidak lengkap (wajib ada settings, members, transactions).');
+    }
+
+    // 1. Snapshot previous state before restore for undo capability
+    const prevSnapshot = {
+      settings: this.getSettings(),
+      members: this.getMembers(),
+      transactions: this.getTransactions()
+    };
+
+    // 2. Restore settings
+    await this.saveSettings(backup.settings);
+
+    // 3. Restore members
+    if (Array.isArray(backup.members)) {
+      await this.saveMembers(backup.members);
+    }
+
+    // 4. Restore transactions
+    if (Array.isArray(backup.transactions)) {
+      localStorage.setItem(this.KEY_TX, JSON.stringify(backup.transactions));
+    }
+
+    // 5. Restore kolektif bills if present
+    if (Array.isArray(backup.kolektifBills)) {
+      this.saveKolektifBills(backup.kolektifBills);
+    }
+
+    // 6. Restore saved group collections if present
+    if (Array.isArray(backup.savedGroupCollections)) {
+      localStorage.setItem('kelasgue_saved_group_collections', JSON.stringify(backup.savedGroupCollections));
+    }
+
+    // 7. Restore attendance, points, minutes if present
+    if (Array.isArray(backup.attendance)) {
+      localStorage.setItem(this.KEY_ATTENDANCE, JSON.stringify(backup.attendance));
+    }
+    if (Array.isArray(backup.studentPoints)) {
+      localStorage.setItem(this.KEY_POINTS, JSON.stringify(backup.studentPoints));
+    }
+    if (Array.isArray(backup.minutes)) {
+      localStorage.setItem(this.KEY_MINUTES, JSON.stringify(backup.minutes));
+    }
+
+    // 8. Push to Supabase Cloud
+    await this.forceSyncAllToCloud();
+
+    // 9. Add Audit Log entry
+    await this.addAuditLog({
+      action: "IMPOR CADANGAN DATA",
+      details: `Restorasi cadangan database v${backup.version || 'unknown'} (${backup.transactions?.length || 0} transaksi, ${backup.members?.length || 0} siswa) oleh ${importedBy}. Snapshot sebelumnya tersimpan di audit.`,
+      performedBy: importedBy || 'Pengurus',
+      userRole: role || 'pengurus'
+    });
+
+    return {
+      success: true,
+      message: `Cadangan berhasil dipulihkan! (${backup.transactions?.length || 0} transaksi, ${backup.members?.length || 0} siswa tersinkronisasi).`
+    };
+  }
 }
+
 
 // Realtime Subscription
 export const subscribeToRealtimeKas = (

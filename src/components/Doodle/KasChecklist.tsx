@@ -140,8 +140,8 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
       return;
     }
     const now = Date.now();
-    if (now - lastSingleClickRef.current < 280) {
-      // Throttled to prevent fast clicking race condition
+    if (now - lastSingleClickRef.current < 200) {
+      // Sleek throttle to prevent fast clicking race condition
       return;
     }
     lastSingleClickRef.current = now;

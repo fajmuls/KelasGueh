@@ -22,7 +22,10 @@ import {
   Upload,
   X,
   Edit2,
-  Trash2
+  Trash2,
+  Database,
+  Download,
+  UploadCloud
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveNewPin } from '../../utils/security.ts';
@@ -466,6 +469,38 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Cadangan Data Terpadu (.JSON) untuk Bendahara */}
+      <div className="card-doodle p-5 rounded-lg bg-white border-2 border-slate-900 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-slate-900 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-amber-400 border border-slate-900 flex items-center justify-center">
+              <Database className="w-4 h-4 text-slate-950" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-black text-slate-900">
+                Cadangan Data Aplikasi (.JSON)
+              </h3>
+              <p className="text-xs text-slate-600">
+                Ekspor seluruh data buku kas, iuran, dan anggota ke file JSON untuk cadangan offline.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={async () => {
+              sfx.playPaymentConfirmed();
+              await LocalKasRepository.exportFullBackupJSON('Bendahara', 'bendahara');
+              showToast('File cadangan JSON berhasil diekspor!', 'success');
+            }}
+            className="btn-doodle px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-lg border-2 border-slate-900 flex items-center gap-2 shrink-0 shadow-[2px_2px_0px_#000]"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Ekspor File Cadangan JSON</span>
+          </button>
+        </div>
       </div>
 
       {/* Catatan Pembaruan Iuran & Versi App */}

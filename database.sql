@@ -26,6 +26,11 @@ BEGIN
      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='kas_target_amount') THEN
     ALTER TABLE public.class_settings DROP COLUMN target_amount;
   END IF;
+
+  -- Kolom overrides tarif iuran bulanan spesial
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='class_settings' AND column_name='monthly_dues_overrides') THEN
+    ALTER TABLE public.class_settings ADD COLUMN monthly_dues_overrides JSONB DEFAULT '{}'::jsonb;
+  END IF;
 END $$;
 
 -- Masukkan data awal jika belum ada

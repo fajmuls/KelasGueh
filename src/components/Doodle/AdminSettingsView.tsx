@@ -31,7 +31,10 @@ import {
   Check,
   X,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Database,
+  Download,
+  UploadCloud
 } from 'lucide-react';
 
 interface AdminSettingsViewProps {
@@ -47,7 +50,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   onUpdateMembers,
   onReturnToHub
 }) => {
-  const [activeTab, setActiveTab] = useState<'whitelist' | 'students' | 'audit' | 'pin' | 'cache' | 'version'>('whitelist');
+  const [activeTab, setActiveTab] = useState<'whitelist' | 'students' | 'audit' | 'backup' | 'pin' | 'cache' | 'version'>('whitelist');
 
   // Whitelist state
   const [users, setUsers] = useState<any[]>([]);
@@ -55,6 +58,12 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   const [selectedStudentForWhitelist, setSelectedStudentForWhitelist] = useState<KasMember | null>(null);
   const [whitelistRole, setWhitelistRole] = useState<'bendahara' | 'sekretaris' | 'anggota'>('bendahara');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Backup states
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [backupFileContent, setBackupFileContent] = useState<any | null>(null);
+  const [backupFileName, setBackupFileName] = useState('');
 
   // Student Management state (Unified with Gender & Status Aktif)
   const [newStudentName, setNewStudentName] = useState('');
@@ -163,6 +172,81 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
     await LocalKasRepository.deleteWhitelistUser(email);
     showToast(`Role whitelist untuk ${name} berhasil dihapus dari database!`, 'info');
     await loadData();
+  };
+
+  const handleLinkStudentToUser = async (email: string, memberId: string) => {
+    sfx.playOptionSelect();
+    const targetMember = memberList.find(m => m.id === memberId);
+    if (targetMember) {
+      updateUserLinkedMember(email, targetMember.id, targetMember.name);
+      showToast(`Akun ${email} berhasil dihubungkan sebagai "${toTitleCase(targetMember.name)}" (NIM: ${targetMember.studentId || '-'})!`, 'success');
+    } else {
+      updateUserLinkedMember(email, undefined, undefined);
+      showToast(`Tautan siswa untuk akun ${email} dilepas.`, 'info');
+    }
+    await loadData();
+  };
+
+  const handleExportFullBackup = async () => {
+    try {
+      setIsExporting(true);
+      sfx.playPaymentConfirmed();
+      const backup = await LocalKasRepository.exportFullBackupJSON('Super Admin', 'superadmin');
+      showToast(`File cadangan JSON (${backup.transactions.length} transaksi, ${backup.members.length} siswa) berhasil diekspor!`, 'success');
+    } catch (err: any) {
+      showToast(`Gagal mengekspor data: ${err.message}`, 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleBackupFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBackupFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        setBackupFileContent(json);
+        sfx.playOptionSelect();
+        showToast(`File cadangan "${file.name}" siap dipulihkan (${json.transactions?.length || 0} transaksi, ${json.members?.length || 0} siswa).`, 'info');
+      } catch {
+        showToast('File tidak valid atau rusak (bukan format JSON yang benar).', 'error');
+        setBackupFileContent(null);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportFullBackup = async () => {
+    if (!backupFileContent) return;
+    const ok = await showConfirm({
+      title: 'Konfirmasi Impor & Pulihkan Data',
+      message: `PERINGATAN: Tindakan ini akan menimpa database dengan data dari file cadangan (${backupFileContent.transactions?.length || 0} transaksi, ${backupFileContent.members?.length || 0} siswa). Tindakan ini akan dicatat ke Audit Log sehingga dapat di-undo. Lanjutkan?`,
+      confirmLabel: 'Ya, Pulihkan Database',
+      cancelLabel: 'Batal',
+      isDanger: true
+    });
+    if (!ok) return;
+
+    try {
+      setIsImporting(true);
+      sfx.playPaymentConfirmed();
+      const res = await LocalKasRepository.importFullBackupJSON(backupFileContent, 'Super Admin', 'superadmin');
+      if (backupFileContent.members) {
+        setMemberList(backupFileContent.members);
+        onUpdateMembers(backupFileContent.members);
+      }
+      await loadData();
+      showToast(res.message, 'success');
+      setBackupFileContent(null);
+      setBackupFileName('');
+    } catch (err: any) {
+      showToast(`Gagal memulihkan database: ${err.message}`, 'error');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   // Update specific student field and sync to DB
@@ -512,6 +596,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           { id: 'whitelist', label: 'Whitelist Roll', icon: UserCheck },
           { id: 'students', label: 'Manajemen Siswa', icon: UserPlus },
           { id: 'audit', label: 'Laporan Audit Log', icon: FileSpreadsheet },
+          { id: 'backup', label: 'Cadangan Data JSON', icon: Database },
           { id: 'pin', label: 'PIN Keamanan', icon: Lock },
           { id: 'cache', label: 'Reset Cache Lokal', icon: Trash2 },
           { id: 'version', label: 'Versi & Catatan', icon: Sparkles }
@@ -631,6 +716,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                   <tr>
                     <th className="p-3">Pengguna / Nama</th>
                     <th className="p-3">Email / ID Whitelist</th>
+                    <th className="p-3">Siswa Terhubung (Absen & Nama)</th>
                     <th className="p-3">Role Status</th>
                     <th className="p-3 text-right">Aksi Ubah Role</th>
                   </tr>
@@ -638,8 +724,9 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                 <tbody className="divide-y divide-slate-200">
                   {users.map((u) => {
                     const matchedMember = memberList.find(m => 
+                      m.id === u.linkedMemberId ||
                       (m.email && m.email.toLowerCase() === u.email.toLowerCase()) ||
-                      m.name.toLowerCase() === (u.name || '').toLowerCase()
+                      m.name.toLowerCase() === (u.linkedMemberName || u.name || '').toLowerCase()
                     );
                     return (
                       <tr key={u.email} className="hover:bg-amber-50/60">
@@ -650,6 +737,20 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                           )}
                         </td>
                         <td className="p-3 text-slate-600 font-mono text-[11px]">{u.email}</td>
+                        <td className="p-3">
+                          <select
+                            value={matchedMember?.id || u.linkedMemberId || ''}
+                            onChange={(e) => handleLinkStudentToUser(u.email, e.target.value)}
+                            className="w-full max-w-[220px] px-2 py-1.5 border-2 border-slate-900 rounded-lg bg-white text-[11px] font-bold shadow-[1px_1px_0px_#000] cursor-pointer"
+                          >
+                            <option value="">-- Tetapkan Siswa --</option>
+                            {memberList.map((m, idx) => (
+                              <option key={m.id} value={m.id}>
+                                No. {idx + 1} - {toTitleCase(m.name)} ({m.studentId || '-'})
+                              </option>
+                            ))}
+                          </select>
+                        </td>
                       <td className="p-3">
                         <span
                           className={`px-2.5 py-0.5 rounded-lg font-black text-[10px] uppercase border-2 border-slate-900 shadow-[1px_1px_0px_#000] ${
@@ -1171,6 +1272,108 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SUB-TAB 4: CADANGAN DATA JSON (EKSPOR & IMPOR) */}
+        {activeTab === 'backup' && (
+          <div className="space-y-6">
+            <div className="bg-amber-50 p-4 rounded-xl border-2 border-slate-900 text-xs text-slate-900 space-y-1">
+              <strong className="font-black text-amber-900 flex items-center gap-1.5">
+                <Database className="w-4 h-4 text-amber-600" /> Pusat Cadangan & Pemulihan Data Terpadu (.JSON)
+              </strong>
+              <p>
+                Seluruh data website (buku kas, iuran mingguan, manajemen anggota siswa, kelompok matkul, presensi, notulensi, dan pengaturan) dapat diekspor menjadi satu file cadangan JSON lengkap dan dipulihkan kembali oleh pengurus kelas.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Card 1: Ekspor Data */}
+              <div className="p-5 bg-white rounded-xl border-3 border-slate-900 shadow-[3px_3px_0px_#000] flex flex-col justify-between gap-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-amber-400 rounded-lg border-2 border-slate-900">
+                      <Download className="w-5 h-5 text-slate-900" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-slate-900">Ekspor File Cadangan JSON</h4>
+                      <p className="text-[11px] text-slate-500">Unduh snapshot lengkap database kelas saat ini</p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-300 text-xs space-y-1.5 font-medium text-slate-700">
+                    <p className="font-bold text-slate-900">Cakupan Data yang Diekspor:</p>
+                    <ul className="list-disc list-inside space-y-0.5 text-[11px] text-slate-600">
+                      <li>Pengaturan Kelas & Tarif Iuran Bulanan Spesial</li>
+                      <li>Buku Kas ({LocalKasRepository.getTransactions().length} Transaksi)</li>
+                      <li>Daftar Siswa & Riwayat Pembayaran ({memberList.length} Siswa)</li>
+                      <li>Kelompok & Tugas Matkul Tersimpan</li>
+                      <li>Tagihan Kolektif & Poin Keaktifan Mahasiswa</li>
+                      <li>Daftar Whitelist Role Pengurus & Audit Log</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleExportFullBackup}
+                  disabled={isExporting}
+                  className="w-full py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] active:translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isExporting ? 'Mengekspor Data...' : 'Unduh File Cadangan JSON (.json)'}</span>
+                </button>
+              </div>
+
+              {/* Card 2: Impor Data */}
+              <div className="p-5 bg-white rounded-xl border-3 border-slate-900 shadow-[3px_3px_0px_#000] flex flex-col justify-between gap-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-purple-300 rounded-lg border-2 border-slate-900">
+                      <UploadCloud className="w-5 h-5 text-purple-950" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-slate-900">Impor & Pulihkan Database</h4>
+                      <p className="text-[11px] text-slate-500">Pulihkan seluruh data dari file JSON cadangan sebelumnya</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-800">
+                      Pilih File Cadangan JSON:
+                    </label>
+                    <input
+                      type="file"
+                      accept=".json,application/json"
+                      onChange={handleBackupFileSelect}
+                      className="w-full text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-2 file:border-slate-900 file:text-xs file:font-black file:bg-amber-200 file:text-slate-900 hover:file:bg-amber-300 cursor-pointer p-1.5 border-2 border-slate-900 rounded-xl bg-white"
+                    />
+                  </div>
+
+                  {backupFileContent && (
+                    <div className="p-3 bg-purple-50 rounded-lg border-2 border-purple-300 text-xs space-y-1 animate-in fade-in">
+                      <p className="font-black text-purple-950">✓ File Cadangan Terbaca:</p>
+                      <p className="text-[11px] text-purple-900">Versi: <strong>{backupFileContent.version || 'v4.x'}</strong> • Pengekspor: <strong>{backupFileContent.exportedBy}</strong></p>
+                      <p className="text-[11px] text-purple-800">
+                        Memuat {backupFileContent.transactions?.length || 0} transaksi, {backupFileContent.members?.length || 0} siswa.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="p-2.5 bg-rose-50 border border-rose-300 rounded-lg text-[10px] text-rose-900 font-medium">
+                    ⚠️ Tindakan impor akan menggantikan data aktif dan otomatis dicatat ke dalam <strong>Audit Log</strong> sehingga dapat di-undo jika diperlukan.
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleImportFullBackup}
+                  disabled={!backupFileContent || isImporting}
+                  className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] active:translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  <span>{isImporting ? 'Memulihkan Database...' : 'Pulihkan Database Sekarang'}</span>
+                </button>
               </div>
             </div>
           </div>
