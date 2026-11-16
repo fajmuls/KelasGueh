@@ -52,6 +52,10 @@ export interface ClassSettings {
   requireTransactionPin?: boolean; // Super Admin toggle for large-transaction PIN check
   transactionPinThreshold?: number; // Nominal threshold (default 500000)
   pinHash?: string; // Synced bcrypt hash for unified multi-device PIN
+  googleSpreadsheetId?: string;
+  googleSpreadsheetUrl?: string;
+  autoSyncGoogleSheets?: boolean;
+  lastSheetsSyncAt?: string;
   inventoryList?: ClassInventoryItem[];
   courseSchedules?: CourseSchedule[];
 }
@@ -148,6 +152,11 @@ export interface ClassDefinition {
   createdAt: string;
   createdBy: string;
   isDefault?: boolean;
+  isArchived?: boolean;
+  semesterOrder?: number;
+  googleSpreadsheetId?: string;
+  googleSpreadsheetUrl?: string;
+  lastSheetsSyncAt?: string;
 }
 
 export interface ClassMembershipRequest {
@@ -164,6 +173,7 @@ export interface ClassMembershipRequest {
   createdAt: string;
   reviewedAt?: string;
   reviewedBy?: string;
+  autoMatched?: boolean;
 }
 
 export interface ClassSnapshotMeta {

@@ -51,12 +51,14 @@ export interface SavedGroupCollection {
 
 interface KelompokTabProps {
   members: KasMember[];
+  canEdit?: boolean;
   courseSchedules?: CourseSchedule[];
   onAddAssignment?: (courseId: string, assignment: Omit<CourseAssignment, 'id'>) => void;
 }
 
 export const KelompokTab: React.FC<KelompokTabProps> = ({
   members,
+  canEdit = false,
   courseSchedules = [],
   onAddAssignment
 }) => {
@@ -115,6 +117,10 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
   const [savedCollections, setSavedCollections] = useState<SavedGroupCollection[]>(() => {
     return LocalKasRepository.getSavedGroups();
   });
+
+  useEffect(() => {
+    setSavedCollections(LocalKasRepository.getSavedGroups());
+  }, [members, courseSchedules]);
 
   const [groupSearchQuery, setGroupSearchQuery] = useState('');
   const [collapsedCollections, setCollapsedCollections] = useState<Record<string, boolean>>({});
@@ -475,6 +481,11 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
+            {!canEdit && (
+              <span className="px-2.5 py-1 rounded-lg bg-sky-100 border-2 border-slate-900 text-[10px] font-black text-slate-900">
+                Mode Lihat Anggota
+              </span>
+            )}
             <button
               onClick={handleSendWhatsApp}
               disabled={!isLocked || groups.length === 0}
@@ -487,7 +498,18 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
         </div>
       </div>
 
-      {/* Control Panel */}
+      {/* Role-Restricted Notice for Non-Secretary Members */}
+      {!canEdit && (
+        <div className="p-3.5 bg-sky-50 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#000] flex items-center gap-2.5 text-xs text-slate-800">
+          <Lock className="w-4 h-4 text-sky-700 shrink-0" />
+          <p className="font-bold">
+            Mode Lihat Anggota: Pembuatan, pengacakan, perubahan nama, dan penghapusan kelompok dikelola khusus oleh <strong>Sekretaris</strong> &amp; <strong>Super Admin</strong>. Anda dapat mencari dan membuka daftar kelompok tersimpan di bawah.
+          </p>
+        </div>
+      )}
+
+      {/* Control Panel (Strictly Sekretaris & Super Admin) */}
+      {canEdit && (
       <div className="bg-white border-2 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[3px_3px_0px_#000] space-y-4">
         {/* 1. Pilih Mata Kuliah */}
         <div className="p-3.5 bg-amber-50/80 border-2 border-slate-900 rounded-xl space-y-2">
@@ -685,32 +707,39 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
           </div>
         </div>
       </div>
+      )}
 
-      {/* Main Content Area: Conditional rendering based on isLocked */}
+      {/* Main Content Area: Conditional rendering based on isLocked & canEdit */}
       {!isLocked ? (
-        /* INITIAL EMPTY STATE BEFORE GENERATE */
-        <div className="bg-amber-50/40 border-2 border-dashed border-slate-400 rounded-2xl p-8 text-center space-y-4 my-4 shadow-sm">
-          <div className="w-16 h-16 rounded-2xl bg-amber-200 border-2 border-slate-900 flex items-center justify-center mx-auto text-slate-900 shadow-[3px_3px_0px_#000]">
-            <Sparkles className="w-8 h-8 text-amber-700" />
+        canEdit ? (
+          /* INITIAL EMPTY STATE BEFORE GENERATE */
+          <div className="bg-amber-50/40 border-2 border-dashed border-slate-400 rounded-2xl p-8 text-center space-y-4 my-4 shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-amber-200 border-2 border-slate-900 flex items-center justify-center mx-auto text-slate-900 shadow-[3px_3px_0px_#000]">
+              <Sparkles className="w-8 h-8 text-amber-700" />
+            </div>
+            <div className="max-w-md mx-auto space-y-2">
+              <h4 className="font-black text-lg text-slate-900">
+                Belum Ada Kelompok Digenerate
+              </h4>
+              <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                Silakan pilih mata kuliah <strong>({currentCourseName})</strong>, tentukan jumlah kelompok ({numGroups}), dan pilih metode pengacakan di atas, lalu klik <span className="underline font-bold text-amber-900">"Generate & Kunci Kelompok"</span>.
+              </p>
+            </div>
+            <div className="pt-2 flex justify-center">
+              <button
+                onClick={handleGenerateOrShuffle}
+                className="btn-doodle px-5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-2"
+              >
+                <Lock className="w-4 h-4 text-slate-950" />
+                <span>Generate Kelompok Sekarang</span>
+              </button>
+            </div>
           </div>
-          <div className="max-w-md mx-auto space-y-2">
-            <h4 className="font-black text-lg text-slate-900">
-              Belum Ada Kelompok Digenerate
-            </h4>
-            <p className="text-xs text-slate-600 font-medium leading-relaxed">
-              Silakan pilih mata kuliah <strong>({currentCourseName})</strong>, tentukan jumlah kelompok ({numGroups}), dan pilih metode pengacakan di atas, lalu klik <span className="underline font-bold text-amber-900">"Generate & Kunci Kelompok"</span>.
-            </p>
+        ) : savedCollections.length === 0 ? (
+          <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center text-xs text-slate-600 font-medium">
+            Belum ada daftar pembagian kelompok yang disimpan oleh Sekretaris untuk kelas ini.
           </div>
-          <div className="pt-2 flex justify-center">
-            <button
-              onClick={handleGenerateOrShuffle}
-              className="btn-doodle px-5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-2"
-            >
-              <Lock className="w-4 h-4 text-slate-950" />
-              <span>Generate Kelompok Sekarang</span>
-            </button>
-          </div>
-        </div>
+        ) : null
       ) : (
         /* GENERATED STATE: UNIFIED COURSE TASK & GROUPS GRID */
         <div className="space-y-6">
@@ -730,71 +759,75 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
               </p>
             </div>
 
-            <button
-              onClick={handleSaveGroupCollection}
-              className="btn-doodle px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5"
-              title="Simpan pembagian kelompok ini secara permanen agar dapat dilihat oleh seluruh anggota"
-            >
-              <Save className="w-4 h-4 text-slate-950" />
-              <span>Simpan Kelompok {currentCourseName}</span>
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleSaveGroupCollection}
+                className="btn-doodle px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5"
+                title="Simpan pembagian kelompok ini secara permanen agar dapat dilihat oleh seluruh anggota"
+              >
+                <Save className="w-4 h-4 text-slate-950" />
+                <span>Simpan Kelompok {currentCourseName}</span>
+              </button>
+            )}
           </div>
 
           {/* Unified Course Project Assignment Card */}
-          <div className="bg-sky-50 border-2 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[3px_3px_0px_#000] space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2 border-b border-sky-200 pb-2.5">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-sky-400 border border-slate-900 text-slate-900 flex items-center justify-center font-black shrink-0">
-                  <ClipboardList className="w-4 h-4 text-slate-950" />
+          {canEdit && (
+            <div className="bg-sky-50 border-2 border-slate-900 rounded-xl p-4 sm:p-5 shadow-[3px_3px_0px_#000] space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2 border-b border-sky-200 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-sky-400 border border-slate-900 text-slate-900 flex items-center justify-center font-black shrink-0">
+                    <ClipboardList className="w-4 h-4 text-slate-950" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-sm text-slate-900">
+                      Tugas / Proyek Kelompok Mata Kuliah ({currentCourseName})
+                    </h4>
+                    <p className="text-[11px] text-slate-600">
+                      Tugas ini berlaku seragam untuk seluruh kelompok di bawah.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-black text-sm text-slate-900">
-                    Tugas / Proyek Kelompok Mata Kuliah ({currentCourseName})
-                  </h4>
-                  <p className="text-[11px] text-slate-600">
-                    Tugas ini berlaku seragam untuk seluruh kelompok di bawah.
-                  </p>
+
+                <button
+                  type="button"
+                  onClick={handleSyncUnifiedTaskToSchedule}
+                  className="btn-doodle px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-lg border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5 shrink-0"
+                  title="Simpan tugas proyek ini secara otomatis ke jadwal dan tugas kelas"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Simpan ke Jadwal & Tugas</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="block text-[11px] font-black uppercase text-slate-800">
+                    Judul Tugas / Proyek Kelompok:
+                  </label>
+                  <input
+                    type="text"
+                    value={currentCourseTask.title}
+                    onChange={(e) => handleUpdateUnifiedCourseTask('title', e.target.value)}
+                    placeholder="Contoh: Makalah & Presentasi Bab 4, Demo Aplikasi Android..."
+                    className="w-full px-3 py-2 text-xs font-bold border-2 border-slate-900 rounded-lg bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-black uppercase text-slate-800">
+                    Deadline Pengumpulan:
+                  </label>
+                  <input
+                    type="date"
+                    value={currentCourseTask.deadline}
+                    onChange={(e) => handleUpdateUnifiedCourseTask('deadline', e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-bold border-2 border-slate-900 rounded-lg bg-white focus:outline-none"
+                  />
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={handleSyncUnifiedTaskToSchedule}
-                className="btn-doodle px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-lg border-2 border-slate-900 shadow-[2px_2px_0px_#000] flex items-center gap-1.5 shrink-0"
-                title="Simpan tugas proyek ini secara otomatis ke jadwal dan tugas kelas"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Simpan ke Jadwal & Tugas</span>
-              </button>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-              <div className="sm:col-span-2 space-y-1">
-                <label className="block text-[11px] font-black uppercase text-slate-800">
-                  Judul Tugas / Proyek Kelompok:
-                </label>
-                <input
-                  type="text"
-                  value={currentCourseTask.title}
-                  onChange={(e) => handleUpdateUnifiedCourseTask('title', e.target.value)}
-                  placeholder="Contoh: Makalah & Presentasi Bab 4, Demo Aplikasi Android..."
-                  className="w-full px-3 py-2 text-xs font-bold border-2 border-slate-900 rounded-lg bg-white focus:outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-[11px] font-black uppercase text-slate-800">
-                  Deadline Pengumpulan:
-                </label>
-                <input
-                  type="date"
-                  value={currentCourseTask.deadline}
-                  onChange={(e) => handleUpdateUnifiedCourseTask('deadline', e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-bold border-2 border-slate-900 rounded-lg bg-white focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Group Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -815,7 +848,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                         <span className="w-8 h-8 rounded-lg bg-amber-300 border-2 border-slate-900 text-slate-900 font-black text-xs flex items-center justify-center shadow-[1px_1px_0px_#000] shrink-0">
                           #{group.id}
                         </span>
-                        {isRenaming ? (
+                        {canEdit && isRenaming ? (
                           <div className="flex items-center gap-1 flex-1">
                             <input
                               type="text"
@@ -841,14 +874,16 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                             <h4 className="font-black text-xs sm:text-sm text-slate-900 truncate">
                               {group.name}
                             </h4>
-                            <button
-                              type="button"
-                              onClick={() => setEditingGroupId(group.id)}
-                              className="p-1 text-slate-500 hover:text-slate-900 transition"
-                              title="Ubah nama kelompok"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </button>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => setEditingGroupId(group.id)}
+                                className="p-1 text-slate-500 hover:text-slate-900 transition"
+                                title="Ubah nama kelompok"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -967,14 +1002,16 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
                           <span>{isCollapsed ? 'Buka Detail' : 'Minimize'}</span>
                         </button>
 
-                        <button
-                          onClick={() => handleDeleteSavedCollection(col.id, col.courseName)}
-                          className="p-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-lg border-2 border-slate-900 shadow-[1px_1px_0px_#000] flex items-center gap-1 text-xs font-bold"
-                          title="Hapus simpanan kelompok ini"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Hapus</span>
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => handleDeleteSavedCollection(col.id, col.courseName)}
+                            className="p-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-lg border-2 border-slate-900 shadow-[1px_1px_0px_#000] flex items-center gap-1 text-xs font-bold"
+                            title="Hapus simpanan kelompok ini"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Hapus</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 

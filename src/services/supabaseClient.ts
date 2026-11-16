@@ -23,12 +23,13 @@ import { toTitleCase } from '../utils/textFormatting.ts';
 import { syncRemotePinHash } from '../utils/security.ts';
 
 /**
- * CORE DATABASE SERVICE - KELAS GUE v4.9.0
- * Snapshot-First Cloud Sync + Multi-Class Isolation (No SQL Schema Changes)
+ * CORE DATABASE SERVICE - KELAS GUE v4.10.0
+ * Auto Snapshot-First Cloud Sync + Public Dual-Channel Registry + Multi-Class Isolation
  */
 
 export const SUPER_ADMIN_EMAIL = 'mrachmanfm@gmail.com';
 export const DEFAULT_CLASS_ID = '01_SAKP_014';
+export const SYSTEM_REGISTRY_AUDIT_ACTION = '__SYSTEM_CLASS_REGISTRY__';
 
 export const DEFAULT_CLASS_DEF: ClassDefinition = {
   id: DEFAULT_CLASS_ID,
@@ -37,7 +38,9 @@ export const DEFAULT_CLASS_DEF: ClassDefinition = {
   academicYear: 'Semester Ganjil 2026/2027',
   createdAt: '2026-01-01T00:00:00.000Z',
   createdBy: 'System',
-  isDefault: true
+  isDefault: true,
+  isArchived: false,
+  semesterOrder: 1
 };
 
 // Initial default settings
@@ -381,8 +384,69 @@ export class LocalKasRepository {
     localStorage.setItem(this.KEY_CLASS_REGISTRY, JSON.stringify(reg));
   }
 
+  private static normText(val?: string): string {
+    return (val || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  private static normNim(val?: string): string {
+    return (val || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+  }
+
+  public static sortClassesByPriority(classes: ClassDefinition[]): ClassDefinition[] {
+    return [...classes].sort((a, b) => {
+      const aArchived = a.isArchived ? 1 : 0;
+      const bArchived = b.isArchived ? 1 : 0;
+      if (aArchived !== bArchived) return aArchived - bArchived;
+      const aOrder = a.semesterOrder ?? 0;
+      const bOrder = b.semesterOrder ?? 0;
+      if (aOrder !== bOrder) return bOrder - aOrder;
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
+  }
+
   public static getCachedClasses(): ClassDefinition[] {
-    return this.getLocalRegistry().classes;
+    return this.sortClassesByPriority(this.getLocalRegistry().classes);
+  }
+
+  private static mergeRegistries(
+    sources: Array<{ classes?: ClassDefinition[]; memberships?: ClassMembershipRequest[]; updatedAt?: string } | null | undefined>
+  ): { classes: ClassDefinition[]; memberships: ClassMembershipRequest[]; updatedAt: string } {
+    // Sort sources oldest -> newest so newer class definitions overwrite older edits cleanly
+    const valid = sources.filter((s): s is NonNullable<typeof s> => Boolean(s));
+    valid.sort((a, b) => (a.updatedAt || '').localeCompare(b.updatedAt || ''));
+
+    const mergedClassesMap = new Map<string, ClassDefinition>();
+    mergedClassesMap.set(DEFAULT_CLASS_ID, DEFAULT_CLASS_DEF);
+
+    const membershipsMap = new Map<string, ClassMembershipRequest>();
+
+    valid.forEach(src => {
+      (src.classes || []).forEach(c => {
+        if (!c || !c.id) return;
+        const prev = mergedClassesMap.get(c.id);
+        mergedClassesMap.set(c.id, prev ? { ...prev, ...c } : c);
+      });
+      (src.memberships || []).forEach(m => {
+        if (!m || !m.email || !m.classId) return;
+        const key = `${m.email.toLowerCase()}__${m.classId}`;
+        const prev = membershipsMap.get(key);
+        const mTime = m.reviewedAt || m.createdAt || '';
+        const pTime = prev ? (prev.reviewedAt || prev.createdAt || '') : '';
+        if (!prev || mTime >= pTime) {
+          membershipsMap.set(key, m);
+        }
+      });
+    });
+
+    const latestUpdatedAt =
+      valid.reduce((latest, s) => ((s.updatedAt || '') > latest ? s.updatedAt || latest : latest), '') ||
+      new Date().toISOString();
+
+    return {
+      classes: this.sortClassesByPriority(Array.from(mergedClassesMap.values())),
+      memberships: Array.from(membershipsMap.values()),
+      updatedAt: latestUpdatedAt
+    };
   }
 
   public static async fetchClassRegistry(): Promise<{
@@ -392,92 +456,138 @@ export class LocalKasRepository {
   }> {
     const local = this.getLocalRegistry();
     const client = getSupabaseClient();
-    if (!client) return local;
+    if (!client) {
+      return { ...local, classes: this.sortClassesByPriority(local.classes) };
+    }
 
     try {
-      const remote = await downloadJsonFromStorage<{
-        classes: ClassDefinition[];
-        memberships: ClassMembershipRequest[];
-        updatedAt: string;
-      }>('system/class_registry.json');
-
-      const mergedClassesMap = new Map<string, ClassDefinition>();
-      mergedClassesMap.set(DEFAULT_CLASS_ID, DEFAULT_CLASS_DEF);
-      local.classes.forEach(c => mergedClassesMap.set(c.id, c));
-      if (remote?.classes) {
-        remote.classes.forEach(c => mergedClassesMap.set(c.id, c));
-      }
-
-      const membershipsMap = new Map<string, ClassMembershipRequest>();
-      local.memberships.forEach(m => membershipsMap.set(`${m.email.toLowerCase()}__${m.classId}`, m));
-      if (remote?.memberships) {
-        remote.memberships.forEach(m => {
-          const key = `${m.email.toLowerCase()}__${m.classId}`;
-          const prev = membershipsMap.get(key);
-          if (!prev || (m.reviewedAt || m.createdAt) >= (prev.reviewedAt || prev.createdAt)) {
-            membershipsMap.set(key, m);
-          }
-        });
-      }
-
-      // Also inspect SQL role_claims table as backup source of join requests (no SQL changes)
-      try {
-        const { data: claims } = await client
+      const [remoteStorage, auditRegistryRows, roleClaimsRes] = await Promise.all([
+        downloadJsonFromStorage<{
+          classes: ClassDefinition[];
+          memberships: ClassMembershipRequest[];
+          updatedAt: string;
+        }>('system/class_registry.json').catch(() => null),
+        client
+          .from('audit_logs')
+          .select('id,details,created_at')
+          .eq('action', SYSTEM_REGISTRY_AUDIT_ACTION)
+          .order('created_at', { ascending: false })
+          .limit(5)
+          .then(r => r.data || [], () => []),
+        client
           .from('role_claims')
           .select('*')
           .like('requested_role', 'CLASS_JOIN:%')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .then(r => r.data || [], () => [])
+      ]);
 
-        (claims || []).forEach((claim: any) => {
+      const auditSources = (auditRegistryRows || [])
+        .map((row: any) => {
           try {
-            const payload = claim.message ? JSON.parse(claim.message) : {};
-            const classId = payload.classId || String(claim.requested_role).replace('CLASS_JOIN:', '');
-            const key = `${String(claim.email).toLowerCase()}__${classId}`;
-            const candidate: ClassMembershipRequest = {
-              id: claim.id,
-              email: String(claim.email).toLowerCase(),
-              fullName: payload.fullName || String(claim.email).split('@')[0],
-              nim: payload.nim || '',
-              classId,
-              className: payload.className || classId,
-              status: claim.status || 'pending',
-              assignedRole: payload.assignedRole || 'anggota',
-              linkedMemberId: payload.linkedMemberId,
-              linkedMemberName: payload.linkedMemberName,
-              createdAt: claim.created_at,
-              reviewedAt: claim.reviewed_at || undefined
-            };
-            const existing = membershipsMap.get(key);
-            if (!existing || (candidate.reviewedAt || candidate.createdAt) > (existing.reviewedAt || existing.createdAt)) {
-              membershipsMap.set(key, candidate);
+            const parsed = typeof row.details === 'string' ? JSON.parse(row.details) : row.details;
+            if (parsed && (Array.isArray(parsed.classes) || Array.isArray(parsed.memberships))) {
+              return {
+                classes: parsed.classes || [],
+                memberships: parsed.memberships || [],
+                updatedAt: parsed.updatedAt || row.created_at
+              };
             }
           } catch {
-            // ignore non-JSON claim
+            // ignore malformed system row
           }
-        });
-      } catch {
-        // RLS or offline
-      }
+          return null;
+        })
+        .filter(Boolean);
 
-      const merged = {
-        classes: Array.from(mergedClassesMap.values()),
-        memberships: Array.from(membershipsMap.values()),
-        updatedAt: remote?.updatedAt || new Date().toISOString()
-      };
+      const claimsAsMemberships: ClassMembershipRequest[] = [];
+      (roleClaimsRes || []).forEach((claim: any) => {
+        try {
+          const payload = claim.message ? JSON.parse(claim.message) : {};
+          const classId = payload.classId || String(claim.requested_role).replace('CLASS_JOIN:', '');
+          claimsAsMemberships.push({
+            id: claim.id,
+            email: String(claim.email).toLowerCase(),
+            fullName: payload.fullName || String(claim.email).split('@')[0],
+            nim: payload.nim || '',
+            classId,
+            className: payload.className || classId,
+            status: claim.status || 'pending',
+            assignedRole: payload.assignedRole || 'anggota',
+            linkedMemberId: payload.linkedMemberId,
+            linkedMemberName: payload.linkedMemberName,
+            createdAt: claim.created_at,
+            reviewedAt: claim.reviewed_at || undefined,
+            autoMatched: payload.autoMatched
+          });
+        } catch {
+          // ignore
+        }
+      });
+
+      const merged = this.mergeRegistries([
+        local,
+        remoteStorage,
+        ...auditSources,
+        claimsAsMemberships.length > 0 ? { memberships: claimsAsMemberships, updatedAt: local.updatedAt } : null
+      ]);
+
       this.saveLocalRegistry(merged);
       return merged;
     } catch {
-      return local;
+      return { ...local, classes: this.sortClassesByPriority(local.classes) };
     }
   }
 
   private static async persistRegistry(reg: { classes: ClassDefinition[]; memberships: ClassMembershipRequest[]; updatedAt: string }): Promise<void> {
-    this.saveLocalRegistry(reg);
-    try {
-      await uploadJsonToStorage('system/class_registry.json', reg);
-    } catch (e) {
-      console.warn('Could not upload class_registry.json to storage:', e);
-    }
+    const sortedReg = {
+      ...reg,
+      classes: this.sortClassesByPriority(reg.classes),
+      updatedAt: reg.updatedAt || new Date().toISOString()
+    };
+    this.saveLocalRegistry(sortedReg);
+
+    // Channel 1: Supabase Storage public JSON
+    const storageUploadPromise = uploadJsonToStorage('system/class_registry.json', sortedReg).catch((e) => {
+      console.warn('Storage registry fallback note:', e);
+    });
+
+    // Channel 2: Public SQL audit_logs mirror (guarantees cross-device & preview visibility without SQL schema changes)
+    const client = getSupabaseClient();
+    const sqlMirrorPromise = client
+      ? (async () => {
+          try {
+            const snapshotId = generateUUID();
+            await client.from('audit_logs').insert([
+              {
+                id: snapshotId,
+                action: SYSTEM_REGISTRY_AUDIT_ACTION,
+                details: JSON.stringify(sortedReg),
+                performed_by: 'SYSTEM_REGISTRY',
+                user_role: 'system',
+                created_at: sortedReg.updatedAt
+              }
+            ]);
+            // Best-effort trim older system registry rows so table stays compact
+            const { data: oldRows } = await client
+              .from('audit_logs')
+              .select('id,created_at')
+              .eq('action', SYSTEM_REGISTRY_AUDIT_ACTION)
+              .order('created_at', { ascending: false })
+              .range(3, 25);
+            if (oldRows && oldRows.length > 0) {
+              await client
+                .from('audit_logs')
+                .delete()
+                .in('id', oldRows.map((r: any) => r.id));
+            }
+          } catch (err) {
+            console.warn('SQL public registry mirror warning:', err);
+          }
+        })()
+      : Promise.resolve();
+
+    await Promise.all([storageUploadPromise, sqlMirrorPromise]);
   }
 
   public static async createNewClass(input: {
@@ -485,6 +595,7 @@ export class LocalKasRepository {
     name: string;
     academicYear: string;
     createdBy: string;
+    isArchived?: boolean;
   }): Promise<ClassDefinition> {
     const cleanCode = input.code.trim().toUpperCase();
     const id = cleanCode.replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '') || `CLS_${Date.now()}`;
@@ -495,6 +606,8 @@ export class LocalKasRepository {
       throw new Error(`Kelas "${existing.code}" sudah terdaftar!`);
     }
 
+    const maxOrder = reg.classes.reduce((max, c) => Math.max(max, c.semesterOrder ?? 1), 1);
+
     const newClass: ClassDefinition = {
       id,
       code: cleanCode,
@@ -502,7 +615,9 @@ export class LocalKasRepository {
       academicYear: input.academicYear.trim() || DEFAULT_SETTINGS.academicYear,
       createdAt: new Date().toISOString(),
       createdBy: input.createdBy || 'Super Admin',
-      isDefault: false
+      isDefault: false,
+      isArchived: Boolean(input.isArchived),
+      semesterOrder: maxOrder + 1
     };
 
     const updatedReg = {
@@ -527,6 +642,111 @@ export class LocalKasRepository {
     return newClass;
   }
 
+  public static async updateClassDefinition(
+    classId: string,
+    updates: Partial<Pick<ClassDefinition, 'code' | 'name' | 'academicYear' | 'isArchived' | 'semesterOrder' | 'googleSpreadsheetId' | 'googleSpreadsheetUrl' | 'lastSheetsSyncAt'>>
+  ): Promise<ClassDefinition> {
+    const reg = await this.fetchClassRegistry();
+    const now = new Date().toISOString();
+    let updatedClass: ClassDefinition | undefined;
+
+    const updatedClasses = reg.classes.map(c => {
+      if (c.id === classId) {
+        updatedClass = {
+          ...c,
+          ...updates,
+          code: updates.code !== undefined ? updates.code.trim().toUpperCase() : c.code,
+          name: updates.name !== undefined ? updates.name.trim() || c.name : c.name,
+          academicYear: updates.academicYear !== undefined ? updates.academicYear.trim() || c.academicYear : c.academicYear
+        };
+        return updatedClass;
+      }
+      return c;
+    });
+
+    if (!updatedClass) {
+      throw new Error('Kelas yang ingin diubah tidak ditemukan.');
+    }
+
+    await this.persistRegistry({
+      classes: updatedClasses,
+      memberships: reg.memberships,
+      updatedAt: now
+    });
+
+    // Keep class settings in sync with updated metadata
+    const currentSettings = this.getSettings(classId);
+    const syncedSettings: ClassSettings = {
+      ...currentSettings,
+      classCode: updatedClass.code,
+      className: updatedClass.name,
+      academicYear: updatedClass.academicYear,
+      googleSpreadsheetId: updatedClass.googleSpreadsheetId ?? currentSettings.googleSpreadsheetId,
+      googleSpreadsheetUrl: updatedClass.googleSpreadsheetUrl ?? currentSettings.googleSpreadsheetUrl,
+      lastSheetsSyncAt: updatedClass.lastSheetsSyncAt ?? currentSettings.lastSheetsSyncAt
+    };
+    await this.saveSettings(syncedSettings, classId);
+
+    return updatedClass;
+  }
+
+  private static async getMembersForAutoMatch(classId: string): Promise<KasMember[]> {
+    const cached = this.getMembers(classId);
+    if (cached.length > 0) return cached;
+
+    try {
+      const snap = await downloadJsonFromStorage<ClassSnapshotManifest>(`classes/${classId}/snapshot.json`);
+      if (snap && Array.isArray(snap.members) && snap.members.length > 0) {
+        return snap.members;
+      }
+    } catch {
+      // ignore
+    }
+
+    if (classId === DEFAULT_CLASS_ID) {
+      const sqlMembers = await this.fetchMembersFromSupabase(DEFAULT_CLASS_ID);
+      if (sqlMembers.length > 0) return sqlMembers;
+    }
+
+    return [];
+  }
+
+  private static async tryAutoMatchMemberInActiveClasses(
+    classes: ClassDefinition[],
+    fullName?: string,
+    nim?: string,
+    email?: string
+  ): Promise<{ matchedClass: ClassDefinition; member: KasMember } | null> {
+    const nName = this.normText(fullName);
+    const nNim = this.normNim(nim);
+    const nEmail = (email || '').toLowerCase().trim();
+    if (!nName && !nNim && !nEmail) return null;
+
+    // Only consider active (non-archived) classes sorted newest first
+    const activeClasses = this.sortClassesByPriority(classes).filter(c => !c.isArchived);
+
+    for (const cls of activeClasses) {
+      const members = await this.getMembersForAutoMatch(cls.id);
+      const found = members.find(m => {
+        if (m.isActive === false) return false;
+        // 1. Direct email match if member has email saved
+        if (nEmail && m.email && m.email.toLowerCase().trim() === nEmail) {
+          return true;
+        }
+        // 2. Strict Name + NIM match in active newest class
+        if (nName && nNim && m.studentId) {
+          return this.normText(m.name) === nName && this.normNim(m.studentId) === nNim;
+        }
+        return false;
+      });
+
+      if (found) {
+        return { matchedClass: cls, member: found };
+      }
+    }
+    return null;
+  }
+
   public static async submitClassJoinRequest(input: {
     email: string;
     fullName: string;
@@ -536,47 +756,70 @@ export class LocalKasRepository {
   }): Promise<ClassMembershipRequest> {
     const emailLower = input.email.toLowerCase().trim();
     const reg = await this.fetchClassRegistry();
+
+    // Check if Nama + NIM already matches a registered active student in the newest active class
+    const autoMatch = await this.tryAutoMatchMemberInActiveClasses(
+      reg.classes,
+      input.fullName,
+      input.nim,
+      emailLower
+    );
+
+    const now = new Date().toISOString();
+    const isAutoApproved = Boolean(autoMatch);
+    const resolvedClassId = autoMatch ? autoMatch.matchedClass.id : input.classId;
+    const resolvedClassName = autoMatch ? autoMatch.matchedClass.name : input.className;
+
     const req: ClassMembershipRequest = {
       id: generateUUID(),
       email: emailLower,
       fullName: toTitleCase(input.fullName.trim() || emailLower.split('@')[0]),
       nim: input.nim?.trim() || undefined,
-      classId: input.classId,
-      className: input.className,
-      status: 'pending',
+      classId: resolvedClassId,
+      className: resolvedClassName,
+      status: isAutoApproved ? 'approved' : 'pending',
       assignedRole: 'anggota',
-      createdAt: new Date().toISOString()
+      linkedMemberId: autoMatch?.member.id,
+      linkedMemberName: autoMatch?.member.name,
+      createdAt: now,
+      reviewedAt: isAutoApproved ? now : undefined,
+      reviewedBy: isAutoApproved ? 'Sistem (Cocok Nama & NIM)' : undefined,
+      autoMatched: isAutoApproved
     };
 
     const filtered = reg.memberships.filter(
-      m => !(m.email.toLowerCase() === emailLower && m.classId === input.classId)
+      m => !(m.email.toLowerCase() === emailLower && m.classId === resolvedClassId)
     );
     const updatedReg = {
       classes: reg.classes,
       memberships: [req, ...filtered],
-      updatedAt: new Date().toISOString()
+      updatedAt: now
     };
     await this.persistRegistry(updatedReg);
 
-    // Mirror to role_claims if authenticated
+    // Mirror to role_claims if accessible
     const client = getSupabaseClient();
     if (client) {
       try {
         await client.from('role_claims').insert([{
           id: req.id,
           email: emailLower,
-          requested_role: `CLASS_JOIN:${input.classId}`,
-          status: 'pending',
+          requested_role: `CLASS_JOIN:${resolvedClassId}`,
+          status: req.status,
+          reviewed_at: req.reviewedAt || null,
           message: JSON.stringify({
-            classId: input.classId,
-            className: input.className,
+            classId: resolvedClassId,
+            className: resolvedClassName,
             fullName: req.fullName,
             nim: req.nim || '',
-            assignedRole: 'anggota'
+            assignedRole: 'anggota',
+            linkedMemberId: req.linkedMemberId,
+            linkedMemberName: req.linkedMemberName,
+            autoMatched: req.autoMatched
           })
         }]);
       } catch {
-        // Storage registry already saved cleanly
+        // Storage + audit_logs public mirror already persisted reliably
       }
     }
 
@@ -681,51 +924,128 @@ export class LocalKasRepository {
     }
   }
 
-  public static async checkUserClassAccess(email: string): Promise<{
+  public static async checkUserClassAccess(
+    email: string,
+    fullName?: string,
+    nim?: string
+  ): Promise<{
     status: 'approved' | 'pending' | 'unassigned';
     approvedClasses: ClassDefinition[];
     defaultApprovedClassId?: string;
     pendingRequest?: ClassMembershipRequest;
     assignedRole?: UserRole;
+    autoMatched?: boolean;
   }> {
     const emailLower = (email || '').toLowerCase().trim();
     const reg = await this.fetchClassRegistry();
+    const sortedAll = this.sortClassesByPriority(reg.classes);
+    const newestActiveClass = sortedAll.find(c => !c.isArchived) || sortedAll[0] || DEFAULT_CLASS_DEF;
 
-    // Super Admin always has immediate access to all classes
+    // Super Admin always has immediate access to all classes, defaulting to newest active class if unset
     if (emailLower === SUPER_ADMIN_EMAIL.toLowerCase()) {
+      const curActive = this.getActiveClassId();
+      const curValid = sortedAll.some(c => c.id === curActive);
       return {
         status: 'approved',
-        approvedClasses: reg.classes,
-        defaultApprovedClassId: this.getActiveClassId() || DEFAULT_CLASS_ID,
+        approvedClasses: sortedAll,
+        defaultApprovedClassId: curValid ? curActive : newestActiveClass.id,
         assignedRole: 'superadmin'
       };
     }
 
-    // Check approved membership requests for this user
+    // 1. Check existing approved memberships — prioritize non-archived newest active classes
     const userRequests = reg.memberships.filter(m => m.email.toLowerCase() === emailLower);
     const approvedReqs = userRequests.filter(m => m.status === 'approved');
 
     if (approvedReqs.length > 0) {
       const approvedIds = new Set(approvedReqs.map(r => r.classId));
-      const approvedClasses = reg.classes.filter(c => approvedIds.has(c.id));
+      const approvedClasses = sortedAll.filter(c => approvedIds.has(c.id));
+      const activeApproved = approvedClasses.filter(c => !c.isArchived);
+
+      if (activeApproved.length > 0) {
+        const primaryClass = activeApproved[0];
+        const primaryReq = approvedReqs.find(r => r.classId === primaryClass.id) || approvedReqs[0];
+        return {
+          status: 'approved',
+          approvedClasses: activeApproved,
+          defaultApprovedClassId: primaryClass.id,
+          assignedRole: primaryReq.assignedRole
+        };
+      }
+      // If all previous classes were archived, still keep historical view unless auto-matched into a newer active class below
+    }
+
+    // 2. Check automatic Name + NIM or member email matching in newest active (non-archived) class
+    const pendingReq = userRequests.find(m => m.status === 'pending');
+    const regUser = getRegisteredUsers().find(u => u.email.toLowerCase() === emailLower);
+    const candidateName = fullName || pendingReq?.fullName || regUser?.linkedMemberName || regUser?.name;
+    const candidateNim = nim || pendingReq?.nim;
+
+    const autoMatch = await this.tryAutoMatchMemberInActiveClasses(
+      sortedAll,
+      candidateName,
+      candidateNim,
+      emailLower
+    );
+
+    if (autoMatch) {
+      const now = new Date().toISOString();
+      const approvedReq: ClassMembershipRequest = {
+        id: pendingReq?.id || generateUUID(),
+        email: emailLower,
+        fullName: toTitleCase(autoMatch.member.name),
+        nim: autoMatch.member.studentId || candidateNim,
+        classId: autoMatch.matchedClass.id,
+        className: autoMatch.matchedClass.name,
+        status: 'approved',
+        assignedRole: pendingReq?.assignedRole || 'anggota',
+        linkedMemberId: autoMatch.member.id,
+        linkedMemberName: autoMatch.member.name,
+        createdAt: pendingReq?.createdAt || now,
+        reviewedAt: now,
+        reviewedBy: 'Sistem (Cocok Nama & NIM)',
+        autoMatched: true
+      };
+      const filtered = reg.memberships.filter(
+        m => !(m.email.toLowerCase() === emailLower && m.classId === autoMatch.matchedClass.id)
+      );
+      await this.persistRegistry({
+        classes: sortedAll,
+        memberships: [approvedReq, ...filtered],
+        updatedAt: now
+      });
+
+      return {
+        status: 'approved',
+        approvedClasses: [autoMatch.matchedClass],
+        defaultApprovedClassId: autoMatch.matchedClass.id,
+        assignedRole: approvedReq.assignedRole,
+        autoMatched: true
+      };
+    }
+
+    // 3. Fallback to approved legacy archived class if no newer active match exists
+    if (approvedReqs.length > 0) {
+      const approvedIds = new Set(approvedReqs.map(r => r.classId));
+      const approvedClasses = sortedAll.filter(c => approvedIds.has(c.id));
       const primaryReq = approvedReqs[0];
       return {
         status: 'approved',
-        approvedClasses: approvedClasses.length > 0 ? approvedClasses : [DEFAULT_CLASS_DEF],
-        defaultApprovedClassId: primaryReq.classId,
+        approvedClasses: approvedClasses.length > 0 ? approvedClasses : [newestActiveClass],
+        defaultApprovedClassId: approvedClasses[0]?.id || primaryReq.classId,
         assignedRole: primaryReq.assignedRole
       };
     }
 
-    // Preserve pre-existing approved officers (bendahara/sekretaris in whitelist) for 01 SAKP 014
+    // 4. Preserve pre-existing approved officers (bendahara/sekretaris in whitelist) in newest active non-archived class
     try {
       const whitelist = await this.getWhitelist();
       const matchedWl = whitelist.find(w => w.email?.toLowerCase() === emailLower);
       if (matchedWl && (matchedWl.role === 'bendahara' || matchedWl.role === 'sekretaris')) {
         return {
           status: 'approved',
-          approvedClasses: [DEFAULT_CLASS_DEF],
-          defaultApprovedClassId: DEFAULT_CLASS_ID,
+          approvedClasses: [newestActiveClass],
+          defaultApprovedClassId: newestActiveClass.id,
           assignedRole: matchedWl.role
         };
       }
@@ -733,12 +1053,11 @@ export class LocalKasRepository {
       // ignore
     }
 
-    const pendingRequest = userRequests.find(m => m.status === 'pending');
-    if (pendingRequest) {
+    if (pendingReq) {
       return {
         status: 'pending',
         approvedClasses: [],
-        pendingRequest
+        pendingRequest: pendingReq
       };
     }
 
@@ -762,7 +1081,7 @@ export class LocalKasRepository {
 
     return {
       classId: cid,
-      version: '4.9.0',
+      version: '4.10.0',
       updatedAt: new Date().toISOString(),
       updatedBy: updatedBy || 'Pengurus',
       settings: this.getSettings(cid),
@@ -889,7 +1208,30 @@ export class LocalKasRepository {
     if (this.publishTimer) clearTimeout(this.publishTimer);
     this.publishTimer = setTimeout(() => {
       this.publishClassSnapshot(cid, updatedBy);
-    }, 1500);
+    }, 800);
+  }
+
+  /**
+   * Automatic lightweight metadata check for returning/idle users.
+   * Downloads ONLY the single snapshot.json automatically if cloud meta is newer than local cache.
+   */
+  public static async autoCheckAndSyncIfStale(classId?: string): Promise<boolean> {
+    const cid = classId || this.getActiveClassId();
+    if (this.isPublishing || currentSyncStatus === 'syncing') return false;
+    const client = getSupabaseClient();
+    if (!client) return false;
+
+    try {
+      const meta = await downloadJsonFromStorage<ClassSnapshotMeta>(`classes/${cid}/meta.json`);
+      const localUpdatedAt = localStorage.getItem(this.scopedKey(this.KEY_SNAPSHOT_UPDATED_AT, cid));
+      if (!meta?.updatedAt || meta.updatedAt === localUpdatedAt) {
+        return false;
+      }
+      const res = await this.syncClassFast(cid, { forceDownload: true });
+      return res.updated;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -1458,7 +1800,8 @@ export class LocalKasRepository {
   public static getAuditLogs(classId?: string): AuditLogEntry[] {
     const cid = classId || this.getActiveClassId();
     const data = localStorage.getItem(this.scopedKey(this.KEY_AUDIT, cid));
-    return data ? JSON.parse(data) : [];
+    const parsed: AuditLogEntry[] = data ? JSON.parse(data) : [];
+    return parsed.filter(l => l.action !== SYSTEM_REGISTRY_AUDIT_ACTION);
   }
 
   public static async clearAuditLogs(): Promise<void> {
@@ -1466,7 +1809,10 @@ export class LocalKasRepository {
     localStorage.removeItem(this.scopedKey(this.KEY_AUDIT, cid));
     const client = getSupabaseClient();
     if (client && this.isDefaultClass(cid)) {
-      await client.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await client
+        .from('audit_logs')
+        .delete()
+        .neq('action', SYSTEM_REGISTRY_AUDIT_ACTION);
     }
     this.scheduleSnapshotPublish(cid);
   }
@@ -1513,17 +1859,24 @@ export class LocalKasRepository {
     const client = getSupabaseClient();
     if (!client || !this.isDefaultClass(cid)) return this.getAuditLogs(cid);
 
-    const { data, error } = await client.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100);
+    const { data, error } = await client
+      .from('audit_logs')
+      .select('*')
+      .neq('action', SYSTEM_REGISTRY_AUDIT_ACTION)
+      .order('created_at', { ascending: false })
+      .limit(100);
     if (error) return this.getAuditLogs(cid);
 
-    const mapped: AuditLogEntry[] = (data || []).map(l => ({
-      id: l.id,
-      timestamp: l.created_at,
-      action: l.action,
-      details: l.details,
-      performedBy: l.performed_by,
-      userRole: l.user_role
-    }));
+    const mapped: AuditLogEntry[] = (data || [])
+      .filter(l => l.action !== SYSTEM_REGISTRY_AUDIT_ACTION)
+      .map(l => ({
+        id: l.id,
+        timestamp: l.created_at,
+        action: l.action,
+        details: l.details,
+        performedBy: l.performed_by,
+        userRole: l.user_role
+      }));
 
     localStorage.setItem(this.scopedKey(this.KEY_AUDIT, cid), JSON.stringify(mapped));
     return mapped;
@@ -2139,7 +2492,7 @@ export class LocalKasRepository {
     const minutes = this.getMeetingMinutes(cid);
 
     const backupData: ClassBackupData = {
-      version: '4.9.0',
+      version: '4.10.0',
       exportedAt: new Date().toISOString(),
       exportedBy: exportedBy || 'Pengurus',
       role: role || 'pengurus',
@@ -2161,7 +2514,7 @@ export class LocalKasRepository {
       const downloadAnchor = document.createElement('a');
       const dateStr = new Date().toISOString().split('T')[0];
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `kelasgue_${cid}_backup_${dateStr}_v4.9.0.json`);
+      downloadAnchor.setAttribute("download", `kelasgue_${cid}_backup_${dateStr}_v4.10.0.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();

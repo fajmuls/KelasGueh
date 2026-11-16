@@ -24,7 +24,9 @@ import {
   FileText,
   Eye,
   Coffee,
-  GraduationCap
+  GraduationCap,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWA/PWAInstallButton.tsx';
 import { LocalKasRepository, DEFAULT_CLASS_DEF } from '../../services/supabaseClient.ts';
@@ -89,6 +91,8 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   const [bgmVol, setBgmVol] = useState(() => sfx.getBgmVolume());
   const [sfxVol, setSfxVol] = useState(() => sfx.getSfxVolume());
   const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const [showNavClassMenu, setShowNavClassMenu] = useState(false);
+  const [showDrawerClassMenu, setShowDrawerClassMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPatchNotesModal, setShowPatchNotesModal] = useState(false);
 
@@ -195,24 +199,72 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
             />
           </div>
           <div className="min-w-0">
-            <h1 className="text-xs sm:text-base font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5 truncate">
-              <span className="truncate">{resolvedActiveClass.code || classNameTitle || '01 SAKP 014'}</span>
-              {availableClasses.length > 1 && onSwitchClass && (
-                <select
-                  aria-label="Pilih kelas aktif"
-                  value={resolvedActiveClass.id}
-                  onChange={(e) => {
-                    sfx.playOptionSelect();
-                    onSwitchClass(e.target.value);
-                  }}
-                  className="hidden xl:inline-block text-[10px] font-black bg-amber-100 border border-slate-900 rounded px-1.5 py-0.5 cursor-pointer text-slate-900"
-                >
-                  {availableClasses.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.code}
-                    </option>
-                  ))}
-                </select>
+            <h1 className="text-xs sm:text-base font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5">
+              {availableClasses.length > 1 && onSwitchClass ? (
+                <div className="relative">
+                  <button
+                    type="button"
+                    aria-label="Pilih kelas aktif"
+                    aria-expanded={showNavClassMenu}
+                    onClick={() => {
+                      sfx.playClick();
+                      setShowNavClassMenu(prev => !prev);
+                    }}
+                    className="btn-doodle inline-flex items-center gap-1.5 bg-amber-100 hover:bg-amber-200 border-2 border-slate-900 rounded-md px-2 py-0.5 text-xs sm:text-sm font-black text-slate-900 shadow-[1.5px_1.5px_0px_#1E293B]"
+                  >
+                    <span className="truncate max-w-[120px] sm:max-w-[170px]">{resolvedActiveClass.code || classNameTitle || '01 SAKP 014'}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showNavClassMenu ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showNavClassMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowNavClassMenu(false)} />
+                      <div className="absolute left-0 top-full mt-2 w-64 card-doodle bg-white rounded-xl p-2 z-[120] border-2 border-slate-900 shadow-2xl space-y-1">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-500 px-2 py-1 border-b border-slate-200">
+                          Pilih Kelas Aktif
+                        </p>
+                        <div className="max-h-60 overflow-y-auto space-y-1 pt-0.5">
+                          {availableClasses.map((c) => {
+                            const isSelected = c.id === resolvedActiveClass.id;
+                            return (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => {
+                                  sfx.playOptionSelect();
+                                  setShowNavClassMenu(false);
+                                  onSwitchClass(c.id);
+                                }}
+                                className={`w-full text-left px-2.5 py-2 rounded-lg border-2 text-xs transition flex items-center justify-between gap-2 ${
+                                  isSelected
+                                    ? 'bg-amber-200 border-slate-900 text-slate-950 font-black shadow-[1.5px_1.5px_0px_#000]'
+                                    : 'bg-white border-transparent hover:border-slate-300 hover:bg-amber-50 text-slate-800 font-bold'
+                                }`}
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="truncate">{c.code}</span>
+                                    <span className={`text-[8.5px] font-black uppercase px-1.5 py-0.2 rounded border border-slate-900 shrink-0 ${
+                                      c.isArchived ? 'bg-slate-200 text-slate-700' : 'bg-emerald-200 text-emerald-950'
+                                    }`}>
+                                      {c.isArchived ? 'Arsip' : 'Aktif'}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 truncate font-medium">
+                                    {c.academicYear}
+                                  </p>
+                                </div>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-emerald-800 shrink-0 stroke-[3]" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <span className="truncate">{resolvedActiveClass.code || classNameTitle || '01 SAKP 014'}</span>
               )}
               <span className="hidden lg:inline-block text-[9px] bg-emerald-200 border border-slate-900 px-1.5 py-0.5 rounded-xs font-bold text-slate-900 shrink-0">
                 {activeDomain === 'sekretaris' ? 'Sekretariat' : activeDomain === 'admin' ? 'Master Admin' : 'Bendahara'}
@@ -541,28 +593,66 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                 </div>
               </div>
 
-              {/* Multi-Class Switcher inside Drawer (when > 1 class or Super Admin) */}
+              {/* Multi-Class Switcher inside Drawer (Cohesive Doodle Dropdown) */}
               {availableClasses.length > 0 && onSwitchClass && (
-                <div className="space-y-1.5 p-3 bg-white rounded-xl border-2 border-slate-900">
+                <div className="space-y-2 p-3 bg-white rounded-xl border-2 border-slate-900 relative">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
                     <GraduationCap className="w-3.5 h-3.5 text-amber-700" />
                     <span>Kelas Aktif Saat Ini</span>
                   </p>
-                  <select
-                    value={resolvedActiveClass.id}
-                    onChange={(e) => {
-                      sfx.playOptionSelect();
-                      onSwitchClass(e.target.value);
-                      setIsMobileMenuOpen(false);
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfx.playClick();
+                      setShowDrawerClassMenu(prev => !prev);
                     }}
-                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-lg text-xs font-black bg-amber-50"
+                    className="w-full px-3 py-2.5 border-2 border-slate-900 rounded-lg text-xs font-black bg-amber-50 hover:bg-amber-100 text-slate-900 flex items-center justify-between gap-2 shadow-[2px_2px_0px_#000] transition"
                   >
-                    {availableClasses.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.code} — {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="truncate">{resolvedActiveClass.code}</span>
+                      <span className="text-slate-400">·</span>
+                      <span className="text-[11px] font-bold text-slate-600 truncate">{resolvedActiveClass.academicYear}</span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${showDrawerClassMenu ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showDrawerClassMenu && (
+                    <div className="mt-1.5 p-1.5 bg-amber-50/70 border-2 border-slate-900 rounded-xl space-y-1 max-h-52 overflow-y-auto">
+                      {availableClasses.map(c => {
+                        const isSelected = c.id === resolvedActiveClass.id;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              sfx.playOptionSelect();
+                              setShowDrawerClassMenu(false);
+                              setIsMobileMenuOpen(false);
+                              onSwitchClass(c.id);
+                            }}
+                            className={`w-full px-2.5 py-2 rounded-lg border-2 text-left text-xs flex items-center justify-between gap-2 transition ${
+                              isSelected
+                                ? 'bg-amber-300 border-slate-900 text-slate-950 font-black shadow-[1.5px_1.5px_0px_#000]'
+                                : 'bg-white border-slate-300 hover:border-slate-900 text-slate-800 font-bold'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="truncate">{c.code}</span>
+                                <span className={`text-[8.5px] font-black uppercase px-1.5 py-0.2 rounded border border-slate-900 shrink-0 ${
+                                  c.isArchived ? 'bg-slate-200 text-slate-700' : 'bg-emerald-200 text-emerald-950'
+                                }`}>
+                                  {c.isArchived ? 'Arsip' : 'Aktif'}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 truncate">{c.name} · {c.academicYear}</p>
+                            </div>
+                            {isSelected && <Check className="w-4 h-4 text-emerald-900 shrink-0 stroke-[3]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 

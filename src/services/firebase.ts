@@ -20,40 +20,39 @@ googleProvider.setCustomParameters({
   prompt: 'select_account',
 });
 
-// Use localStorage with sessionStorage fallback for multi-tab & cross-session persistence
-let cachedAccessToken: string | null =
-  localStorage.getItem('google_access_token') || sessionStorage.getItem('google_access_token');
+// Strict in-memory cache for Google OAuth access token (never persist to localStorage/sessionStorage)
+let cachedAccessToken: string | null = null;
+let isSigningIn = false;
 
 export const getAccessToken = (): string | null => {
-  if (!cachedAccessToken) {
-    cachedAccessToken =
-      localStorage.getItem('google_access_token') || sessionStorage.getItem('google_access_token');
-  }
   return cachedAccessToken;
 };
 
 export const setAccessToken = (token: string | null) => {
   cachedAccessToken = token;
-  if (token) {
-    try {
-      localStorage.setItem('google_access_token', token);
-      sessionStorage.setItem('google_access_token', token);
-    } catch {
-      // safe fallback if storage quota exceeded or disabled
+};
+
+// Clean up any legacy persisted tokens on module load
+try {
+  localStorage.removeItem('google_access_token');
+  sessionStorage.removeItem('google_access_token');
+} catch {
+  // safe fallback
+}
+
+export const initGoogleAuthListener = (
+  onUserSignedOut?: () => void
+): (() => void) => {
+  return onAuthStateChanged(auth, (user: FirebaseUser | null) => {
+    if (!user && !isSigningIn) {
+      cachedAccessToken = null;
+      if (onUserSignedOut) onUserSignedOut();
     }
-  } else {
-    try {
-      localStorage.removeItem('google_access_token');
-      sessionStorage.removeItem('google_access_token');
-    } catch {
-      // safe fallback
-    }
-  }
+  });
 };
 
 /**
  * Silent Token Refresh: Refreshes the active Firebase ID token without prompting the user.
- * Call this periodically or during silent background revalidation.
  */
 export const refreshFirebaseSession = async (force: boolean = false): Promise<string | null> => {
   try {
@@ -68,13 +67,24 @@ export const refreshFirebaseSession = async (force: boolean = false): Promise<st
 };
 
 export const signInWithGoogle = async (): Promise<{ user: FirebaseUser; accessToken?: string }> => {
-  const result = await signInWithPopup(auth, googleProvider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
-  const token = credential?.accessToken;
-  if (token) {
+  isSigningIn = true;
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential?.accessToken || null;
     setAccessToken(token);
+    return { user: result.user, accessToken: token || undefined };
+  } finally {
+    isSigningIn = false;
   }
-  return { user: result.user, accessToken: token };
+};
+
+export const reauthorizeGoogleWorkspace = async (): Promise<string> => {
+  const { accessToken } = await signInWithGoogle();
+  if (!accessToken) {
+    throw new Error('Izin akses Google Sheets belum diperoleh. Silakan login ulang dengan Google.');
+  }
+  return accessToken;
 };
 
 export const signOutFirebase = async () => {

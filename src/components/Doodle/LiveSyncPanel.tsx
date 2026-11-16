@@ -109,11 +109,9 @@ export const LiveSyncPanel: React.FC<LiveSyncPanelProps> = ({
         {telemetry.status === 'offline' && <CloudOff className="w-3 h-3 text-slate-500 shrink-0" />}
         <span className="tabular-nums">
           {telemetry.status === 'syncing'
-            ? 'Sync...'
-            : telemetry.snapshotBytes > 0
-            ? `Sync · ${formatBytes(telemetry.snapshotBytes)}`
+            ? 'Sinkron...'
             : telemetry.status === 'synced'
-            ? 'Sinkron'
+            ? 'Online'
             : 'Lokal'}
         </span>
       </button>

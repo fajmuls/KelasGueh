@@ -11,16 +11,16 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: "4.9.0",
-  codename: "Multi-Class Gateway, Smart Snapshot Sync & Reliable WhatsApp Share",
+  version: "4.10.0",
+  codename: "Auto-Snapshot Live, Google Auth Popup, Admin Sheets Sync & Smart Multi-Semester",
   releaseDate: "2026-11-16",
   changes: [
-    "Perbaikan Total Berbagi WhatsApp (Bendahara & Sekretaris): Memperbaiki link wa.me yang gagal membuka aplikasi WhatsApp di HP/Android dengan fallback Salin Otomatis & Share Sheet Native.",
-    "Arsitektur Multi-Kelas Tanpa Ubah Struktur SQL: Seluruh data awal aman di kelas 01 SAKP 014, serta Super Admin kini dapat membuat kelas baru dan berpindah antar kelas secara terstruktur.",
-    "Gerbang Pemilihan Kelas & Persetujuan Super Admin: User baru memilih kelas tujuan saat pertama kali login dan menunggu konfirmasi Super Admin sebelum mengakses data kelas.",
-    "Smart Snapshot Sync Hemat Kuota & Panel Live Sync: Unduhan awal 1 file snapshot ringkas (meta.json + snapshot.json) langsung diterapkan tanpa me-load ulang seluruh tabel berulang kali.",
-    "Pengaturan Saklar & Batas Nominal PIN Transaksi: Super Admin dapat mengaktifkan/menonaktifkan PIN transaksi besar, menentukan batas nominalnya, dan menyinkronkan PIN 6-digit lintas perangkat.",
-    "Penyempurnaan UI Doodle Premium & Tabular Numerals: Angka keuangan lebih rapi sejajar, pemisah metadata bersih, dan kontras Tema Cokelat lebih tajam."
+    "Live Sync Otomatis & Status Ringkas (Online / Sinkron... / Lokal): Pemeriksaan metadata snapshot berjalan otomatis di latar belakang sehingga pengguna baru atau lama langsung memperbarui 1 file snapshot JSON tanpa perlu klik manual.",
+    "Perbaikan Jalur Publik Pengajuan Masuk Kelas: Pengajuan dari browser mana pun (termasuk preview Google AI Studio) langsung tercatat real-time di daftar konfirmasi Super Admin tanpa mengubah skema SQL.",
+    "Edit Kelas, Arsip Semester & Auto-Admit Nama+NIM: Super Admin dapat mengedit nama/kode kelas dan menandai semester lama sebagai Arsip; siswa dengan Nama Lengkap & NIM cocok di kelas aktif terbaru langsung diterima otomatis.",
+    "Login Google Popup Resmi di Preview AI Studio + 1 Spreadsheet Admin (8 Tab): Mendukung login Google via Firebase Popup beserta integrasi Google Spreadsheet Admin otomatis untuk seluruh modul kelas.",
+    "Hak Akses Pembagian Kelompok Sekretaris & Dropdown Kelas Doodle: Pembuatan/pengubahan/penghapusan kelompok dikunci khusus untuk Sekretaris & Super Admin, serta dropdown kelas menyatu dengan UI Doodle.",
+    "Tombol Pasang App Desktop (PWA / PWABuilder): Panduan interaktif buka tab penuh saat berada di iframe dan siap dikemas menjadi installer desktop (.exe) lewat PWABuilder."
   ],
   suggestedUpdates: [
     {
@@ -30,8 +30,8 @@ export const CURRENT_APP_VERSION: AppVersionInfo = {
     },
     {
       category: "optimasi",
-      title: "Kompresi Snapshot GZIP & Delta Incremental",
-      description: "Memperkecil ukuran file snapshot JSON di Supabase Storage agar tetap di bawah 1 MB meskipun transaksi ribuan baris."
+      title: "Sinkronisasi Dua Arah Google Sheets Terjadwal",
+      description: "Tambahkan opsi impor pembaruan status siswa langsung dari Google Spreadsheet Admin ke dalam aplikasi kelas."
     },
     {
       category: "keamanan",

@@ -49,8 +49,12 @@ import {
   Clock,
   RefreshCw,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  ExternalLink,
+  Archive
 } from 'lucide-react';
+import { getAccessToken, reauthorizeGoogleWorkspace } from '../../services/firebase.ts';
+import { syncClassToAdminSpreadsheet, getAdminSpreadsheetTabNames } from '../../services/googleSheetsSync.ts';
 
 interface AdminSettingsViewProps {
   members: KasMember[];
@@ -62,6 +66,7 @@ interface AdminSettingsViewProps {
   availableClasses?: ClassDefinition[];
   onSwitchClass?: (classId: string) => Promise<void> | void;
   onCreateClass?: (input: { code: string; name: string; academicYear: string }) => Promise<void>;
+  onUpdateClass?: (classId: string, updates: Partial<ClassDefinition>) => Promise<void>;
   onSyncNow?: () => Promise<void>;
 }
 
@@ -75,10 +80,11 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   availableClasses,
   onSwitchClass,
   onCreateClass,
+  onUpdateClass,
   onSyncNow
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'classes' | 'whitelist' | 'students' | 'audit' | 'backup' | 'pin' | 'cache' | 'version'
+    'classes' | 'sheets' | 'whitelist' | 'students' | 'audit' | 'backup' | 'pin' | 'cache' | 'version'
   >('classes');
 
   // Multi-class & Pending Join Requests state
@@ -95,6 +101,20 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   );
   const [isCreatingClass, setIsCreatingClass] = useState(false);
   const [isRefreshingRegistry, setIsRefreshingRegistry] = useState(false);
+
+  // Edit existing class state
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
+  const [editClassCode, setEditClassCode] = useState('');
+  const [editClassName, setEditClassName] = useState('');
+  const [editClassAcademicYear, setEditClassAcademicYear] = useState('');
+  const [editClassSemesterOrder, setEditClassSemesterOrder] = useState<number>(1);
+  const [editClassArchived, setEditClassArchived] = useState(false);
+  const [isSavingClassEdit, setIsSavingClassEdit] = useState(false);
+
+  // Google Sheets Admin Sync state
+  const [hasSheetsToken, setHasSheetsToken] = useState<boolean>(() => Boolean(getAccessToken()));
+  const [isAuthorizingSheets, setIsAuthorizingSheets] = useState(false);
+  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
 
   // Whitelist state
   const [users, setUsers] = useState<any[]>([]);
@@ -250,6 +270,167 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
     } finally {
       setIsCreatingClass(false);
     }
+  };
+
+  const handleStartEditClass = (cls: ClassDefinition) => {
+    sfx.playClick();
+    setEditingClassId(cls.id);
+    setEditClassCode(cls.code);
+    setEditClassName(cls.name);
+    setEditClassAcademicYear(cls.academicYear);
+    setEditClassSemesterOrder(cls.semesterOrder ?? 1);
+    setEditClassArchived(Boolean(cls.isArchived));
+  };
+
+  const handleSaveClassEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingClassId || !editClassCode.trim()) return;
+    setIsSavingClassEdit(true);
+    try {
+      const updates: Partial<ClassDefinition> = {
+        code: editClassCode.trim().toUpperCase(),
+        name: editClassName.trim() || editClassCode.trim().toUpperCase(),
+        academicYear: editClassAcademicYear.trim() || 'Semester Ganjil 2026/2027',
+        semesterOrder: Math.max(1, Number(editClassSemesterOrder) || 1),
+        isArchived: editClassArchived
+      };
+      if (onUpdateClass) {
+        await onUpdateClass(editingClassId, updates);
+      } else {
+        await LocalKasRepository.updateClassDefinition(editingClassId, updates);
+      }
+      sfx.playPaymentConfirmed();
+      showToast(`Informasi kelas "${updates.code}" berhasil diperbarui!`, 'success');
+      setEditingClassId(null);
+      await loadData();
+    } catch (err: any) {
+      showToast(err?.message || 'Gagal memperbarui kelas.', 'error');
+    } finally {
+      setIsSavingClassEdit(false);
+    }
+  };
+
+  const handleAuthorizeGoogleSheets = async () => {
+    sfx.playClick();
+    setIsAuthorizingSheets(true);
+    try {
+      const token = await reauthorizeGoogleWorkspace();
+      setHasSheetsToken(Boolean(token));
+      sfx.playCoinChime();
+      showToast('Akun Google Workspace & izin Spreadsheet aktif untuk sesi ini!', 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Gagal mengotorisasi akses Google Sheets.', 'error');
+    } finally {
+      setIsAuthorizingSheets(false);
+    }
+  };
+
+  const handleSyncToAdminSpreadsheet = async () => {
+    const targetCls = registryClasses.find(c => c.id === currentActiveClassId) || activeClass || DEFAULT_CLASS_DEF;
+    const existingId = settings.googleSpreadsheetId || targetCls.googleSpreadsheetId;
+    const tabs = getAdminSpreadsheetTabNames();
+
+    const confirmed = await showConfirm({
+      title: existingId ? 'Perbarui Google Spreadsheet Admin?' : 'Buat 1 Google Spreadsheet Admin Baru?',
+      message: `${existingId ? 'Seluruh 8 tab pada Spreadsheet Admin tertaut akan diperbarui' : 'Aplikasi akan membuat 1 Spreadsheet baru di Google Drive Admin Anda'} untuk kelas ${targetCls.code} mencakup tab: ${tabs.join(', ')}. Lanjutkan?`,
+      confirmLabel: existingId ? 'Ya, Perbarui Sheets' : 'Ya, Buat & Sinkronkan',
+      cancelLabel: 'Batal'
+    });
+    if (!confirmed) return;
+
+    setIsSyncingSheets(true);
+    try {
+      let token = getAccessToken();
+      if (!token) {
+        token = await reauthorizeGoogleWorkspace();
+        setHasSheetsToken(Boolean(token));
+      }
+
+      const cid = targetCls.id;
+      const payload = {
+        classDef: targetCls,
+        settings,
+        members: memberList,
+        transactions: LocalKasRepository.getTransactions(cid),
+        kolektifBills: LocalKasRepository.getKolektifBills(cid),
+        pointLogs: LocalKasRepository.getPointLogs(cid),
+        attendanceRecords: LocalKasRepository.getAttendanceRecords(cid),
+        meetingMinutes: LocalKasRepository.getMeetingMinutes(cid),
+        courseSchedules: LocalKasRepository.getCourseSchedules(cid),
+        savedGroups: LocalKasRepository.getSavedGroups(cid),
+        auditLogs
+      };
+
+      const result = await syncClassToAdminSpreadsheet(token, payload, existingId);
+      const nextSettings: ClassSettings = {
+        ...settings,
+        googleSpreadsheetId: result.spreadsheetId,
+        googleSpreadsheetUrl: result.spreadsheetUrl,
+        lastSheetsSyncAt: result.syncedAt
+      };
+
+      if (onSaveSettings) {
+        await onSaveSettings(nextSettings);
+      } else {
+        await LocalKasRepository.saveSettings(nextSettings, cid);
+      }
+
+      if (onUpdateClass) {
+        await onUpdateClass(cid, {
+          googleSpreadsheetId: result.spreadsheetId,
+          googleSpreadsheetUrl: result.spreadsheetUrl,
+          lastSheetsSyncAt: result.syncedAt
+        });
+      } else {
+        await LocalKasRepository.updateClassDefinition(cid, {
+          googleSpreadsheetId: result.spreadsheetId,
+          googleSpreadsheetUrl: result.spreadsheetUrl,
+          lastSheetsSyncAt: result.syncedAt
+        });
+      }
+
+      sfx.playCoinChime();
+      showToast(`Spreadsheet Admin (${result.tabNames.length} tab) berhasil disinkronkan!`, 'success');
+      await loadData();
+    } catch (err: any) {
+      showToast(err?.message || 'Gagal menyinkronkan ke Google Sheets.', 'error');
+    } finally {
+      setIsSyncingSheets(false);
+    }
+  };
+
+  const handleToggleAutoSyncSheets = async () => {
+    const nextVal = !settings.autoSyncGoogleSheets;
+    if (nextVal) {
+      const targetCls = registryClasses.find(c => c.id === currentActiveClassId) || activeClass || DEFAULT_CLASS_DEF;
+      const existingId = settings.googleSpreadsheetId || targetCls.googleSpreadsheetId;
+      if (!existingId) {
+        showToast('Silakan buat/hubungkan 1 Spreadsheet Admin terlebih dahulu sebelum mengaktifkan Auto-Update.', 'info');
+        return;
+      }
+      const ok = await showConfirm({
+        title: 'Aktifkan Auto-Update Google Sheets?',
+        message: 'Setiap kali Admin mencatat transaksi kas, presensi, iuran, atau data kelas selama sesi Google aktif, 8 tab di Spreadsheet Admin akan otomatis diperbarui di latar belakang. Aktifkan sekarang?',
+        confirmLabel: 'Ya, Aktifkan Auto-Update',
+        cancelLabel: 'Batal'
+      });
+      if (!ok) return;
+    }
+
+    sfx.playToggle();
+    const nextSettings: ClassSettings = {
+      ...settings,
+      autoSyncGoogleSheets: nextVal
+    };
+    if (onSaveSettings) {
+      await onSaveSettings(nextSettings);
+    } else {
+      await LocalKasRepository.saveSettings(nextSettings);
+    }
+    showToast(
+      nextVal ? 'Auto-Update Google Spreadsheet Admin AKTIF.' : 'Auto-Update Google Spreadsheet Admin DINONAKTIFKAN.',
+      nextVal ? 'success' : 'info'
+    );
   };
 
   // Auto-complete suggestions for Whitelist search
@@ -786,6 +967,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
       <div className="flex items-center gap-1.5 p-2 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] overflow-x-auto no-scrollbar">
         {[
           { id: 'classes', label: 'Kelas & Konfirmasi', icon: GraduationCap, badge: pendingMemberships.length },
+          { id: 'sheets', label: 'Google Sheets', icon: FileSpreadsheet, badge: 0 },
           { id: 'whitelist', label: 'Whitelist Roll', icon: UserCheck, badge: 0 },
           { id: 'students', label: 'Manajemen Siswa', icon: UserPlus, badge: 0 },
           { id: 'audit', label: 'Laporan Audit Log', icon: FileSpreadsheet, badge: 0 },
@@ -940,39 +1122,141 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                 <div className="space-y-2.5">
                   {registryClasses.map((cls) => {
                     const isCurrent = cls.id === currentActiveClassId;
+                    const isEditingThis = editingClassId === cls.id;
                     return (
                       <div
                         key={cls.id}
-                        className={`p-3.5 rounded-xl border-2 border-slate-900 flex items-center justify-between gap-3 ${
+                        className={`p-3.5 rounded-xl border-2 border-slate-900 space-y-3 ${
                           isCurrent ? 'bg-amber-100 shadow-[3px_3px_0px_#000]' : 'bg-white shadow-[2px_2px_0px_#000]'
                         }`}
                       >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-black text-sm text-slate-900">{cls.code}</span>
-                            {cls.isDefault && (
-                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-sky-200 border border-slate-900 rounded text-slate-950">
-                                Default SQL
+                        {isEditingThis ? (
+                          <form onSubmit={handleSaveClassEdit} className="space-y-2.5">
+                            <div className="flex items-center justify-between border-b border-slate-300 pb-1.5">
+                              <span className="text-[11px] font-black uppercase text-slate-800">
+                                Edit Kelas: {cls.code}
                               </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-600 truncate">
-                            {cls.name} · {cls.academicYear}
-                          </p>
-                        </div>
-
-                        {isCurrent ? (
-                          <span className="px-3 py-1 bg-emerald-300 text-slate-950 font-black text-[11px] rounded-lg border-2 border-slate-900 shrink-0">
-                            Sedang Aktif
-                          </span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingClassId(null)}
+                                className="p-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-800"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Kode Kelas</label>
+                                <input
+                                  required
+                                  type="text"
+                                  value={editClassCode}
+                                  onChange={(e) => setEditClassCode(e.target.value)}
+                                  className="w-full px-2.5 py-1.5 border-2 border-slate-900 rounded-lg text-xs font-bold bg-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Urutan Semester</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={editClassSemesterOrder}
+                                  onChange={(e) => setEditClassSemesterOrder(Number(e.target.value) || 1)}
+                                  className="w-full px-2.5 py-1.5 border-2 border-slate-900 rounded-lg text-xs font-mono font-bold bg-white"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Nama Tampilan Kelas</label>
+                              <input
+                                type="text"
+                                value={editClassName}
+                                onChange={(e) => setEditClassName(e.target.value)}
+                                className="w-full px-2.5 py-1.5 border-2 border-slate-900 rounded-lg text-xs font-semibold bg-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Tahun Akademik / Semester</label>
+                              <input
+                                type="text"
+                                value={editClassAcademicYear}
+                                onChange={(e) => setEditClassAcademicYear(e.target.value)}
+                                className="w-full px-2.5 py-1.5 border-2 border-slate-900 rounded-lg text-xs font-medium bg-white"
+                              />
+                            </div>
+                            <label className="flex items-center gap-2 p-2 bg-white border border-slate-400 rounded-lg cursor-pointer text-xs font-bold text-slate-800">
+                              <input
+                                type="checkbox"
+                                checked={editClassArchived}
+                                onChange={(e) => setEditClassArchived(e.target.checked)}
+                                className="w-4 h-4 rounded border-2 border-slate-900 accent-amber-500"
+                              />
+                              <Archive className="w-3.5 h-3.5 text-slate-600" />
+                              <span>Tandai sebagai Semester Lama (Arsip / Kenangan)</span>
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="submit"
+                                disabled={isSavingClassEdit}
+                                className="flex-1 btn-doodle py-1.5 bg-emerald-400 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-lg flex items-center justify-center gap-1"
+                              >
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                <span>{isSavingClassEdit ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingClassId(null)}
+                                className="btn-doodle px-3 py-1.5 bg-white text-slate-800 font-bold text-xs rounded-lg"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          </form>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => onSwitchClass?.(cls.id)}
-                            className="btn-doodle px-3 py-1.5 bg-amber-300 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-lg shrink-0"
-                          >
-                            Pindah ke Kelas Ini
-                          </button>
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-black text-sm text-slate-900">{cls.code}</span>
+                                {cls.isDefault && (
+                                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-sky-200 border border-slate-900 rounded text-slate-950">
+                                    Default SQL
+                                  </span>
+                                )}
+                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 border border-slate-900 rounded ${
+                                  cls.isArchived ? 'bg-slate-200 text-slate-700' : 'bg-emerald-200 text-emerald-950'
+                                }`}>
+                                  {cls.isArchived ? 'Arsip Semester' : 'Aktif'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-600 truncate">
+                                {cls.name} · {cls.academicYear}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditClass(cls)}
+                                className="p-1.5 bg-white hover:bg-amber-200 text-slate-800 rounded-lg border-2 border-slate-900 shadow-[1px_1px_0px_#000]"
+                                title="Edit nama/semester/status arsip kelas"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              {isCurrent ? (
+                                <span className="px-3 py-1 bg-emerald-300 text-slate-950 font-black text-[11px] rounded-lg border-2 border-slate-900">
+                                  Sedang Aktif
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => onSwitchClass?.(cls.id)}
+                                  className="btn-doodle px-3 py-1.5 bg-amber-300 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-lg"
+                                >
+                                  Pindah ke Kelas Ini
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         )}
                       </div>
                     );
@@ -1049,20 +1333,168 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                         <p className="font-bold text-slate-900 truncate">{m.fullName}</p>
                         <p className="text-[10px] text-slate-500 font-mono truncate">{m.className} · {m.assignedRole}</p>
                       </div>
-                      <span
-                        className={`px-1.5 py-0.5 text-[9px] font-black uppercase rounded border ${
-                          m.status === 'approved'
-                            ? 'bg-emerald-200 text-emerald-950 border-emerald-600'
-                            : 'bg-rose-200 text-rose-950 border-rose-600'
-                        }`}
-                      >
-                        {m.status === 'approved' ? 'Disetujui' : 'Ditolak'}
-                      </span>
+                      <div className="flex flex-col items-end gap-0.5 shrink-0">
+                        <span
+                          className={`px-1.5 py-0.5 text-[9px] font-black uppercase rounded border ${
+                            m.status === 'approved'
+                              ? 'bg-emerald-200 text-emerald-950 border-emerald-600'
+                              : 'bg-rose-200 text-rose-950 border-rose-600'
+                          }`}
+                        >
+                          {m.status === 'approved' ? 'Disetujui' : 'Ditolak'}
+                        </span>
+                        {m.autoMatched && (
+                          <span className="px-1 py-0.2 text-[8px] font-black uppercase rounded bg-sky-200 text-sky-950 border border-sky-600">
+                            Auto-Match
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* SUB-TAB 0B: GOOGLE SPREADSHEET ADMIN (1 FILE, 8 TAB LENGKAP) */}
+        {activeTab === 'sheets' && (
+          <div className="space-y-5">
+            <div className="bg-emerald-50 p-4 rounded-xl border-2 border-slate-900 text-xs text-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <strong className="font-black text-emerald-950 flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" /> Sinkronisasi 1 Google Spreadsheet Admin (8 Tab Lengkap)
+                </strong>
+                <p className="text-slate-700 leading-relaxed">
+                  Seluruh data kelas <strong>{activeClass?.code || settings.className}</strong> disimpan ke 1 file Spreadsheet khusus di Google Drive akun Admin dengan struktur kolom yang kompatibel dan sinkron penuh.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={isAuthorizingSheets}
+                onClick={handleAuthorizeGoogleSheets}
+                className={`btn-doodle px-3.5 py-2 font-black text-xs rounded-xl flex items-center gap-1.5 shrink-0 ${
+                  hasSheetsToken
+                    ? 'bg-emerald-300 text-slate-950'
+                    : 'bg-amber-300 hover:bg-amber-400 text-slate-950'
+                }`}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isAuthorizingSheets ? 'animate-spin' : ''}`} />
+                <span>{hasSheetsToken ? 'Sesi Google Sheets Aktif ✓' : 'Otorisasi Akun Google'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Status & Link Spreadsheet */}
+              <div className="p-4 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] space-y-3">
+                <h4 className="font-black text-xs uppercase tracking-wider text-slate-900">
+                  Spreadsheet Tertaut untuk {activeClass?.code || settings.className}
+                </h4>
+
+                {settings.googleSpreadsheetUrl || activeClass?.googleSpreadsheetUrl ? (
+                  <div className="p-3 bg-amber-50 border-2 border-slate-900 rounded-xl space-y-2">
+                    <p className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                      <span>1 Spreadsheet Admin Sudah Terhubung</span>
+                    </p>
+                    <p className="text-[11px] font-mono text-slate-600 break-all">
+                      ID: {settings.googleSpreadsheetId || activeClass?.googleSpreadsheetId}
+                    </p>
+                    {(settings.lastSheetsSyncAt || activeClass?.lastSheetsSyncAt) && (
+                      <p className="text-[11px] text-slate-700 font-semibold">
+                        Sinkron Terakhir:{' '}
+                        <span className="font-mono">
+                          {new Date(settings.lastSheetsSyncAt || activeClass?.lastSheetsSyncAt || '').toLocaleString('id-ID')}
+                        </span>
+                      </p>
+                    )}
+                    <a
+                      href={settings.googleSpreadsheetUrl || activeClass?.googleSpreadsheetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-doodle inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-300 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-lg"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Buka Google Spreadsheet Admin</span>
+                    </a>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl text-xs text-slate-600">
+                    Belum ada Google Spreadsheet yang dibuat untuk kelas ini. Klik tombol di bawah untuk membuat 1 Spreadsheet Admin lengkap secara otomatis.
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  disabled={isSyncingSheets}
+                  onClick={handleSyncToAdminSpreadsheet}
+                  className="w-full btn-doodle py-2.5 bg-amber-300 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>
+                    {isSyncingSheets
+                      ? 'Menyinkronkan 8 Tab Spreadsheet...'
+                      : settings.googleSpreadsheetId || activeClass?.googleSpreadsheetId
+                      ? 'Perbarui 1 Spreadsheet Admin Sekarang'
+                      : 'Buat & Isi 1 Spreadsheet Admin Sekarang'}
+                  </span>
+                </button>
+
+                {/* Auto-Update Toggle */}
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black text-slate-900">Auto-Update Spreadsheet saat Perubahan Data</p>
+                    <p className="text-[10px] text-slate-600">
+                      Otomatis menyinkronkan perubahan ke Spreadsheet Admin ketika sesi Google Anda aktif.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleAutoSyncSheets}
+                    className={`px-3 py-1.5 rounded-xl border-2 border-slate-900 font-black text-xs flex items-center gap-1.5 shrink-0 transition shadow-[2px_2px_0px_#000] ${
+                      settings.autoSyncGoogleSheets
+                        ? 'bg-emerald-300 text-slate-950'
+                        : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {settings.autoSyncGoogleSheets ? (
+                      <>
+                        <ToggleRight className="w-4 h-4 text-emerald-900" />
+                        <span>AKTIF</span>
+                      </>
+                    ) : (
+                      <>
+                        <ToggleLeft className="w-4 h-4 text-slate-600" />
+                        <span>NONAKTIF</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* 8 Tabs Schema Preview */}
+              <div className="p-4 bg-amber-50/70 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#000] space-y-2.5">
+                <h4 className="font-black text-xs uppercase tracking-wider text-slate-900">
+                  Struktur 8 Tab Database di Spreadsheet Admin
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {getAdminSpreadsheetTabNames().map((tabName, idx) => (
+                    <div
+                      key={tabName}
+                      className="p-2 bg-white border border-slate-900 rounded-lg flex items-center gap-2 font-bold text-slate-900"
+                    >
+                      <span className="w-5 h-5 rounded bg-amber-200 border border-slate-900 text-[10px] font-black flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <span className="font-mono text-[11px] truncate">{tabName}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-600 leading-snug pt-1">
+                  Token akses Google Workspace disimpan khusus di memori sesi browser saat ini dan terhubung langsung ke akun Google Admin Anda.
+                </p>
+              </div>
+            </div>
           </div>
         )}
         {/* SUB-TAB 1: WHITELIST ROLL */}

@@ -30,28 +30,42 @@ export const ClassSelectionGate: React.FC<ClassSelectionGateProps> = ({
   const [isChecking, setIsChecking] = useState(false);
   const [showChangeForm, setShowChangeForm] = useState(false);
 
+  const activeSelectableClasses = availableClasses.filter(c => !c.isArchived);
+  const selectableClasses = activeSelectableClasses.length > 0 ? activeSelectableClasses : availableClasses;
+
   useEffect(() => {
-    if (availableClasses.length > 0 && !availableClasses.some(c => c.id === selectedClassId)) {
-      setSelectedClassId(availableClasses[0].id);
+    if (selectableClasses.length > 0 && !selectableClasses.some(c => c.id === selectedClassId)) {
+      setSelectedClassId(selectableClasses[0].id);
     }
   }, [availableClasses, selectedClassId]);
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    const targetClass = availableClasses.find(c => c.id === selectedClassId) || availableClasses[0];
+    const targetClass = selectableClasses.find(c => c.id === selectedClassId) || selectableClasses[0];
     if (!targetClass) return;
 
     setIsSubmitting(true);
     try {
       sfx.playPaymentConfirmed();
-      await LocalKasRepository.submitClassJoinRequest({
+      const res = await LocalKasRepository.submitClassJoinRequest({
         email: user.email,
         fullName: fullName.trim() || user.name,
         nim: nim.trim(),
         classId: targetClass.id,
         className: targetClass.name
       });
-      showToast(`Pengajuan masuk kelas ${targetClass.code} dikirim! Menunggu konfirmasi Super Admin.`, 'success');
+      if (res.status === 'approved' && res.autoMatched) {
+        sfx.playCoinChime();
+        showToast(
+          `Cocok Nama & NIM! Anda otomatis diterima masuk ke kelas ${res.className}.`,
+          'success'
+        );
+      } else {
+        showToast(
+          `Pengajuan masuk kelas ${targetClass.code} dikirim! Menunggu konfirmasi Super Admin.`,
+          'success'
+        );
+      }
       setShowChangeForm(false);
       await onRefreshAccess();
     } catch (err: any) {
@@ -145,10 +159,10 @@ export const ClassSelectionGate: React.FC<ClassSelectionGateProps> = ({
             <form onSubmit={handleSubmitRequest} className="space-y-4">
               <div className="space-y-2">
                 <label className="block text-xs font-black uppercase text-slate-800">
-                  Pilih Kelas yang Tersedia:
+                  Pilih Kelas Aktif Terbaru:
                 </label>
                 <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-1">
-                  {availableClasses.map((cls) => {
+                  {selectableClasses.map((cls) => {
                     const isSelected = selectedClassId === cls.id;
                     return (
                       <button
@@ -169,7 +183,12 @@ export const ClassSelectionGate: React.FC<ClassSelectionGateProps> = ({
                             <Users className="w-4 h-4 text-amber-700" />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-black text-sm text-slate-900 truncate">{cls.code}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-black text-sm text-slate-900 truncate">{cls.code}</p>
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-200 border border-slate-900 text-emerald-950">
+                                Semester Aktif
+                              </span>
+                            </div>
                             <p className="text-[11px] text-slate-600 truncate">{cls.academicYear}</p>
                           </div>
                         </div>
@@ -180,6 +199,10 @@ export const ClassSelectionGate: React.FC<ClassSelectionGateProps> = ({
                 </div>
               </div>
 
+              <div className="p-2.5 bg-emerald-50 border border-emerald-500 rounded-lg text-[11px] text-emerald-950 font-semibold leading-snug">
+                💡 <strong>Validasi Otomatis:</strong> Jika <strong>Nama Lengkap &amp; NIM</strong> cocok dengan daftar mahasiswa pada kelas aktif terbaru, Anda akan otomatis langsung masuk tanpa menunggu konfirmasi!
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">Nama Lengkap Mahasiswa *</label>
@@ -188,7 +211,7 @@ export const ClassSelectionGate: React.FC<ClassSelectionGateProps> = ({
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Contoh: Ahmad Budi"
+                    placeholder="Sesuai daftar absen kelas"
                     className="w-full px-3 py-2 border-2 border-slate-900 rounded-lg text-xs font-semibold bg-white"
                   />
                 </div>
@@ -210,7 +233,7 @@ export const ClassSelectionGate: React.FC<ClassSelectionGateProps> = ({
                 className="w-full btn-doodle py-3 min-h-[46px] bg-amber-300 hover:bg-amber-400 text-slate-950 font-black text-sm rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
-                <span>{isSubmitting ? 'Mengirim Pengajuan...' : 'Ajukan Masuk Kelas'}</span>
+                <span>{isSubmitting ? 'Memproses Pengajuan...' : 'Ajukan / Verifikasi Masuk Kelas'}</span>
               </button>
             </form>
           )}

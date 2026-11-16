@@ -46,6 +46,8 @@ import {
 } from './types/kas.ts';
 import { sfx } from './utils/soundEffects.ts';
 import { DoodleDialogContainer, showToast } from './components/UI/DoodleDialog.tsx';
+import { getAccessToken } from './services/firebase.ts';
+import { syncClassToAdminSpreadsheet } from './services/googleSheetsSync.ts';
 
 // URL Routing helpers using HTML5 History API
 const getRouteFromPath = (path: string): { domain: AppDomain; tab: AppNavTab } => {
@@ -254,7 +256,7 @@ const AppContent: React.FC = () => {
       const reg = await LocalKasRepository.fetchClassRegistry();
       setPendingJoinCount(reg.memberships.filter(m => m.status === 'pending').length);
 
-      const access = await LocalKasRepository.checkUserClassAccess(user.email);
+      const access = await LocalKasRepository.checkUserClassAccess(user.email, user.name, user.nim);
       if (access.status === 'approved') {
         setClassAccessStatus('approved');
         setPendingClassRequest(undefined);
@@ -270,10 +272,22 @@ const AppContent: React.FC = () => {
           switchRole(access.assignedRole);
         }
 
-        const currentExists = allowedClasses.some(c => c.id === activeClassId);
-        const targetClassId = currentExists
+        const currentObj = allowedClasses.find(c => c.id === activeClassId);
+        const preferredDefault = access.defaultApprovedClassId || allowedClasses[0]?.id || DEFAULT_CLASS_ID;
+        const preferredObj = allowedClasses.find(c => c.id === preferredDefault);
+        const shouldAutoMoveToActive = Boolean(currentObj?.isArchived && preferredObj && !preferredObj.isArchived);
+
+        const targetClassId = currentObj && !shouldAutoMoveToActive
           ? activeClassId
-          : access.defaultApprovedClassId || allowedClasses[0]?.id || DEFAULT_CLASS_ID;
+          : preferredDefault;
+
+        if (access.autoMatched) {
+          sfx.playCoinChime();
+          showToast(
+            `Cocok Nama & NIM! Otomatis diterima masuk ke kelas ${preferredObj?.code || targetClassId}.`,
+            'success'
+          );
+        }
 
         await syncAndHydrateClass(targetClassId);
       } else {
@@ -305,6 +319,15 @@ const AppContent: React.FC = () => {
     const reg = await LocalKasRepository.fetchClassRegistry();
     setAvailableClasses(reg.classes);
     await syncAndHydrateClass(newClass.id, false);
+  };
+
+  const handleUpdateClass = async (classId: string, updates: Partial<ClassDefinition>) => {
+    await LocalKasRepository.updateClassDefinition(classId, updates);
+    const reg = await LocalKasRepository.fetchClassRegistry();
+    setAvailableClasses(reg.classes);
+    if (classId === activeClassId) {
+      setSettings(LocalKasRepository.getSettings(classId));
+    }
   };
 
   // Snapshot-first initial access verification & sync
@@ -346,6 +369,120 @@ const AppContent: React.FC = () => {
       unsubscribe();
     };
   }, [isLoggedIn, classAccessStatus]);
+
+  // Automatic background snapshot freshness check (focus / visibility / periodic lightweight meta.json check)
+  useEffect(() => {
+    if (!isLoggedIn || classAccessStatus !== 'approved') return;
+
+    const runAutoSyncCheck = async () => {
+      try {
+        const updated = await LocalKasRepository.autoCheckAndSyncIfStale(activeClassId);
+        if (updated) {
+          hydrateAllStatesFromRepo(activeClassId);
+        }
+        if (isRealSuperAdmin || isSuperAdmin) {
+          const reg = await LocalKasRepository.fetchClassRegistry();
+          setPendingJoinCount(reg.memberships.filter(m => m.status === 'pending').length);
+        }
+      } catch {
+        // silent background check
+      }
+    };
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        runAutoSyncCheck();
+      }
+    };
+
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    const interval = setInterval(runAutoSyncCheck, 15000);
+
+    return () => {
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      clearInterval(interval);
+    };
+  }, [isLoggedIn, classAccessStatus, activeClassId, isRealSuperAdmin, isSuperAdmin]);
+
+  // Debounced Google Sheets Admin Auto-Sync when enabled & Google session token active in memory
+  const lastAutoSheetPayloadKeyRef = useRef<string>('');
+  useEffect(() => {
+    if (!isLoggedIn || !isRealSuperAdmin || !settings.autoSyncGoogleSheets) return;
+    const spreadsheetId = settings.googleSpreadsheetId;
+    const token = getAccessToken();
+    if (!spreadsheetId || !token) return;
+
+    const fingerprint = JSON.stringify({
+      activeClassId,
+      txCount: transactions.length,
+      txSum: transactions.reduce((s, t) => s + Number(t.amount || 0), 0),
+      mCount: members.length,
+      duesSum: members.reduce((s, m) => s + Object.values(m.weeklyStatus || {}).filter(Boolean).length, 0),
+      kCount: kolektifBills.length,
+      pCount: pointLogs.length,
+      aCount: attendanceRecords.length,
+      minCount: meetingMinutes.length,
+      csCount: courseSchedules.length,
+      dues: settings.weeklyDuesAmount,
+      pin: settings.requireTransactionPin
+    });
+
+    if (!lastAutoSheetPayloadKeyRef.current) {
+      // Seed baseline fingerprint on first mount so opening the app does not fire redundant writes
+      lastAutoSheetPayloadKeyRef.current = fingerprint;
+      return;
+    }
+
+    if (lastAutoSheetPayloadKeyRef.current === fingerprint) return;
+
+    const timer = setTimeout(async () => {
+      const freshToken = getAccessToken();
+      if (!freshToken) return;
+      try {
+        const clsObj = availableClasses.find(c => c.id === activeClassId) || DEFAULT_CLASS_DEF;
+        await syncClassToAdminSpreadsheet(
+          freshToken,
+          {
+            classDef: clsObj,
+            settings,
+            members,
+            transactions,
+            kolektifBills,
+            pointLogs,
+            attendanceRecords,
+            meetingMinutes,
+            courseSchedules,
+            savedGroups: LocalKasRepository.getSavedGroups(activeClassId),
+            auditLogs
+          },
+          spreadsheetId
+        );
+        lastAutoSheetPayloadKeyRef.current = fingerprint;
+      } catch (err) {
+        console.warn('Background Google Sheets auto-sync skipped:', err);
+      }
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [
+    isLoggedIn,
+    isRealSuperAdmin,
+    activeClassId,
+    settings.autoSyncGoogleSheets,
+    settings.googleSpreadsheetId,
+    settings.weeklyDuesAmount,
+    settings.requireTransactionPin,
+    transactions,
+    members,
+    kolektifBills,
+    pointLogs,
+    attendanceRecords,
+    meetingMinutes,
+    courseSchedules,
+    auditLogs
+  ]);
 
   // Autoplay BGM automatically on first user gesture
   useEffect(() => {
@@ -1075,6 +1212,7 @@ const AppContent: React.FC = () => {
             availableClasses={availableClasses}
             onSwitchClass={handleSwitchClass}
             onCreateClass={handleCreateClass}
+            onUpdateClass={handleUpdateClass}
             onSyncNow={() => syncAndHydrateClass(activeClassId, true)}
           />
         )}

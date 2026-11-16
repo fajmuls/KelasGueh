@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types/kas.ts';
 import { sfx } from '../utils/soundEffects.ts';
 import { signInWithGoogleSupabase, getSupabaseClient, LocalKasRepository } from '../services/supabaseClient.ts';
+import { signInWithGoogle, signOutFirebase, initGoogleAuthListener } from '../services/firebase.ts';
 
-import { registerOrUpdateUser } from '../utils/userManagement.ts';
 import { showPrompt, showToast } from '../components/UI/DoodleDialog.tsx';
 
 const SUPER_ADMIN_EMAIL = 'mrachmanfm@gmail.com';
@@ -18,8 +18,10 @@ interface AuthContextType {
   canEditKas: boolean;
   canEditSecretary: boolean;
   canViewAudit: boolean;
-  loginAs: (role: UserRole, customName?: string, customEmail?: string) => void;
+  isGooglePopupLoading: boolean;
+  loginAs: (role: UserRole, customName?: string, customEmail?: string, avatar?: string) => Promise<void> | void;
   loginWithGooglePrompt: () => Promise<void>;
+  loginWithEmailFallback: () => Promise<void>;
   switchRole: (newRole: UserRole) => void;
   logout: () => void;
   isLoggedIn: boolean;
@@ -39,6 +41,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return null;
   });
+  const [isGooglePopupLoading, setIsGooglePopupLoading] = useState(false);
+
+  // Listen to Firebase Auth state so in-memory OAuth token stays clean on sign-out
+  useEffect(() => {
+    const unsubFirebase = initGoogleAuthListener();
+    return () => unsubFirebase();
+  }, []);
 
   // Handle Supabase user session mapping with Super Admin whitelist checking
   const handleSupabaseUser = async (sbUser: any) => {
@@ -88,7 +97,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const loginAs = async (selectedRole: UserRole, customName?: string, customEmail?: string) => {
+  const loginAs = async (
+    selectedRole: UserRole,
+    customName?: string,
+    customEmail?: string,
+    avatar?: string
+  ) => {
     sfx.playPaperRustle();
     const email = customEmail || (selectedRole === 'superadmin' ? SUPER_ADMIN_EMAIL : `${selectedRole}@kelasgue.sch.id`);
     const name = customName || (
@@ -97,17 +111,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       selectedRole === 'sekretaris' ? 'Sekretaris Kelas' : 'Anggota Siswa Kelas'
     );
 
+    const uid = `usr-${Date.now()}`;
     const assignedRole = await LocalKasRepository.syncUserProfile({
-      id: `usr-${Date.now()}`,
+      id: uid,
       email,
-      name
+      name,
+      avatar
     });
 
     const profile: UserProfile = {
-      id: `usr-${Date.now()}`,
+      id: uid,
       name,
       email,
       role: selectedRole === 'superadmin' ? 'superadmin' : assignedRole,
+      avatar,
       isGoogleAuth: true
     };
 
@@ -115,28 +132,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('kelasgue_active_user_v2', JSON.stringify(profile));
   };
 
-  const loginWithGooglePrompt = async () => {
+  const loginWithEmailFallback = async () => {
     sfx.playClick();
-    const client = getSupabaseClient();
-    if (client) {
-      try {
-        const res = await signInWithGoogleSupabase();
-        if (res.success) return;
-        if (res.error) {
-          console.warn('Supabase OAuth notice:', res.error);
-        }
-      } catch (err) {
-        console.warn('Supabase OAuth catch error:', err);
-      }
-    }
-
-    // Direct Google Email verification flow (bypasses iframe 403 block)
     const emailInput = await showPrompt({
-      title: 'Masuk dengan Email Google',
-      message: 'Masukkan Alamat Email Google Anda untuk verifikasi hak akses login:',
+      title: 'Verifikasi Email Google',
+      message: 'Masukkan alamat Email Google Anda jika popup login diblokir browser:',
       placeholder: 'nama@gmail.com',
       inputType: 'email',
-      confirmLabel: 'Verifikasi',
+      confirmLabel: 'Verifikasi & Masuk',
       cancelLabel: 'Batal'
     });
 
@@ -144,9 +147,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const email = emailInput.trim();
     const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-    loginAs(isOwner ? 'superadmin' : 'anggota', email.split('@')[0], email);
+    await loginAs(isOwner ? 'superadmin' : 'anggota', email.split('@')[0], email);
     showToast(`Berhasil verifikasi login sebagai ${email.split('@')[0]}`, 'success');
     sfx.playCoinChime();
+  };
+
+  const loginWithGooglePrompt = async () => {
+    sfx.playClick();
+    setIsGooglePopupLoading(true);
+    try {
+      // 1. Primary path: Official Firebase Auth Google Popup (works reliably in AI Studio preview & grants Google Sheets token in memory)
+      const { user: fbUser } = await signInWithGoogle();
+      const email = fbUser.email || '';
+      if (!email) {
+        throw new Error('Akun Google tidak menyertakan alamat email.');
+      }
+      const displayName = fbUser.displayName || email.split('@')[0];
+      const avatar = fbUser.photoURL || undefined;
+      const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+
+      const assignedRole = await LocalKasRepository.syncUserProfile({
+        id: fbUser.uid,
+        email,
+        name: displayName,
+        avatar
+      });
+
+      const profile: UserProfile = {
+        id: fbUser.uid,
+        name: displayName,
+        email,
+        role: isOwner ? 'superadmin' : assignedRole,
+        avatar,
+        isGoogleAuth: true
+      };
+      setUser(profile);
+      localStorage.setItem('kelasgue_active_user_v2', JSON.stringify(profile));
+      sfx.playCoinChime();
+      showToast(`Login Google berhasil! Selamat datang, ${displayName}.`, 'success');
+      return;
+    } catch (err: any) {
+      const code = err?.code || '';
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        showToast('Popup login Google ditutup sebelum selesai.', 'info');
+        return;
+      }
+
+      console.warn('Firebase Google popup notice, trying Supabase/manual fallback:', err);
+
+      // 2. Secondary path: Try Supabase OAuth when outside restricted iframe
+      const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
+      const client = getSupabaseClient();
+      if (client && !isInIframe) {
+        try {
+          const res = await signInWithGoogleSupabase();
+          if (res.success) return;
+        } catch {
+          // continue to manual prompt
+        }
+      }
+
+      // 3. Smooth manual email prompt fallback if popup blocked by browser
+      showToast('Popup Google diblokir/tidak tersedia di browser ini. Gunakan verifikasi email di bawah.', 'info');
+      await loginWithEmailFallback();
+    } finally {
+      setIsGooglePopupLoading(false);
+    }
   };
 
   const switchRole = (newRole: UserRole) => {
@@ -159,6 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     sfx.playPaperRustle();
+    signOutFirebase().catch(() => {});
     const client = getSupabaseClient();
     if (client) {
       client.auth.signOut().catch(() => {});
@@ -193,8 +260,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         canEditKas,
         canEditSecretary,
         canViewAudit,
+        isGooglePopupLoading,
         loginAs,
         loginWithGooglePrompt,
+        loginWithEmailFallback,
         switchRole,
         logout,
         isLoggedIn: !!user
