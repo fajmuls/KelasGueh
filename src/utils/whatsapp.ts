@@ -56,7 +56,30 @@ export const copyTextSilently = async (text: string): Promise<boolean> => {
 };
 
 /**
- * Reliable cross-platform WhatsApp launcher that survives mobile webviews & iframe popup blockers.
+ * Opens an external URL safely via a synchronous <a> click instead of window.open,
+ * surviving iframe & PWA restrictions reliably.
+ */
+export const openExternalLinkSafe = (url: string): boolean => {
+  if (!url) return false;
+  try {
+    const link = document.createElement('a');
+    link.href = url;
+    if (!url.startsWith('mailto:') && !url.startsWith('tel:')) {
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+    }
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => link.remove(), 300);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Reliable cross-platform WhatsApp launcher that survives mobile webviews & iframe blockers.
  * - Uses synchronous <a> anchor navigation to wa.me (deep-links to WhatsApp app on mobile)
  * - Optionally uses native Web Share Sheet when triggered without a specific phone target
  * - Automatically copies text to clipboard as a guaranteed fallback
@@ -94,36 +117,14 @@ export const openWhatsAppSafe = async (
     }
   }
 
-  // Trigger synchronous DOM anchor click (more reliable than window.open in iframes & PWAs)
-  let opened = false;
-  try {
-    const link = document.createElement('a');
-    link.href = url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => link.remove(), 250);
-    opened = true;
-  } catch {
-    opened = false;
-  }
-
-  if (!opened) {
-    try {
-      const win = window.open(url, '_blank', 'noopener,noreferrer');
-      opened = !!win;
-    } catch {
-      opened = false;
-    }
-  }
+  // Trigger synchronous DOM anchor click (reliable in iframes & PWAs without window.open)
+  const opened = openExternalLinkSafe(url);
 
   if (copied) {
     showToast(
       opened
         ? 'Membuka WhatsApp... (Teks pesan juga disalin otomatis ke clipboard)'
-        : 'Popup diblokir browser — teks pesan sudah disalin ke clipboard untuk ditempel di WhatsApp!',
+        : 'Tautan tidak dapat dibuka otomatis — teks pesan sudah disalin ke clipboard!',
       opened ? 'success' : 'info'
     );
   } else if (!opened) {

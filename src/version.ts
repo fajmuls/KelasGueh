@@ -11,32 +11,31 @@ export interface AppVersionInfo {
 }
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: "4.10.0",
-  codename: "Auto-Snapshot Live, Google Auth Popup, Admin Sheets Sync & Smart Multi-Semester",
+  version: "4.11.0",
+  codename: "Supabase Unified Auth, Akses Anggota Transparan & Dual Ekspor .xlsx / .json",
   releaseDate: "2026-11-16",
   changes: [
-    "Live Sync Otomatis & Status Ringkas (Online / Sinkron... / Lokal): Pemeriksaan metadata snapshot berjalan otomatis di latar belakang sehingga pengguna baru atau lama langsung memperbarui 1 file snapshot JSON tanpa perlu klik manual.",
-    "Perbaikan Jalur Publik Pengajuan Masuk Kelas: Pengajuan dari browser mana pun (termasuk preview Google AI Studio) langsung tercatat real-time di daftar konfirmasi Super Admin tanpa mengubah skema SQL.",
-    "Edit Kelas, Arsip Semester & Auto-Admit Nama+NIM: Super Admin dapat mengedit nama/kode kelas dan menandai semester lama sebagai Arsip; siswa dengan Nama Lengkap & NIM cocok di kelas aktif terbaru langsung diterima otomatis.",
-    "Login Google Popup Resmi di Preview AI Studio + 1 Spreadsheet Admin (8 Tab): Mendukung login Google via Firebase Popup beserta integrasi Google Spreadsheet Admin otomatis untuk seluruh modul kelas.",
-    "Hak Akses Pembagian Kelompok Sekretaris & Dropdown Kelas Doodle: Pembuatan/pengubahan/penghapusan kelompok dikunci khusus untuk Sekretaris & Super Admin, serta dropdown kelas menyatu dengan UI Doodle.",
-    "Tombol Pasang App Desktop (PWA / PWABuilder): Panduan interaktif buka tab penuh saat berada di iframe dan siap dikemas menjadi installer desktop (.exe) lewat PWABuilder."
+    "Sistem Login 100% Supabase (Tanpa Firebase Auth / Google Workspace): Pengurus masuk langsung via Email + PIN/Password terverifikasi Supabase atau tombol OAuth Popup Supabase tanpa pencatatan ke Firestore.",
+    "Panduan Setup Login Preview AI Studio di Aplikasi: Tersedia modal interaktif berisi daftar URL preview (ais-dev, ais-pre) dan Callback URL Supabase dengan tombol Salin 1-Klik.",
+    "Akses Anggota Kelas Instan & Transparan: Tombol 'Masuk sebagai Anggota Kelas' langsung membuka Beranda dalam mode baca (read-only) dan bebas memilih kelas aktif tanpa pemeriksaan keanggotaan yang lambat atau tunggu konfirmasi admin.",
+    "Dual Ekspor Manual — Spreadsheet Rapi (.xlsx 8 Tab) vs Cadangan (.json): Tersedia ekspor Excel 8 sheet siap unggah manual ke Google Sheets/Excel di menu Bendahara & Super Admin, terpisah dari file cadangan teknis JSON.",
+    "Migrasi Penuh window.open di Seluruh Modul: Seluruh tombol WhatsApp, Kalender, Mailto, dan Cetak PDF (via iframe aman) kini bekerja mulus di dalam iframe preview maupun mode PWA terinstal."
   ],
   suggestedUpdates: [
     {
       category: "fitur",
-      title: "Notifikasi Tagihan Personal Otomatis via WhatsApp",
-      description: "Kirim pesan pengingat terpersonalisasi langsung ke nomor siswa yang belum melunasi iuran mingguan dari modal rekap."
+      title: "Impor Pembaruan Siswa dari Excel (.xlsx) dengan Pratinjau Diff",
+      description: "Izinkan Bendahara/Super Admin mengunggah kembali file .xlsx yang sudah diedit di Google Sheets untuk memperbarui nomor WhatsApp atau status aktif siswa setelah meninjau perubahan."
     },
     {
-      category: "optimasi",
-      title: "Sinkronisasi Dua Arah Google Sheets Terjadwal",
-      description: "Tambahkan opsi impor pembaruan status siswa langsung dari Google Spreadsheet Admin ke dalam aplikasi kelas."
+      category: "fitur",
+      title: "Antrean Tagihan WhatsApp Bertahap untuk Banyak Siswa",
+      description: "Tambahkan daftar centang siswa penunggak agar Bendahara bisa mengirim pesan pengingat satu per satu secara berurutan tanpa harus menutup modal."
     },
     {
       category: "keamanan",
-      title: "Riwayat Verifikasi PIN & Batas Percobaan",
-      description: "Catat percobaan verifikasi PIN yang gagal ke Audit Log dan beri jeda pengaman otomatis bila salah berulang kali."
+      title: "Ganti Password Email Pengurus Mandiri di Pengaturan Akun",
+      description: "Sediakan form ubah password Supabase dan reset PIN per-perangkat langsung dari menu Pengaturan Pengurus agar tidak bergantung pada reset manual."
     }
   ]
 };

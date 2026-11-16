@@ -1,12 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types/kas.ts';
 import { sfx } from '../utils/soundEffects.ts';
-import { signInWithGoogleSupabase, getSupabaseClient, LocalKasRepository } from '../services/supabaseClient.ts';
-import { signInWithGoogle, signOutFirebase, initGoogleAuthListener } from '../services/firebase.ts';
-
-import { showPrompt, showToast } from '../components/UI/DoodleDialog.tsx';
-
-const SUPER_ADMIN_EMAIL = 'mrachmanfm@gmail.com';
+import { signInWithGoogleSupabase, getSupabaseClient, LocalKasRepository, SUPER_ADMIN_EMAIL } from '../services/supabaseClient.ts';
+import { showToast } from '../components/UI/DoodleDialog.tsx';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -18,10 +14,11 @@ interface AuthContextType {
   canEditKas: boolean;
   canEditSecretary: boolean;
   canViewAudit: boolean;
-  isGooglePopupLoading: boolean;
-  loginAs: (role: UserRole, customName?: string, customEmail?: string, avatar?: string) => Promise<void> | void;
-  loginWithGooglePrompt: () => Promise<void>;
-  loginWithEmailFallback: () => Promise<void>;
+  isOAuthLoading: boolean;
+  lastOAuthUrl: string | null;
+  loginAs: (role: UserRole, customName?: string, customEmail?: string, avatar?: string) => void;
+  loginWithPengurusCredentials: (email: string, pinOrPassword: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithSupabaseOAuth: () => Promise<{ success: boolean; url?: string; error?: string }>;
   switchRole: (newRole: UserRole) => void;
   logout: () => void;
   isLoggedIn: boolean;
@@ -41,21 +38,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return null;
   });
-  const [isGooglePopupLoading, setIsGooglePopupLoading] = useState(false);
+  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const [lastOAuthUrl, setLastOAuthUrl] = useState<string | null>(null);
 
-  // Listen to Firebase Auth state so in-memory OAuth token stays clean on sign-out
-  useEffect(() => {
-    const unsubFirebase = initGoogleAuthListener();
-    return () => unsubFirebase();
-  }, []);
-
-  // Handle Supabase user session mapping with Super Admin whitelist checking
+  // Map a verified Supabase Auth user to our local active UserProfile with whitelist check
   const handleSupabaseUser = async (sbUser: any) => {
     const email = sbUser.email || '';
     const name = sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || email.split('@')[0];
     const avatar = sbUser.user_metadata?.avatar_url;
 
-    // Sync profile and get resolved role from database
     const assignedRole = await LocalKasRepository.syncUserProfile({
       id: sbUser.id,
       email,
@@ -63,11 +54,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       avatar
     });
 
+    const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
     const profile: UserProfile = {
       id: sbUser.id,
       name,
       email,
-      role: assignedRole,
+      role: isOwner ? 'superadmin' : assignedRole,
       avatar,
       isGoogleAuth: true
     };
@@ -75,16 +67,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('kelasgue_active_user_v2', JSON.stringify(profile));
   };
 
-  // Check & listen to Supabase session changes
+  // Check & listen to Supabase session changes (including cross-tab storage sync when OAuth opens in new tab)
   useEffect(() => {
     const client = getSupabaseClient();
     if (!client) return;
 
-    client.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        handleSupabaseUser(session.user);
-      }
-    });
+    const syncSessionFromSupabase = () => {
+      client.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          handleSupabaseUser(session.user);
+        }
+      });
+    };
+
+    syncSessionFromSupabase();
 
     const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
@@ -92,126 +88,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
+    const handleStorageOrFocus = () => {
+      syncSessionFromSupabase();
+    };
+    window.addEventListener('storage', handleStorageOrFocus);
+    window.addEventListener('focus', handleStorageOrFocus);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageOrFocus);
+      window.removeEventListener('focus', handleStorageOrFocus);
     };
   }, []);
 
-  const loginAs = async (
+  /**
+   * Instant local role entry (primary path for transparent "Anggota Kelas" access with 0ms wait).
+   */
+  const loginAs = (
     selectedRole: UserRole,
     customName?: string,
     customEmail?: string,
     avatar?: string
   ) => {
     sfx.playPaperRustle();
-    const email = customEmail || (selectedRole === 'superadmin' ? SUPER_ADMIN_EMAIL : `${selectedRole}@kelasgue.sch.id`);
-    const name = customName || (
-      email.toLowerCase() === SUPER_ADMIN_EMAIL ? 'Super Admin Kelas' :
-      selectedRole === 'bendahara' ? 'Bendahara Kelas' : 
-      selectedRole === 'sekretaris' ? 'Sekretaris Kelas' : 'Anggota Siswa Kelas'
-    );
-
-    const uid = `usr-${Date.now()}`;
-    const assignedRole = await LocalKasRepository.syncUserProfile({
-      id: uid,
-      email,
-      name,
-      avatar
-    });
+    const email =
+      customEmail ||
+      (selectedRole === 'superadmin' ? SUPER_ADMIN_EMAIL : `${selectedRole}@kelasgue.sch.id`);
+    const name =
+      customName ||
+      (email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()
+        ? 'Super Admin Kelas'
+        : selectedRole === 'bendahara'
+        ? 'Bendahara Kelas'
+        : selectedRole === 'sekretaris'
+        ? 'Sekretaris Kelas'
+        : 'Anggota Kelas (Transparan)');
 
     const profile: UserProfile = {
-      id: uid,
+      id: `usr-${Date.now()}`,
       name,
       email,
-      role: selectedRole === 'superadmin' ? 'superadmin' : assignedRole,
+      role: selectedRole,
       avatar,
-      isGoogleAuth: true
+      isGoogleAuth: false
     };
 
     setUser(profile);
     localStorage.setItem('kelasgue_active_user_v2', JSON.stringify(profile));
   };
 
-  const loginWithEmailFallback = async () => {
+  /**
+   * Pengurus verification via Supabase whitelist + Password or 6-digit Pengurus PIN (iframe-safe).
+   */
+  const loginWithPengurusCredentials = async (
+    emailInput: string,
+    pinOrPassword: string
+  ): Promise<{ success: boolean; error?: string }> => {
     sfx.playClick();
-    const emailInput = await showPrompt({
-      title: 'Verifikasi Email Google',
-      message: 'Masukkan alamat Email Google Anda jika popup login diblokir browser:',
-      placeholder: 'nama@gmail.com',
-      inputType: 'email',
-      confirmLabel: 'Verifikasi & Masuk',
-      cancelLabel: 'Batal'
-    });
+    const res = await LocalKasRepository.verifyPengurusCredentials(emailInput, pinOrPassword);
+    if (!res.success || !res.role) {
+      sfx.playWarning();
+      return { success: false, error: res.error || 'Gagal verifikasi pengurus.' };
+    }
 
-    if (!emailInput || !emailInput.trim()) return;
+    const emailLower = emailInput.toLowerCase().trim();
+    const profile: UserProfile = {
+      id: res.id || `sb_${Date.now()}`,
+      name: res.name || emailLower.split('@')[0],
+      email: emailLower,
+      role: res.role,
+      avatar: res.avatar,
+      isGoogleAuth: false
+    };
 
-    const email = emailInput.trim();
-    const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-    await loginAs(isOwner ? 'superadmin' : 'anggota', email.split('@')[0], email);
-    showToast(`Berhasil verifikasi login sebagai ${email.split('@')[0]}`, 'success');
+    setUser(profile);
+    localStorage.setItem('kelasgue_active_user_v2', JSON.stringify(profile));
     sfx.playCoinChime();
+    showToast(`Selamat datang, ${profile.name} (${profile.role.toUpperCase()})!`, 'success');
+    return { success: true };
   };
 
-  const loginWithGooglePrompt = async () => {
+  /**
+   * Opens Supabase Google OAuth via safe DOM anchor click when inside preview iframe.
+   */
+  const loginWithSupabaseOAuth = async (): Promise<{ success: boolean; url?: string; error?: string }> => {
     sfx.playClick();
-    setIsGooglePopupLoading(true);
+    setIsOAuthLoading(true);
     try {
-      // 1. Primary path: Official Firebase Auth Google Popup (works reliably in AI Studio preview & grants Google Sheets token in memory)
-      const { user: fbUser } = await signInWithGoogle();
-      const email = fbUser.email || '';
-      if (!email) {
-        throw new Error('Akun Google tidak menyertakan alamat email.');
+      const res = await signInWithGoogleSupabase({ usePopup: true });
+      if (res.url) {
+        setLastOAuthUrl(res.url);
       }
-      const displayName = fbUser.displayName || email.split('@')[0];
-      const avatar = fbUser.photoURL || undefined;
-      const isOwner = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-
-      const assignedRole = await LocalKasRepository.syncUserProfile({
-        id: fbUser.uid,
-        email,
-        name: displayName,
-        avatar
-      });
-
-      const profile: UserProfile = {
-        id: fbUser.uid,
-        name: displayName,
-        email,
-        role: isOwner ? 'superadmin' : assignedRole,
-        avatar,
-        isGoogleAuth: true
-      };
-      setUser(profile);
-      localStorage.setItem('kelasgue_active_user_v2', JSON.stringify(profile));
-      sfx.playCoinChime();
-      showToast(`Login Google berhasil! Selamat datang, ${displayName}.`, 'success');
-      return;
-    } catch (err: any) {
-      const code = err?.code || '';
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        showToast('Popup login Google ditutup sebelum selesai.', 'info');
-        return;
+      if (!res.success) {
+        showToast(res.error || 'Gagal memulai login OAuth Supabase.', 'error');
+        return { success: false, error: res.error };
       }
-
-      console.warn('Firebase Google popup notice, trying Supabase/manual fallback:', err);
-
-      // 2. Secondary path: Try Supabase OAuth when outside restricted iframe
-      const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
-      const client = getSupabaseClient();
-      if (client && !isInIframe) {
-        try {
-          const res = await signInWithGoogleSupabase();
-          if (res.success) return;
-        } catch {
-          // continue to manual prompt
-        }
-      }
-
-      // 3. Smooth manual email prompt fallback if popup blocked by browser
-      showToast('Popup Google diblokir/tidak tersedia di browser ini. Gunakan verifikasi email di bawah.', 'info');
-      await loginWithEmailFallback();
+      showToast(
+        'Tab login Supabase OAuth dibuka. Setelah selesai masuk, kembali ke halaman ini atau lanjutkan di tab baru.',
+        'info'
+      );
+      return { success: true, url: res.url };
     } finally {
-      setIsGooglePopupLoading(false);
+      setIsOAuthLoading(false);
     }
   };
 
@@ -225,25 +203,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     sfx.playPaperRustle();
-    signOutFirebase().catch(() => {});
     const client = getSupabaseClient();
     if (client) {
       client.auth.signOut().catch(() => {});
     }
     setUser(null);
+    setLastOAuthUrl(null);
     localStorage.removeItem('kelasgue_active_user_v2');
   };
 
-  // Determine if user has permanent super admin privileges for simulation switching
+  // Permanent super admin check
   const isRealSuperAdmin = user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
-  // Active role determines actual current permissions
+  // Active role permissions
   const role: UserRole = user?.role || 'anggota';
   const isSuperAdmin = role === 'superadmin';
   const isBendahara = role === 'bendahara';
   const isSekretaris = role === 'sekretaris';
-  
-  // Specific Permissions
+
   const canEditKas = isSuperAdmin || isBendahara;
   const canEditSecretary = isSuperAdmin || isSekretaris;
   const canViewAudit = isSuperAdmin;
@@ -260,10 +237,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         canEditKas,
         canEditSecretary,
         canViewAudit,
-        isGooglePopupLoading,
+        isOAuthLoading,
+        lastOAuthUrl,
         loginAs,
-        loginWithGooglePrompt,
-        loginWithEmailFallback,
+        loginWithPengurusCredentials,
+        loginWithSupabaseOAuth,
         switchRole,
         logout,
         isLoggedIn: !!user

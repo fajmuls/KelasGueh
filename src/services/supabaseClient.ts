@@ -20,11 +20,12 @@ import {
 } from '../types/kas.ts';
 import { getRegisteredUsers, registerOrUpdateUser, updateUserRole, deleteRegisteredUser, autoDetectGenderByName } from '../utils/userManagement.ts';
 import { toTitleCase } from '../utils/textFormatting.ts';
-import { syncRemotePinHash } from '../utils/security.ts';
+import { syncRemotePinHash, verifyPinInput } from '../utils/security.ts';
+import { openExternalLinkSafe } from '../utils/whatsapp.ts';
 
 /**
- * CORE DATABASE SERVICE - KELAS GUE v4.10.0
- * Auto Snapshot-First Cloud Sync + Public Dual-Channel Registry + Multi-Class Isolation
+ * CORE DATABASE SERVICE - KELAS GUE v4.11.0
+ * Supabase-Only Auth + Instant Transparent View + Snapshot-First Cloud Sync
  */
 
 export const SUPER_ADMIN_EMAIL = 'mrachmanfm@gmail.com';
@@ -1081,7 +1082,7 @@ export class LocalKasRepository {
 
     return {
       classId: cid,
-      version: '4.10.0',
+      version: '4.11.0',
       updatedAt: new Date().toISOString(),
       updatedBy: updatedBy || 'Pengurus',
       settings: this.getSettings(cid),
@@ -2135,6 +2136,121 @@ export class LocalKasRepository {
     }
   }
 
+  /**
+   * Verifies Pengurus (Super Admin / Bendahara / Sekretaris) login via Supabase:
+   * 1. Confirms email belongs to SUPER_ADMIN_EMAIL or Supabase authorized_whitelist / user_profiles.
+   * 2. Authenticates via Supabase Email+Password OR verifies 6-digit Pengurus PIN synced from Supabase class_settings.
+   */
+  public static async verifyPengurusCredentials(
+    emailInput: string,
+    pinOrPassword: string
+  ): Promise<{
+    success: boolean;
+    role?: UserRole;
+    name?: string;
+    id?: string;
+    avatar?: string;
+    error?: string;
+  }> {
+    const emailLower = (emailInput || '').toLowerCase().trim();
+    const secret = (pinOrPassword || '').trim();
+
+    if (!emailLower || !emailLower.includes('@')) {
+      return { success: false, error: 'Masukkan alamat email yang valid.' };
+    }
+    if (!secret) {
+      return { success: false, error: 'Masukkan PIN Pengurus (6 digit) atau password akun Supabase.' };
+    }
+
+    const client = getSupabaseClient();
+    const whitelist = await this.getWhitelist();
+    const matchedWl = whitelist.find(w => (w.email || '').toLowerCase() === emailLower);
+    const isOwner = emailLower === SUPER_ADMIN_EMAIL.toLowerCase();
+
+    let resolvedRole: UserRole = isOwner
+      ? 'superadmin'
+      : matchedWl?.role === 'bendahara' || matchedWl?.role === 'sekretaris' || matchedWl?.role === 'superadmin'
+      ? matchedWl.role
+      : 'anggota';
+
+    if (!isOwner && resolvedRole === 'anggota') {
+      return {
+        success: false,
+        error:
+          'Email ini belum terdaftar sebagai Bendahara, Sekretaris, atau Super Admin. Siswa/anggota kelas dapat langsung masuk lewat tombol "Masuk sebagai Anggota Kelas".'
+      };
+    }
+
+    // Path A: Try official Supabase email+password signInWithPassword if configured
+    if (client && secret.length >= 6) {
+      try {
+        const { data, error } = await client.auth.signInWithPassword({
+          email: emailLower,
+          password: secret
+        });
+        if (!error && data?.user) {
+          const name =
+            data.user.user_metadata?.full_name ||
+            data.user.user_metadata?.name ||
+            matchedWl?.name ||
+            emailLower.split('@')[0];
+          const syncedRole = await this.syncUserProfile({
+            id: data.user.id,
+            email: emailLower,
+            name,
+            avatar: data.user.user_metadata?.avatar_url
+          });
+          return {
+            success: true,
+            id: data.user.id,
+            name,
+            role: isOwner ? 'superadmin' : syncedRole,
+            avatar: data.user.user_metadata?.avatar_url
+          };
+        }
+      } catch {
+        // Fallback smoothly to 6-digit PIN verification below
+      }
+    }
+
+    // Path B: Verify 6-digit Pengurus Security PIN synced from Supabase class_settings
+    if (/^\d{6}$/.test(secret)) {
+      let currentSettings = this.getSettings(DEFAULT_CLASS_ID);
+      if (client) {
+        try {
+          currentSettings = await this.fetchSettingsFromSupabase(DEFAULT_CLASS_ID);
+        } catch {
+          // use local cached settings
+        }
+      }
+
+      if (verifyPinInput(secret, currentSettings?.pinHash)) {
+        const uid = matchedWl?.id || `sb_wl_${Date.now()}`;
+        const displayName =
+          matchedWl?.name ||
+          (isOwner ? 'Super Admin Kelas' : resolvedRole === 'bendahara' ? 'Bendahara Kelas' : 'Sekretaris Kelas');
+        await this.syncUserProfile({
+          id: uid,
+          email: emailLower,
+          name: displayName,
+          avatar: matchedWl?.avatar
+        });
+        return {
+          success: true,
+          id: uid,
+          name: displayName,
+          role: resolvedRole,
+          avatar: matchedWl?.avatar
+        };
+      }
+    }
+
+    return {
+      success: false,
+      error: 'PIN Pengurus (6 digit) atau password Supabase tidak cocok. Periksa kembali PIN Anda.'
+    };
+  }
+
   // ---------------- KOLEKTIF BILLS (IURAN KHUSUS / ACARA) ----------------
   public static getKolektifBills(classId?: string): KolektifBill[] {
     const cid = classId || this.getActiveClassId();
@@ -2492,7 +2608,7 @@ export class LocalKasRepository {
     const minutes = this.getMeetingMinutes(cid);
 
     const backupData: ClassBackupData = {
-      version: '4.10.0',
+      version: '4.11.0',
       exportedAt: new Date().toISOString(),
       exportedBy: exportedBy || 'Pengurus',
       role: role || 'pengurus',
@@ -2514,7 +2630,7 @@ export class LocalKasRepository {
       const downloadAnchor = document.createElement('a');
       const dateStr = new Date().toISOString().split('T')[0];
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `kelasgue_${cid}_backup_${dateStr}_v4.10.0.json`);
+      downloadAnchor.setAttribute("download", `kelasgue_${cid}_backup_${dateStr}_v4.11.0.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -2634,20 +2750,37 @@ export const subscribeToRealtimeKas = (
   };
 };
 
-// Supabase Google Auth helper
-export const signInWithGoogleSupabase = async (): Promise<{ success: boolean; error?: string }> => {
+export const getSupabaseCallbackUrl = (): string => {
+  const { url } = getSupabaseConfig();
+  const cleanUrl = (url || 'https://husymjsimolzvidunkur.supabase.co').replace(/\/+$/, '');
+  return `${cleanUrl}/auth/v1/callback`;
+};
+
+// Supabase Google OAuth helper (iframe-friendly popup via skipBrowserRedirect + DOM link click)
+export const signInWithGoogleSupabase = async (options?: {
+  usePopup?: boolean;
+}): Promise<{ success: boolean; url?: string; error?: string }> => {
   const client = getSupabaseClient();
   if (!client) return { success: false, error: 'Supabase belum dikonfigurasi.' };
 
+  const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
+  const shouldPopup = options?.usePopup ?? isInIframe;
+
   try {
-    const { error } = await client.auth.signInWithOAuth({
+    const { data, error } = await client.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin
+        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+        skipBrowserRedirect: shouldPopup
       }
     });
     if (error) throw error;
-    return { success: true };
+
+    if (shouldPopup && data?.url) {
+      openExternalLinkSafe(data.url);
+    }
+
+    return { success: true, url: data?.url };
   } catch (e: any) {
     return { success: false, error: e.message };
   }

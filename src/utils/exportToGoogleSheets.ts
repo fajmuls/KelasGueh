@@ -1,4 +1,5 @@
 import { KasTransaction, KasMember, ClassSettings } from '../types/kas.ts';
+import { openExternalLinkSafe } from './whatsapp.ts';
 
 export const generateGoogleSheetsCsv = (
   transactions: KasTransaction[],
@@ -67,5 +68,5 @@ export const downloadCsvFile = (filename: string, csvContent: string): void => {
 };
 
 export const openGoogleSheetsImportGuide = (): void => {
-  window.open('https://sheets.new', '_blank');
+  openExternalLinkSafe('https://sheets.new');
 };

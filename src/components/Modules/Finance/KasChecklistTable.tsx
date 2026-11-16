@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../../services/api.ts';
 import { useAuth } from '../../../context/AuthContext.tsx';
 import { KasCollectionColumn, KasChecklistEntry, User } from '../../../types/index.ts';
+import { openExternalLinkSafe, openWhatsAppSafe } from '../../../utils/whatsapp.ts';
 import {
   CheckSquare,
   Plus,
@@ -272,7 +273,7 @@ export const KasChecklistTable: React.FC = () => {
           [{ title: 'Tabel Kas Checklist', rows: [headers, ...rows] }]
         );
         alert(`Berhasil diekspor ke Google Sheets! URL: ${res.spreadsheetUrl}`);
-        window.open(res.spreadsheetUrl, '_blank');
+        openExternalLinkSafe(res.spreadsheetUrl);
       } else {
         handleExportCSV();
         alert('File CSV telah diunduh. Masuk dengan Google untuk ekspor langsung ke Google Drive Sheets.');
@@ -612,7 +613,7 @@ export const KasChecklistTable: React.FC = () => {
                                   const text = `Halo ${student.name} (${student.nim}),\n\nKami menginformasikan rekapan iuran kas kelas *${classInfo?.name || '01 SAKP 14'}*.\n\nSaat ini terdapat ${unpaidCols.length} tagihan kas yang belum diselesaikan:\n${colList}\n\n*Total Tagihan:* Rp ${totalOwed.toLocaleString('id-ID')}\n\nSilakan melakukan pembayaran tunai ke Bendahara Kelas atau transfer, lalu kirimkan bukti pembayarannya ya. Terima kasih! 🙏`;
                                   const phone = student.phone ? student.phone.replace(/[^0-9]/g, '') : '';
                                   const finalPhone = phone.startsWith('0') ? '62' + phone.slice(1) : phone;
-                                  window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
+                                  openWhatsAppSafe(text, { phone: finalPhone || undefined });
                                 }}
                                 title="Kirim Tagihan Kas ke WhatsApp Siswa"
                                 className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
@@ -703,7 +704,7 @@ export const KasChecklistTable: React.FC = () => {
                       const text = `Halo ${item.student.name} (${item.student.nim}),\n\nKami menginformasikan rekapan iuran kas kelas *${classInfo?.name || '01 SAKP 14'}*.\n\nSaat ini terdapat ${item.unpaid.length} tagihan kas yang belum diselesaikan:\n${colList}\n\n*Total Tagihan:* Rp ${item.totalOwed.toLocaleString('id-ID')}\n\nSilakan melakukan pembayaran tunai ke Bendahara Kelas atau transfer, lalu kirimkan bukti pembayarannya ya. Terima kasih! 🙏`;
                       const phone = item.student.phone ? item.student.phone.replace(/[^0-9]/g, '') : '';
                       const finalPhone = phone.startsWith('0') ? '62' + phone.slice(1) : phone;
-                      window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank');
+                      openWhatsAppSafe(text, { phone: finalPhone || undefined });
                     }}
                     className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center gap-1 shrink-0 cursor-pointer shadow-xs"
                   >

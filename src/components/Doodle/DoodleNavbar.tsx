@@ -200,7 +200,7 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
           </div>
           <div className="min-w-0">
             <h1 className="text-xs sm:text-base font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5">
-              {availableClasses.length > 1 && onSwitchClass ? (
+              {availableClasses.length >= 1 && onSwitchClass ? (
                 <div className="relative">
                   <button
                     type="button"

@@ -51,10 +51,15 @@ import {
   ToggleLeft,
   ToggleRight,
   ExternalLink,
-  Archive
+  Archive,
+  HelpCircle,
+  KeyRound
 } from 'lucide-react';
-import { getAccessToken, reauthorizeGoogleWorkspace } from '../../services/firebase.ts';
-import { syncClassToAdminSpreadsheet, getAdminSpreadsheetTabNames } from '../../services/googleSheetsSync.ts';
+import {
+  exportClassToExcelWorkbook,
+  SPREADSHEET_TAB_DESCRIPTIONS
+} from '../../services/excelExport.ts';
+import { SupabaseAuthGuideModal } from './SupabaseAuthGuideModal.tsx';
 
 interface AdminSettingsViewProps {
   members: KasMember[];
@@ -111,10 +116,10 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   const [editClassArchived, setEditClassArchived] = useState(false);
   const [isSavingClassEdit, setIsSavingClassEdit] = useState(false);
 
-  // Google Sheets Admin Sync state
-  const [hasSheetsToken, setHasSheetsToken] = useState<boolean>(() => Boolean(getAccessToken()));
-  const [isAuthorizingSheets, setIsAuthorizingSheets] = useState(false);
-  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
+  // Manual Spreadsheet (.xlsx) Export & Supabase Auth Guide Modal state
+  const [isExportingXlsx, setIsExportingXlsx] = useState(false);
+  const [lastXlsxExportInfo, setLastXlsxExportInfo] = useState<{ filename: string; exportedAt: string } | null>(null);
+  const [showSupabaseGuide, setShowSupabaseGuide] = useState(false);
 
   // Whitelist state
   const [users, setUsers] = useState<any[]>([]);
@@ -310,44 +315,13 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
     }
   };
 
-  const handleAuthorizeGoogleSheets = async () => {
-    sfx.playClick();
-    setIsAuthorizingSheets(true);
-    try {
-      const token = await reauthorizeGoogleWorkspace();
-      setHasSheetsToken(Boolean(token));
-      sfx.playCoinChime();
-      showToast('Akun Google Workspace & izin Spreadsheet aktif untuk sesi ini!', 'success');
-    } catch (err: any) {
-      showToast(err?.message || 'Gagal mengotorisasi akses Google Sheets.', 'error');
-    } finally {
-      setIsAuthorizingSheets(false);
-    }
-  };
-
-  const handleSyncToAdminSpreadsheet = async () => {
+  const handleExportMultiSheetExcel = async () => {
     const targetCls = registryClasses.find(c => c.id === currentActiveClassId) || activeClass || DEFAULT_CLASS_DEF;
-    const existingId = settings.googleSpreadsheetId || targetCls.googleSpreadsheetId;
-    const tabs = getAdminSpreadsheetTabNames();
+    const cid = targetCls.id;
 
-    const confirmed = await showConfirm({
-      title: existingId ? 'Perbarui Google Spreadsheet Admin?' : 'Buat 1 Google Spreadsheet Admin Baru?',
-      message: `${existingId ? 'Seluruh 8 tab pada Spreadsheet Admin tertaut akan diperbarui' : 'Aplikasi akan membuat 1 Spreadsheet baru di Google Drive Admin Anda'} untuk kelas ${targetCls.code} mencakup tab: ${tabs.join(', ')}. Lanjutkan?`,
-      confirmLabel: existingId ? 'Ya, Perbarui Sheets' : 'Ya, Buat & Sinkronkan',
-      cancelLabel: 'Batal'
-    });
-    if (!confirmed) return;
-
-    setIsSyncingSheets(true);
+    setIsExportingXlsx(true);
     try {
-      let token = getAccessToken();
-      if (!token) {
-        token = await reauthorizeGoogleWorkspace();
-        setHasSheetsToken(Boolean(token));
-      }
-
-      const cid = targetCls.id;
-      const payload = {
+      const result = exportClassToExcelWorkbook({
         classDef: targetCls,
         settings,
         members: memberList,
@@ -359,78 +333,27 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
         courseSchedules: LocalKasRepository.getCourseSchedules(cid),
         savedGroups: LocalKasRepository.getSavedGroups(cid),
         auditLogs
-      };
+      });
 
-      const result = await syncClassToAdminSpreadsheet(token, payload, existingId);
-      const nextSettings: ClassSettings = {
-        ...settings,
-        googleSpreadsheetId: result.spreadsheetId,
-        googleSpreadsheetUrl: result.spreadsheetUrl,
-        lastSheetsSyncAt: result.syncedAt
-      };
+      setLastXlsxExportInfo({
+        filename: result.filename,
+        exportedAt: new Date().toISOString()
+      });
 
-      if (onSaveSettings) {
-        await onSaveSettings(nextSettings);
-      } else {
-        await LocalKasRepository.saveSettings(nextSettings, cid);
-      }
-
-      if (onUpdateClass) {
-        await onUpdateClass(cid, {
-          googleSpreadsheetId: result.spreadsheetId,
-          googleSpreadsheetUrl: result.spreadsheetUrl,
-          lastSheetsSyncAt: result.syncedAt
-        });
-      } else {
-        await LocalKasRepository.updateClassDefinition(cid, {
-          googleSpreadsheetId: result.spreadsheetId,
-          googleSpreadsheetUrl: result.spreadsheetUrl,
-          lastSheetsSyncAt: result.syncedAt
-        });
-      }
+      await LocalKasRepository.addAuditLog({
+        action: 'EXPORT_SPREADSHEET_XLSX',
+        performedBy: 'Super Admin',
+        userRole: 'super_admin',
+        details: `Mengekspor Spreadsheet Rapi (.xlsx) 8 tab untuk kelas ${targetCls.code}: ${result.filename}`
+      });
 
       sfx.playCoinChime();
-      showToast(`Spreadsheet Admin (${result.tabNames.length} tab) berhasil disinkronkan!`, 'success');
-      await loadData();
+      showToast(`Spreadsheet Rapi (${result.tabNames.length} tab) berhasil diunduh: ${result.filename}`, 'success');
     } catch (err: any) {
-      showToast(err?.message || 'Gagal menyinkronkan ke Google Sheets.', 'error');
+      showToast(err?.message || 'Gagal mengekspor Spreadsheet (.xlsx).', 'error');
     } finally {
-      setIsSyncingSheets(false);
+      setIsExportingXlsx(false);
     }
-  };
-
-  const handleToggleAutoSyncSheets = async () => {
-    const nextVal = !settings.autoSyncGoogleSheets;
-    if (nextVal) {
-      const targetCls = registryClasses.find(c => c.id === currentActiveClassId) || activeClass || DEFAULT_CLASS_DEF;
-      const existingId = settings.googleSpreadsheetId || targetCls.googleSpreadsheetId;
-      if (!existingId) {
-        showToast('Silakan buat/hubungkan 1 Spreadsheet Admin terlebih dahulu sebelum mengaktifkan Auto-Update.', 'info');
-        return;
-      }
-      const ok = await showConfirm({
-        title: 'Aktifkan Auto-Update Google Sheets?',
-        message: 'Setiap kali Admin mencatat transaksi kas, presensi, iuran, atau data kelas selama sesi Google aktif, 8 tab di Spreadsheet Admin akan otomatis diperbarui di latar belakang. Aktifkan sekarang?',
-        confirmLabel: 'Ya, Aktifkan Auto-Update',
-        cancelLabel: 'Batal'
-      });
-      if (!ok) return;
-    }
-
-    sfx.playToggle();
-    const nextSettings: ClassSettings = {
-      ...settings,
-      autoSyncGoogleSheets: nextVal
-    };
-    if (onSaveSettings) {
-      await onSaveSettings(nextSettings);
-    } else {
-      await LocalKasRepository.saveSettings(nextSettings);
-    }
-    showToast(
-      nextVal ? 'Auto-Update Google Spreadsheet Admin AKTIF.' : 'Auto-Update Google Spreadsheet Admin DINONAKTIFKAN.',
-      nextVal ? 'success' : 'info'
-    );
   };
 
   // Auto-complete suggestions for Whitelist search
@@ -967,7 +890,7 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
       <div className="flex items-center gap-1.5 p-2 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] overflow-x-auto no-scrollbar">
         {[
           { id: 'classes', label: 'Kelas & Konfirmasi', icon: GraduationCap, badge: pendingMemberships.length },
-          { id: 'sheets', label: 'Google Sheets', icon: FileSpreadsheet, badge: 0 },
+          { id: 'sheets', label: 'Spreadsheet (.xlsx)', icon: FileSpreadsheet, badge: 0 },
           { id: 'whitelist', label: 'Whitelist Roll', icon: UserCheck, badge: 0 },
           { id: 'students', label: 'Manajemen Siswa', icon: UserPlus, badge: 0 },
           { id: 'audit', label: 'Laporan Audit Log', icon: FileSpreadsheet, badge: 0 },
@@ -1017,15 +940,28 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
                   Kelas default <strong>01 SAKP 014</strong> menyimpan seluruh data SQL Anda. Tambah kelas baru, berpindah kelas, atau setujui permintaan pengguna baru untuk masuk ke kelas tertentu.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={loadData}
-                disabled={isRefreshingRegistry}
-                className="btn-doodle px-3 py-2 bg-white text-slate-900 font-black text-xs rounded-lg flex items-center gap-1.5 shrink-0"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingRegistry ? 'animate-spin' : ''}`} />
-                <span>Segarkan Daftar</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.playClick();
+                    setShowSupabaseGuide(true);
+                  }}
+                  className="btn-doodle px-3 py-2 bg-sky-200 hover:bg-sky-300 text-slate-950 font-black text-xs rounded-lg flex items-center gap-1.5"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>Panduan Login Preview Supabase</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={loadData}
+                  disabled={isRefreshingRegistry}
+                  className="btn-doodle px-3 py-2 bg-white text-slate-900 font-black text-xs rounded-lg flex items-center gap-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingRegistry ? 'animate-spin' : ''}`} />
+                  <span>Segarkan Daftar</span>
+                </button>
+              </div>
             </div>
 
             {/* Queue Permintaan Masuk Kelas */}
@@ -1357,141 +1293,122 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           </div>
         )}
 
-        {/* SUB-TAB 0B: GOOGLE SPREADSHEET ADMIN (1 FILE, 8 TAB LENGKAP) */}
+        {/* SUB-TAB 0B: EKSPOR MANUAL SPREADSHEET RAPI (.XLSX 8 TAB) */}
         {activeTab === 'sheets' && (
           <div className="space-y-5">
             <div className="bg-emerald-50 p-4 rounded-xl border-2 border-slate-900 text-xs text-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 <strong className="font-black text-emerald-950 flex items-center gap-1.5">
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" /> Sinkronisasi 1 Google Spreadsheet Admin (8 Tab Lengkap)
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-700" /> Dual Ekspor Manual: Spreadsheet Tabel Rapi (.xlsx) vs Cadangan (.json)
                 </strong>
                 <p className="text-slate-700 leading-relaxed">
-                  Seluruh data kelas <strong>{activeClass?.code || settings.className}</strong> disimpan ke 1 file Spreadsheet khusus di Google Drive akun Admin dengan struktur kolom yang kompatibel dan sinkron penuh.
+                  <strong>Spreadsheet Rapi (.xlsx)</strong> menghasilkan 1 workbook Excel dengan <strong>8 tab catatan terstruktur</strong> untuk kelas{' '}
+                  <strong>{activeClass?.code || settings.className}</strong> agar mudah dibaca atau diimpor manual ke Google Sheets. Untuk pemulihan sistem penuh, gunakan tab{' '}
+                  <strong>Cadangan Data JSON</strong>.
                 </p>
               </div>
               <button
                 type="button"
-                disabled={isAuthorizingSheets}
-                onClick={handleAuthorizeGoogleSheets}
-                className={`btn-doodle px-3.5 py-2 font-black text-xs rounded-xl flex items-center gap-1.5 shrink-0 ${
-                  hasSheetsToken
-                    ? 'bg-emerald-300 text-slate-950'
-                    : 'bg-amber-300 hover:bg-amber-400 text-slate-950'
-                }`}
+                onClick={() => {
+                  sfx.playToggle();
+                  setActiveTab('backup');
+                }}
+                className="btn-doodle px-3.5 py-2 bg-amber-200 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl flex items-center gap-1.5 shrink-0"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isAuthorizingSheets ? 'animate-spin' : ''}`} />
-                <span>{hasSheetsToken ? 'Sesi Google Sheets Aktif ✓' : 'Otorisasi Akun Google'}</span>
+                <Database className="w-3.5 h-3.5" />
+                <span>Buka Cadangan .JSON</span>
               </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Status & Link Spreadsheet */}
-              <div className="p-4 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] space-y-3">
-                <h4 className="font-black text-xs uppercase tracking-wider text-slate-900">
-                  Spreadsheet Tertaut untuk {activeClass?.code || settings.className}
-                </h4>
+              {/* Unduh Spreadsheet .xlsx & Panduan Impor Manual ke Google Sheets */}
+              <div className="p-4 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] space-y-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-black text-xs uppercase tracking-wider text-slate-900">
+                    Unduh Workbook Excel (.xlsx) Kelas {activeClass?.code || settings.className}
+                  </h4>
+                  <span className="px-2 py-0.5 bg-emerald-200 text-emerald-950 text-[10px] font-black rounded border border-slate-900">
+                    8 TAB RAPI
+                  </span>
+                </div>
 
-                {settings.googleSpreadsheetUrl || activeClass?.googleSpreadsheetUrl ? (
-                  <div className="p-3 bg-amber-50 border-2 border-slate-900 rounded-xl space-y-2">
-                    <p className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                      <span>1 Spreadsheet Admin Sudah Terhubung</span>
+                {lastXlsxExportInfo ? (
+                  <div className="p-3 bg-emerald-50 border-2 border-slate-900 rounded-xl space-y-1">
+                    <p className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                      <span>Terakhir Diekspor: {lastXlsxExportInfo.filename}</span>
                     </p>
-                    <p className="text-[11px] font-mono text-slate-600 break-all">
-                      ID: {settings.googleSpreadsheetId || activeClass?.googleSpreadsheetId}
+                    <p className="text-[11px] font-mono text-slate-600">
+                      Waktu: {new Date(lastXlsxExportInfo.exportedAt).toLocaleString('id-ID')}
                     </p>
-                    {(settings.lastSheetsSyncAt || activeClass?.lastSheetsSyncAt) && (
-                      <p className="text-[11px] text-slate-700 font-semibold">
-                        Sinkron Terakhir:{' '}
-                        <span className="font-mono">
-                          {new Date(settings.lastSheetsSyncAt || activeClass?.lastSheetsSyncAt || '').toLocaleString('id-ID')}
-                        </span>
-                      </p>
-                    )}
-                    <a
-                      href={settings.googleSpreadsheetUrl || activeClass?.googleSpreadsheetUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-doodle inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-300 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-lg"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Buka Google Spreadsheet Admin</span>
-                    </a>
                   </div>
                 ) : (
                   <div className="p-3 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl text-xs text-slate-600">
-                    Belum ada Google Spreadsheet yang dibuat untuk kelas ini. Klik tombol di bawah untuk membuat 1 Spreadsheet Admin lengkap secara otomatis.
+                    Seluruh data (Buku Kas, Iuran Siswa, Tagihan Kolektif, Presensi &amp; Poin, Notulensi &amp; Jadwal, Kelompok Matkul, hingga Audit Log) otomatis dirapikan ke dalam 8 sheet siap pakai.
                   </div>
                 )}
 
                 <button
                   type="button"
-                  disabled={isSyncingSheets}
-                  onClick={handleSyncToAdminSpreadsheet}
-                  className="w-full btn-doodle py-2.5 bg-amber-300 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                  disabled={isExportingXlsx}
+                  onClick={handleExportMultiSheetExcel}
+                  className="w-full btn-doodle py-2.5 bg-emerald-400 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  <FileSpreadsheet className="w-4 h-4" />
+                  <Download className="w-4 h-4" />
                   <span>
-                    {isSyncingSheets
-                      ? 'Menyinkronkan 8 Tab Spreadsheet...'
-                      : settings.googleSpreadsheetId || activeClass?.googleSpreadsheetId
-                      ? 'Perbarui 1 Spreadsheet Admin Sekarang'
-                      : 'Buat & Isi 1 Spreadsheet Admin Sekarang'}
+                    {isExportingXlsx
+                      ? 'Menyiapkan Workbook 8 Tab (.xlsx)...'
+                      : 'Unduh Spreadsheet Rapi (.xlsx — 8 Tab)'}
                   </span>
                 </button>
 
-                {/* Auto-Update Toggle */}
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-black text-slate-900">Auto-Update Spreadsheet saat Perubahan Data</p>
-                    <p className="text-[10px] text-slate-600">
-                      Otomatis menyinkronkan perubahan ke Spreadsheet Admin ketika sesi Google Anda aktif.
+                <div className="p-3 bg-amber-50 border-2 border-slate-900 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-black text-slate-900">
+                      Cara Impor Manual ke Google Sheets:
                     </p>
+                    <a
+                      href="https://sheets.new"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-doodle inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-amber-100 text-slate-900 font-black text-[11px] rounded-lg"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Buka Google Sheets Baru</span>
+                    </a>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleToggleAutoSyncSheets}
-                    className={`px-3 py-1.5 rounded-xl border-2 border-slate-900 font-black text-xs flex items-center gap-1.5 shrink-0 transition shadow-[2px_2px_0px_#000] ${
-                      settings.autoSyncGoogleSheets
-                        ? 'bg-emerald-300 text-slate-950'
-                        : 'bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {settings.autoSyncGoogleSheets ? (
-                      <>
-                        <ToggleRight className="w-4 h-4 text-emerald-900" />
-                        <span>AKTIF</span>
-                      </>
-                    ) : (
-                      <>
-                        <ToggleLeft className="w-4 h-4 text-slate-600" />
-                        <span>NONAKTIF</span>
-                      </>
-                    )}
-                  </button>
+                  <ol className="list-decimal list-inside text-[11px] text-slate-700 space-y-1 leading-snug">
+                    <li>Klik <strong>Unduh Spreadsheet Rapi (.xlsx — 8 Tab)</strong> di atas.</li>
+                    <li>Klik <strong>Buka Google Sheets Baru</strong> (tanpa perlu hubungkan akun ke aplikasi).</li>
+                    <li>Di Google Sheets pilih menu <strong>File &rarr; Impor &rarr; Upload</strong> dan pilih file <code className="font-mono">.xlsx</code> tadi &rarr; <strong>Ganti spreadsheet</strong>.</li>
+                  </ol>
                 </div>
               </div>
 
               {/* 8 Tabs Schema Preview */}
               <div className="p-4 bg-amber-50/70 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#000] space-y-2.5">
                 <h4 className="font-black text-xs uppercase tracking-wider text-slate-900">
-                  Struktur 8 Tab Database di Spreadsheet Admin
+                  Struktur 8 Tab Catatan Rapi (.xlsx)
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {getAdminSpreadsheetTabNames().map((tabName, idx) => (
+                <div className="grid grid-cols-1 gap-2 text-xs">
+                  {SPREADSHEET_TAB_DESCRIPTIONS.map((tab, idx) => (
                     <div
-                      key={tabName}
-                      className="p-2 bg-white border border-slate-900 rounded-lg flex items-center gap-2 font-bold text-slate-900"
+                      key={tab.name}
+                      className="p-2.5 bg-white border border-slate-900 rounded-lg flex items-start gap-2.5 text-slate-900"
                     >
-                      <span className="w-5 h-5 rounded bg-amber-200 border border-slate-900 text-[10px] font-black flex items-center justify-center shrink-0">
+                      <span className="w-5 h-5 rounded bg-amber-200 border border-slate-900 text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
                         {idx + 1}
                       </span>
-                      <span className="font-mono text-[11px] truncate">{tabName}</span>
+                      <div className="min-w-0">
+                        <p className="font-mono text-[11px] font-black text-slate-950 truncate">{tab.name}</p>
+                        <p className="text-[10px] text-slate-600 leading-snug">{tab.description}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-slate-600 leading-snug pt-1">
-                  Token akses Google Workspace disimpan khusus di memori sesi browser saat ini dan terhubung langsung ke akun Google Admin Anda.
+                <p className="text-[10px] text-slate-600 leading-snug pt-1 flex items-center gap-1">
+                  <KeyRound className="w-3.5 h-3.5 text-slate-700 shrink-0" />
+                  <span>100% tanpa login Google Workspace — seluruh data tetap tersinkronisasi aman di Supabase.</span>
                 </p>
               </div>
             </div>
@@ -2448,6 +2365,11 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           </div>
         )}
       </div>
+
+      <SupabaseAuthGuideModal
+        isOpen={showSupabaseGuide}
+        onClose={() => setShowSupabaseGuide(false)}
+      />
     </div>
   );
 };

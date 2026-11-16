@@ -13,15 +13,78 @@ export function formatIDR(amount: number): string {
 }
 
 /**
- * Exports Meeting Minutes (Notulensi Rapat) to a formatted printable HTML window
+ * Prints formatted HTML without calling window.open (compatible with iframes & PWA).
+ * Falls back to downloading a printable HTML file if iframe print cannot be invoked.
+ */
+function printHtmlSafely(htmlContent: string, fallbackFilename: string): void {
+  if (typeof document === 'undefined') return;
+  try {
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) {
+      iframe.remove();
+      throw new Error('Iframe print document unavailable');
+    }
+
+    // Strip embedded auto window.print() script so parent controls print lifecycle cleanly
+    const cleanedHtml = htmlContent.replace(/<script>[\s\S]*?<\/script>/gi, '');
+    doc.open();
+    doc.write(cleanedHtml);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        // Fallback: download standalone printable HTML
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fallbackFilename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          link.remove();
+          URL.revokeObjectURL(url);
+        }, 500);
+      }
+      setTimeout(() => {
+        iframe.remove();
+      }, 2000);
+    }, 350);
+  } catch {
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fallbackFilename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      link.remove();
+      URL.revokeObjectURL(url);
+    }, 500);
+  }
+}
+
+/**
+ * Exports Meeting Minutes (Notulensi Rapat) to a formatted printable HTML view
  * that triggers the browser's PDF Print / Save dialog with professional academic styling.
  */
 export function exportMeetingMinutesToPDF(meeting: Meeting, classInfo?: ClassInfo | null) {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert('Pop-up terblokir. Izinkan pop-up peramban untuk mencetak notulensi.');
-    return;
-  }
 
   const className = classInfo?.name || '01 SAKP 14';
   const classMajor = classInfo?.major || 'S1 Akuntansi Perpajakan';
@@ -313,24 +376,17 @@ export function exportMeetingMinutesToPDF(meeting: Meeting, classInfo?: ClassInf
 </html>
 `;
 
-  printWindow.document.open();
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
+  printHtmlSafely(htmlContent, `Notulensi_${(meeting.title || 'Rapat').replace(/[^a-zA-Z0-9_-]/g, '_')}.html`);
 }
 
 /**
- * Exports Kas Ledger & Financial Summary to a formatted printable PDF window
+ * Exports Kas Ledger & Financial Summary to a formatted printable PDF view
  */
 export function exportKasReportToPDF(
   transactions: Transaction[],
   summary: { totalIncome: number; totalExpense: number; balance: number },
   classInfo?: ClassInfo | null
 ) {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert('Pop-up terblokir. Izinkan pop-up peramban untuk mencetak laporan kas.');
-    return;
-  }
 
   const className = classInfo?.name || '01 SAKP 14';
   const classMajor = classInfo?.major || 'S1 Akuntansi Perpajakan';
@@ -561,9 +617,7 @@ export function exportKasReportToPDF(
 </html>
 `;
 
-  printWindow.document.open();
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
+  printHtmlSafely(htmlContent, `Laporan_Kas_${className.replace(/[^a-zA-Z0-9_-]/g, '_')}.html`);
 }
 
 /**
@@ -664,11 +718,6 @@ export interface ReceiptData {
  * Generates an official digital cash receipt (Kwitansi Digital Kas Kelas) in PDF print view
  */
 export function exportKasReceiptToPDF(receipt: ReceiptData, classInfo?: ClassInfo | null) {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert('Pop-up terblokir. Izinkan pop-up peramban untuk mencetak kwitansi.');
-    return;
-  }
 
   const className = classInfo?.name || 'Kelas Manager 01 SAKP 14';
   const majorName = classInfo?.major || 'S1 Akuntansi Perpajakan';
@@ -853,7 +902,5 @@ export function exportKasReceiptToPDF(receipt: ReceiptData, classInfo?: ClassInf
 </html>
   `;
 
-  printWindow.document.open();
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
+  printHtmlSafely(htmlContent, `Kwitansi_${receipt.receiptNumber}.html`);
 }

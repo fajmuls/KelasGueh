@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../context/AuthContext.tsx';
 import { api } from '../../../services/api.ts';
 import { Transaction, TransactionCategory, Bill, Payment, FinanceSummary } from '../../../types/index.ts';
+import { openExternalLinkSafe } from '../../../utils/whatsapp.ts';
 import {
   Wallet,
   TrendingUp,
@@ -217,7 +218,7 @@ export const FinanceModule: React.FC = () => {
           [{ title: 'Buku Kas & Jurnal', rows }]
         );
         alert(`Berhasil mengekspor Buku Kas ke Google Sheets! URL: ${res.spreadsheetUrl}`);
-        window.open(res.spreadsheetUrl, '_blank');
+        openExternalLinkSafe(res.spreadsheetUrl);
       } else {
         handleExportTransactionsCSV();
         alert('Laporan Kas diunduh dalam format CSV. Masuk dengan Google untuk ekspor langsung ke spreadsheet cloud.');

@@ -23,6 +23,7 @@ import {
 import { Badge } from '../../UI/Badge.tsx';
 import { Modal } from '../../UI/Modal.tsx';
 import { googleWorkspace } from '../../../services/googleWorkspace.ts';
+import { openExternalLinkSafe } from '../../../utils/whatsapp.ts';
 import {
   subscribeToMembers,
   saveMemberToFirestore,
@@ -234,7 +235,7 @@ export const MembersModule: React.FC = () => {
           [{ title: 'Data Siswa', rows }]
         );
         alert(`Berhasil membuat Google Sheets! URL: ${res.spreadsheetUrl}`);
-        window.open(res.spreadsheetUrl, '_blank');
+        openExternalLinkSafe(res.spreadsheetUrl);
       } else {
         // Fallback to CSV export with notification
         handleExportCSV();

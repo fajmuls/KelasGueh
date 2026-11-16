@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Modal } from '../../UI/Modal.tsx';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '../../../utils/calendarSync.ts';
+import { openExternalLinkSafe } from '../../../utils/whatsapp.ts';
 
 interface CourseSyllabusModalProps {
   isOpen: boolean;
@@ -156,7 +157,7 @@ export const CourseSyllabusModal: React.FC<CourseSyllabusModalProps> = ({
                   location: course.room || 'Kampus Universitas Pamulang',
                   startDate: new Date().toISOString(),
                 });
-                window.open(gCalUrl, '_blank');
+                openExternalLinkSafe(gCalUrl);
               }}
               className="px-3 py-2 bg-white hover:bg-slate-50 text-blue-700 border border-blue-200 text-xs font-semibold rounded-xl flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
               title="Tambahkan jadwal matkul ini ke Google Calendar"

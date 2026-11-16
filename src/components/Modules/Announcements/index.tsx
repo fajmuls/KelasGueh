@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '../../UI/Badge.tsx';
 import { Modal } from '../../UI/Modal.tsx';
+import { openWhatsAppSafe } from '../../../utils/whatsapp.ts';
 
 interface AnnouncementsModuleProps {
   initialTab?: 'announcements' | 'meetings';
@@ -123,8 +124,7 @@ export const AnnouncementsModule: React.FC<AnnouncementsModuleProps> = ({
       ? `📢 *PENGUMUMAN KELAS 01 SAKP 14*\n━━━━━━━━━━━━━━━━━━━━\n*${title}*\n\n`
       : `📹 *JADWAL RAPAT KELAS 01 SAKP 14*\n━━━━━━━━━━━━━━━━━━━━\n*${title}*\n\n`;
     const text = `${header}${content}\n\n_Dikelola melalui Portal Kelas Manajer 01SAKP014_`;
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    void openWhatsAppSafe(text, { preferNativeShare: true });
   };
 
   const handleCopyLink = (textToCopy: string, id: string) => {

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Transaction, Bill, Payment, ClassInfo, FinanceSummary } from '../../../types/index.ts';
 import { Modal } from '../../UI/Modal.tsx';
 import { MessageSquare, Copy, Check, ExternalLink, Calendar, Filter, Share2 } from 'lucide-react';
+import { openWhatsAppSafe } from '../../../utils/whatsapp.ts';
 
 interface WhatsAppShareModalProps {
   isOpen: boolean;
@@ -130,8 +131,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
   };
 
   const handleOpenWhatsApp = () => {
-    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
-    window.open(waUrl, '_blank');
+    void openWhatsAppSafe(messageText, { preferNativeShare: true });
   };
 
   return (

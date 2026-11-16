@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
 import { CURRENT_APP_VERSION } from '../../version.ts';
 import { ScotchTape } from './DoodleDecorations.tsx';
-import { LocalKasRepository } from '../../services/supabaseClient.ts';
+import { LocalKasRepository, DEFAULT_CLASS_DEF } from '../../services/supabaseClient.ts';
+import { exportClassToExcelWorkbook } from '../../services/excelExport.ts';
 import { updateUserLinkedMember } from '../../utils/userManagement.ts';
 import { 
   Shield, 
@@ -474,35 +475,63 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
         </form>
       </div>
 
-      {/* Cadangan Data Terpadu (.JSON) untuk Bendahara */}
+      {/* Dual Ekspor: Spreadsheet Rapi (.XLSX) & Cadangan Lengkap (.JSON) */}
       <div className="card-doodle p-5 rounded-lg bg-white border-2 border-slate-900 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-slate-900 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-400 border border-slate-900 flex items-center justify-center">
-              <Database className="w-4 h-4 text-slate-950" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-900 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-emerald-300 border-2 border-slate-900 flex items-center justify-center shrink-0">
+              <FileSpreadsheet className="w-4 h-4 text-slate-950" />
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-black text-slate-900">
-                Cadangan Data Aplikasi (.JSON)
+                Ekspor Spreadsheet & Cadangan Data
               </h3>
               <p className="text-xs text-slate-600">
-                Ekspor seluruh data buku kas, iuran, dan anggota ke file JSON untuk cadangan offline.
+                <strong>.xlsx</strong> berisi 8 tab tabel rapi siap unggah ke Google Sheets; <strong>.json</strong> untuk cadangan database lengkap.
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={async () => {
-              sfx.playPaymentConfirmed();
-              await LocalKasRepository.exportFullBackupJSON('Bendahara', 'bendahara');
-              showToast('File cadangan JSON berhasil diekspor!', 'success');
-            }}
-            className="btn-doodle px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-lg border-2 border-slate-900 flex items-center gap-2 shrink-0 shadow-[2px_2px_0px_#000]"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Ekspor File Cadangan JSON</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                sfx.playPaymentConfirmed();
+                const cid = LocalKasRepository.getActiveClassId();
+                const res = exportClassToExcelWorkbook({
+                  classDef: { ...DEFAULT_CLASS_DEF, id: cid, code: form.classCode || form.className, name: form.className, academicYear: form.academicYear },
+                  settings: form,
+                  members,
+                  transactions: LocalKasRepository.getTransactions(cid),
+                  kolektifBills: LocalKasRepository.getKolektifBills(cid),
+                  pointLogs: LocalKasRepository.getPointLogs(cid),
+                  attendanceRecords: LocalKasRepository.getAttendanceRecords(cid),
+                  meetingMinutes: LocalKasRepository.getMeetingMinutes(cid),
+                  courseSchedules: LocalKasRepository.getCourseSchedules(cid),
+                  savedGroups: LocalKasRepository.getSavedGroups(cid),
+                  auditLogs: LocalKasRepository.getAuditLogs(cid)
+                });
+                showToast(`Spreadsheet "${res.filename}" (${res.tabNames.length} tab) berhasil diunduh!`, 'success');
+              }}
+              className="btn-doodle px-4 py-2 bg-emerald-300 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-lg border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#000]"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Ekspor Spreadsheet (.xlsx)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                sfx.playPaymentConfirmed();
+                await LocalKasRepository.exportFullBackupJSON('Bendahara', 'bendahara');
+                showToast('File cadangan JSON berhasil diekspor!', 'success');
+              }}
+              className="btn-doodle px-4 py-2 bg-amber-300 hover:bg-amber-400 text-slate-950 text-xs font-black rounded-lg border-2 border-slate-900 flex items-center gap-1.5 shadow-[2px_2px_0px_#000]"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Cadangan Lengkap (.json)</span>
+            </button>
+          </div>
         </div>
       </div>
 

@@ -20,7 +20,6 @@ import { AnimatedIntroScreen } from './components/Doodle/AnimatedIntroScreen.tsx
 import { showConfirm } from "./components/UI/DoodleDialog.tsx";
 import { DoodleWalkthrough } from './components/Doodle/DoodleWalkthrough.tsx';
 import { AdminSettingsView } from './components/Doodle/AdminSettingsView.tsx';
-import { ClassSelectionGate } from './components/Doodle/ClassSelectionGate.tsx';
 import {
   LocalKasRepository,
   INITIAL_TRANSACTIONS,
@@ -46,8 +45,6 @@ import {
 } from './types/kas.ts';
 import { sfx } from './utils/soundEffects.ts';
 import { DoodleDialogContainer, showToast } from './components/UI/DoodleDialog.tsx';
-import { getAccessToken } from './services/firebase.ts';
-import { syncClassToAdminSpreadsheet } from './services/googleSheetsSync.ts';
 
 // URL Routing helpers using HTML5 History API
 const getRouteFromPath = (path: string): { domain: AppDomain; tab: AppNavTab } => {
@@ -98,13 +95,9 @@ const AppContent: React.FC = () => {
   const { user, role, isLoggedIn, isRealSuperAdmin, canEditKas, canEditSecretary, canViewAudit, isSuperAdmin, switchRole, logout } = useAuth();
   const [showIntro, setShowIntro] = useState(true);
 
-  // Multi-class & approval gate state
+  // Multi-class & live sync state (non-blocking transparent access)
   const [activeClassId, setActiveClassId] = useState<string>(() => LocalKasRepository.getActiveClassId());
   const [availableClasses, setAvailableClasses] = useState<ClassDefinition[]>(() => LocalKasRepository.getCachedClasses());
-  const [classAccessStatus, setClassAccessStatus] = useState<'loading' | 'approved' | 'pending' | 'unassigned'>(() =>
-    isRealSuperAdmin ? 'approved' : 'loading'
-  );
-  const [pendingClassRequest, setPendingClassRequest] = useState<ClassMembershipRequest | undefined>(undefined);
   const [pendingJoinCount, setPendingJoinCount] = useState<number>(0);
 
   // Initialize Route & Domain from browser URL
@@ -247,60 +240,35 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const refreshClassAccessAndSync = async () => {
-    if (!isLoggedIn || !user?.email) {
+  const refreshClassesAndSync = async () => {
+    if (!isLoggedIn) {
       return;
     }
+
+    // 1. Immediately hydrate UI from local cache for 0ms startup
+    hydrateAllStatesFromRepo(activeClassId);
 
     try {
       const reg = await LocalKasRepository.fetchClassRegistry();
       setPendingJoinCount(reg.memberships.filter(m => m.status === 'pending').length);
 
-      const access = await LocalKasRepository.checkUserClassAccess(user.email, user.name, user.nim);
-      if (access.status === 'approved') {
-        setClassAccessStatus('approved');
-        setPendingClassRequest(undefined);
+      const activeOnly = reg.classes.filter(c => !c.isArchived);
+      const visibleClasses = isSuperAdmin || isRealSuperAdmin
+        ? reg.classes
+        : activeOnly.length > 0
+        ? activeOnly
+        : reg.classes;
 
-        const allowedClasses = isRealSuperAdmin
-          ? reg.classes
-          : access.approvedClasses.length > 0
-          ? access.approvedClasses
-          : [DEFAULT_CLASS_DEF];
-        setAvailableClasses(allowedClasses);
+      setAvailableClasses(visibleClasses);
 
-        if (!isRealSuperAdmin && access.assignedRole && role !== access.assignedRole) {
-          switchRole(access.assignedRole);
-        }
+      const currentObj = visibleClasses.find(c => c.id === activeClassId);
+      const preferredDefault = activeOnly[0]?.id || visibleClasses[0]?.id || DEFAULT_CLASS_ID;
+      const targetClassId = currentObj ? activeClassId : preferredDefault;
 
-        const currentObj = allowedClasses.find(c => c.id === activeClassId);
-        const preferredDefault = access.defaultApprovedClassId || allowedClasses[0]?.id || DEFAULT_CLASS_ID;
-        const preferredObj = allowedClasses.find(c => c.id === preferredDefault);
-        const shouldAutoMoveToActive = Boolean(currentObj?.isArchived && preferredObj && !preferredObj.isArchived);
-
-        const targetClassId = currentObj && !shouldAutoMoveToActive
-          ? activeClassId
-          : preferredDefault;
-
-        if (access.autoMatched) {
-          sfx.playCoinChime();
-          showToast(
-            `Cocok Nama & NIM! Otomatis diterima masuk ke kelas ${preferredObj?.code || targetClassId}.`,
-            'success'
-          );
-        }
-
-        await syncAndHydrateClass(targetClassId);
-      } else {
-        setAvailableClasses(reg.classes);
-        setClassAccessStatus(access.status);
-        setPendingClassRequest(access.pendingRequest);
-      }
+      await syncAndHydrateClass(targetClassId);
     } catch (err) {
-      console.warn('Class access & snapshot sync notice:', err);
-      if (isRealSuperAdmin) {
-        setClassAccessStatus('approved');
-        await syncAndHydrateClass(activeClassId || DEFAULT_CLASS_ID);
-      }
+      console.warn('Background class sync notice:', err);
+      await syncAndHydrateClass(activeClassId || DEFAULT_CLASS_ID);
     }
   };
 
@@ -330,18 +298,15 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Snapshot-first initial access verification & sync
+  // Non-blocking snapshot-first initial hydration & background sync
   useEffect(() => {
-    if (!isLoggedIn || !user?.email) {
-      setClassAccessStatus(isRealSuperAdmin ? 'approved' : 'loading');
-      return;
-    }
-    refreshClassAccessAndSync();
-  }, [isLoggedIn, user?.email, isRealSuperAdmin]);
+    if (!isLoggedIn) return;
+    refreshClassesAndSync();
+  }, [isLoggedIn, user?.email, isSuperAdmin]);
 
   // Supabase Realtime Broadcast subscription (debounced, only active for default SQL class)
   useEffect(() => {
-    if (!isLoggedIn || classAccessStatus !== 'approved') return;
+    if (!isLoggedIn) return;
     const unsubscribe = subscribeToRealtimeKas(
       (payload) => {
         if (LocalKasRepository.getActiveClassId() !== DEFAULT_CLASS_ID) return;
@@ -368,11 +333,11 @@ const AppContent: React.FC = () => {
     return () => {
       unsubscribe();
     };
-  }, [isLoggedIn, classAccessStatus]);
+  }, [isLoggedIn]);
 
   // Automatic background snapshot freshness check (focus / visibility / periodic lightweight meta.json check)
   useEffect(() => {
-    if (!isLoggedIn || classAccessStatus !== 'approved') return;
+    if (!isLoggedIn) return;
 
     const runAutoSyncCheck = async () => {
       try {
@@ -404,85 +369,7 @@ const AppContent: React.FC = () => {
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       clearInterval(interval);
     };
-  }, [isLoggedIn, classAccessStatus, activeClassId, isRealSuperAdmin, isSuperAdmin]);
-
-  // Debounced Google Sheets Admin Auto-Sync when enabled & Google session token active in memory
-  const lastAutoSheetPayloadKeyRef = useRef<string>('');
-  useEffect(() => {
-    if (!isLoggedIn || !isRealSuperAdmin || !settings.autoSyncGoogleSheets) return;
-    const spreadsheetId = settings.googleSpreadsheetId;
-    const token = getAccessToken();
-    if (!spreadsheetId || !token) return;
-
-    const fingerprint = JSON.stringify({
-      activeClassId,
-      txCount: transactions.length,
-      txSum: transactions.reduce((s, t) => s + Number(t.amount || 0), 0),
-      mCount: members.length,
-      duesSum: members.reduce((s, m) => s + Object.values(m.weeklyStatus || {}).filter(Boolean).length, 0),
-      kCount: kolektifBills.length,
-      pCount: pointLogs.length,
-      aCount: attendanceRecords.length,
-      minCount: meetingMinutes.length,
-      csCount: courseSchedules.length,
-      dues: settings.weeklyDuesAmount,
-      pin: settings.requireTransactionPin
-    });
-
-    if (!lastAutoSheetPayloadKeyRef.current) {
-      // Seed baseline fingerprint on first mount so opening the app does not fire redundant writes
-      lastAutoSheetPayloadKeyRef.current = fingerprint;
-      return;
-    }
-
-    if (lastAutoSheetPayloadKeyRef.current === fingerprint) return;
-
-    const timer = setTimeout(async () => {
-      const freshToken = getAccessToken();
-      if (!freshToken) return;
-      try {
-        const clsObj = availableClasses.find(c => c.id === activeClassId) || DEFAULT_CLASS_DEF;
-        await syncClassToAdminSpreadsheet(
-          freshToken,
-          {
-            classDef: clsObj,
-            settings,
-            members,
-            transactions,
-            kolektifBills,
-            pointLogs,
-            attendanceRecords,
-            meetingMinutes,
-            courseSchedules,
-            savedGroups: LocalKasRepository.getSavedGroups(activeClassId),
-            auditLogs
-          },
-          spreadsheetId
-        );
-        lastAutoSheetPayloadKeyRef.current = fingerprint;
-      } catch (err) {
-        console.warn('Background Google Sheets auto-sync skipped:', err);
-      }
-    }, 4000);
-
-    return () => clearTimeout(timer);
-  }, [
-    isLoggedIn,
-    isRealSuperAdmin,
-    activeClassId,
-    settings.autoSyncGoogleSheets,
-    settings.googleSpreadsheetId,
-    settings.weeklyDuesAmount,
-    settings.requireTransactionPin,
-    transactions,
-    members,
-    kolektifBills,
-    pointLogs,
-    attendanceRecords,
-    meetingMinutes,
-    courseSchedules,
-    auditLogs
-  ]);
+  }, [isLoggedIn, activeClassId, isRealSuperAdmin, isSuperAdmin]);
 
   // Autoplay BGM automatically on first user gesture
   useEffect(() => {
@@ -1044,38 +931,9 @@ const AppContent: React.FC = () => {
     name: settings.className || DEFAULT_CLASS_DEF.name
   };
 
-  // If user is not logged in or hasn't selected a role, show the doodle welcome screen
+  // If user is not logged in, show the doodle welcome screen
   if (!isLoggedIn) {
     return <WelcomeScreen />;
-  }
-
-  // Enforce Super Admin Class Approval Gate for non-SuperAdmin accounts
-  if (!isRealSuperAdmin && classAccessStatus === 'loading') {
-    return (
-      <div className="min-h-screen bg-paper-grid flex items-center justify-center p-4">
-        <div className="card-doodle bg-white rounded-xl p-6 max-w-sm w-full text-center space-y-2">
-          <p className="font-black text-base text-slate-900">Memeriksa Keanggotaan Kelas...</p>
-          <p className="text-xs text-slate-600">Menghubungkan akun dengan registry kelas di cloud.</p>
-        </div>
-        <DoodleDialogContainer />
-      </div>
-    );
-  }
-
-  if (!isRealSuperAdmin && (classAccessStatus === 'pending' || classAccessStatus === 'unassigned') && user) {
-    return (
-      <>
-        <ClassSelectionGate
-          user={user}
-          accessStatus={classAccessStatus}
-          pendingRequest={pendingClassRequest}
-          availableClasses={availableClasses}
-          onRefreshAccess={refreshClassAccessAndSync}
-          onLogout={logout}
-        />
-        <DoodleDialogContainer />
-      </>
-    );
   }
 
   return (
