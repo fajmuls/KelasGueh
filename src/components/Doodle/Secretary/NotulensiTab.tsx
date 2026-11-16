@@ -3,6 +3,7 @@ import { MeetingMinute, KasMember, ClassSettings } from '../../../types/kas.ts';
 import { sfx } from '../../../utils/soundEffects.ts';
 import { ScotchTape, PushPin } from '../DoodleDecorations.tsx';
 import { showToast, showConfirm } from '../../UI/DoodleDialog.tsx';
+import { openWhatsAppSafe } from '../../../utils/whatsapp.ts';
 import {
   FileText,
   Calendar,
@@ -143,7 +144,7 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
   };
 
   // WhatsApp Recap for Minute
-  const handleCopyMinuteWhatsApp = (minute: MeetingMinute) => {
+  const handleCopyMinuteWhatsApp = async (minute: MeetingMinute) => {
     sfx.playClick();
     const actionList = minute.actionItems.length > 0
       ? minute.actionItems.map(a => `${a.done ? '☑️' : '◻️'} ${a.task} (PJ: ${a.assignee})`).join('\n')
@@ -162,7 +163,10 @@ export const NotulensiTab: React.FC<NotulensiTabProps> = ({
       `🎯 *Tindak Lanjut / Action Items:*\n${actionList}\n\n` +
       `_— Dicatat via Sekretariat Kelas Gue_`;
 
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+    await openWhatsAppSafe(message, {
+      title: `Notulensi: ${minute.title}`,
+      preferNativeShare: true
+    });
   };
 
   // WhatsApp Copy for Official Letter

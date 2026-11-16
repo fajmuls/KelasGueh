@@ -11,6 +11,7 @@ interface PinVerificationModalProps {
   title?: string;
   description?: string;
   requiredAmount?: number;
+  pinHash?: string;
 }
 
 export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
@@ -19,7 +20,8 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
   onSuccess,
   title = 'Konfirmasi PIN Keamanan Transaksi',
   description = 'Transaksi ini memerlukan verifikasi PIN 6-digit bendahara untuk alasan keamanan.',
-  requiredAmount
+  requiredAmount,
+  pinHash
 }) => {
   const [pinDigits, setPinDigits] = useState(['', '', '', '', '', '']);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -59,7 +61,7 @@ export const PinVerificationModal: React.FC<PinVerificationModalProps> = ({
 
     setIsVerifying(true);
     try {
-      const isValid = verifyPinInput(fullPin);
+      const isValid = verifyPinInput(fullPin, pinHash);
       if (isValid) {
         sfx.playLevelUp();
         setPinDigits(['', '', '', '', '', '']);

@@ -20,11 +20,14 @@ import { AnimatedIntroScreen } from './components/Doodle/AnimatedIntroScreen.tsx
 import { showConfirm } from "./components/UI/DoodleDialog.tsx";
 import { DoodleWalkthrough } from './components/Doodle/DoodleWalkthrough.tsx';
 import { AdminSettingsView } from './components/Doodle/AdminSettingsView.tsx';
+import { ClassSelectionGate } from './components/Doodle/ClassSelectionGate.tsx';
 import {
   LocalKasRepository,
   INITIAL_TRANSACTIONS,
   INITIAL_MEMBERS,
   DEFAULT_SETTINGS,
+  DEFAULT_CLASS_ID,
+  DEFAULT_CLASS_DEF,
   subscribeToRealtimeKas
 } from './services/supabaseClient.ts';
 import {
@@ -37,9 +40,10 @@ import {
   MeetingMinute,
   ClassInventoryItem,
   CourseSchedule,
-  CourseAssignment
+  CourseAssignment,
+  ClassDefinition,
+  ClassMembershipRequest
 } from './types/kas.ts';
-import { CURRENT_APP_VERSION } from './version.ts';
 import { sfx } from './utils/soundEffects.ts';
 import { DoodleDialogContainer, showToast } from './components/UI/DoodleDialog.tsx';
 
@@ -89,8 +93,17 @@ const getPathFromRoute = (domain: AppDomain, tab: AppNavTab): string => {
 };
 
 const AppContent: React.FC = () => {
-  const { user, role, isLoggedIn, canEditKas, canEditSecretary, canViewAudit, isSuperAdmin } = useAuth();
+  const { user, role, isLoggedIn, isRealSuperAdmin, canEditKas, canEditSecretary, canViewAudit, isSuperAdmin, switchRole, logout } = useAuth();
   const [showIntro, setShowIntro] = useState(true);
+
+  // Multi-class & approval gate state
+  const [activeClassId, setActiveClassId] = useState<string>(() => LocalKasRepository.getActiveClassId());
+  const [availableClasses, setAvailableClasses] = useState<ClassDefinition[]>(() => LocalKasRepository.getCachedClasses());
+  const [classAccessStatus, setClassAccessStatus] = useState<'loading' | 'approved' | 'pending' | 'unassigned'>(() =>
+    isRealSuperAdmin ? 'approved' : 'loading'
+  );
+  const [pendingClassRequest, setPendingClassRequest] = useState<ClassMembershipRequest | undefined>(undefined);
+  const [pendingJoinCount, setPendingJoinCount] = useState<number>(0);
 
   // Initialize Route & Domain from browser URL
   const initialRoute = getRouteFromPath(typeof window !== 'undefined' ? window.location.pathname : '/');
@@ -189,13 +202,13 @@ const AppContent: React.FC = () => {
     }
   }, [canEditKas, canViewAudit, isSuperAdmin, currentTab, activeDomain]);
 
-  // State: Financial Data
+  // State: Financial Data (scoped by active class)
   const [transactions, setTransactions] = useState<KasTransaction[]>(() => LocalKasRepository.getTransactions());
   const [members, setMembers] = useState<KasMember[]>(() => LocalKasRepository.getMembers());
   const [settings, setSettings] = useState<ClassSettings>(() => LocalKasRepository.getSettings());
   const [auditLogs, setAuditLogs] = useState(() => LocalKasRepository.getAuditLogs());
 
-  // State: Kolektif & Secretary Data
+  // State: Kolektif & Secretary Data (scoped by active class)
   const [kolektifBills, setKolektifBills] = useState<KolektifBill[]>(() => LocalKasRepository.getKolektifBills());
   const [pointLogs, setPointLogs] = useState<StudentPointLog[]>(() => LocalKasRepository.getPointLogs());
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => LocalKasRepository.getAttendanceRecords());
@@ -203,55 +216,136 @@ const AppContent: React.FC = () => {
   const [inventoryItems, setInventoryItems] = useState<ClassInventoryItem[]>(() => LocalKasRepository.getInventoryItems());
   const [courseSchedules, setCourseSchedules] = useState<CourseSchedule[]>(() => LocalKasRepository.getCourseSchedules());
 
-  // Fetch initial data on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [txs, ms, st, logs] = await Promise.all([
-          LocalKasRepository.fetchTransactionsFromSupabase(),
-          LocalKasRepository.fetchMembersFromSupabase(),
-          LocalKasRepository.fetchSettingsFromSupabase(),
-          LocalKasRepository.fetchAuditLogsFromSupabase()
-        ]);
-        setTransactions(txs);
-        setMembers(ms);
-        if (st) setSettings(st);
-        setAuditLogs(logs);
+  const hydrateAllStatesFromRepo = (targetClassId: string) => {
+    setTransactions(LocalKasRepository.getTransactions(targetClassId));
+    setMembers(LocalKasRepository.getMembers(targetClassId));
+    setSettings(LocalKasRepository.getSettings(targetClassId));
+    setAuditLogs(LocalKasRepository.getAuditLogs(targetClassId));
+    setKolektifBills(LocalKasRepository.getKolektifBills(targetClassId));
+    setPointLogs(LocalKasRepository.getPointLogs(targetClassId));
+    setAttendanceRecords(LocalKasRepository.getAttendanceRecords(targetClassId));
+    setMeetingMinutes(LocalKasRepository.getMeetingMinutes(targetClassId));
+    setInventoryItems(LocalKasRepository.getInventoryItems(targetClassId));
+    setCourseSchedules(LocalKasRepository.getCourseSchedules(targetClassId));
+  };
 
-        // Run self-healing integrity sanitize to ensure no orphan/duplicate linked transactions exist
-        await handleSanitizeLinkedTransactions(txs, ms);
-      } catch (err) {
-        console.warn('Initial fetch error:', err);
+  const syncAndHydrateClass = async (targetClassId: string, forceDownload = false) => {
+    LocalKasRepository.setActiveClassId(targetClassId);
+    setActiveClassId(targetClassId);
+    hydrateAllStatesFromRepo(targetClassId);
+
+    const syncRes = await LocalKasRepository.syncClassFast(targetClassId, { forceDownload });
+    hydrateAllStatesFromRepo(targetClassId);
+
+    if (targetClassId === DEFAULT_CLASS_ID && (syncRes.source === 'sql' || syncRes.updated)) {
+      const freshTxs = LocalKasRepository.getTransactions(targetClassId);
+      const freshMs = LocalKasRepository.getMembers(targetClassId);
+      const freshSt = LocalKasRepository.getSettings(targetClassId);
+      await handleSanitizeLinkedTransactions(freshTxs, freshMs, freshSt);
+    }
+  };
+
+  const refreshClassAccessAndSync = async () => {
+    if (!isLoggedIn || !user?.email) {
+      return;
+    }
+
+    try {
+      const reg = await LocalKasRepository.fetchClassRegistry();
+      setPendingJoinCount(reg.memberships.filter(m => m.status === 'pending').length);
+
+      const access = await LocalKasRepository.checkUserClassAccess(user.email);
+      if (access.status === 'approved') {
+        setClassAccessStatus('approved');
+        setPendingClassRequest(undefined);
+
+        const allowedClasses = isRealSuperAdmin
+          ? reg.classes
+          : access.approvedClasses.length > 0
+          ? access.approvedClasses
+          : [DEFAULT_CLASS_DEF];
+        setAvailableClasses(allowedClasses);
+
+        if (!isRealSuperAdmin && access.assignedRole && role !== access.assignedRole) {
+          switchRole(access.assignedRole);
+        }
+
+        const currentExists = allowedClasses.some(c => c.id === activeClassId);
+        const targetClassId = currentExists
+          ? activeClassId
+          : access.defaultApprovedClassId || allowedClasses[0]?.id || DEFAULT_CLASS_ID;
+
+        await syncAndHydrateClass(targetClassId);
+      } else {
+        setAvailableClasses(reg.classes);
+        setClassAccessStatus(access.status);
+        setPendingClassRequest(access.pendingRequest);
       }
-    };
-    fetchData();
-  }, []);
+    } catch (err) {
+      console.warn('Class access & snapshot sync notice:', err);
+      if (isRealSuperAdmin) {
+        setClassAccessStatus('approved');
+        await syncAndHydrateClass(activeClassId || DEFAULT_CLASS_ID);
+      }
+    }
+  };
 
-  // Supabase Realtime Broadcast subscription
+  const handleSwitchClass = async (newClassId: string) => {
+    if (!newClassId || newClassId === activeClassId) return;
+    await syncAndHydrateClass(newClassId, false);
+    const chosen = availableClasses.find(c => c.id === newClassId);
+    showToast(`Berpindah ke kelas ${chosen?.code || newClassId}!`, 'success');
+  };
+
+  const handleCreateClass = async (input: { code: string; name: string; academicYear: string }) => {
+    const newClass = await LocalKasRepository.createNewClass({
+      ...input,
+      createdBy: user?.name || 'Super Admin'
+    });
+    const reg = await LocalKasRepository.fetchClassRegistry();
+    setAvailableClasses(reg.classes);
+    await syncAndHydrateClass(newClass.id, false);
+  };
+
+  // Snapshot-first initial access verification & sync
   useEffect(() => {
+    if (!isLoggedIn || !user?.email) {
+      setClassAccessStatus(isRealSuperAdmin ? 'approved' : 'loading');
+      return;
+    }
+    refreshClassAccessAndSync();
+  }, [isLoggedIn, user?.email, isRealSuperAdmin]);
+
+  // Supabase Realtime Broadcast subscription (debounced, only active for default SQL class)
+  useEffect(() => {
+    if (!isLoggedIn || classAccessStatus !== 'approved') return;
     const unsubscribe = subscribeToRealtimeKas(
       (payload) => {
+        if (LocalKasRepository.getActiveClassId() !== DEFAULT_CLASS_ID) return;
         if (payload.eventType === 'INSERT') sfx.playNotification();
-        LocalKasRepository.fetchTransactionsFromSupabase().then(setTransactions);
-        LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
+        LocalKasRepository.fetchTransactionsFromSupabase(DEFAULT_CLASS_ID).then(setTransactions);
+        LocalKasRepository.fetchAuditLogsFromSupabase(DEFAULT_CLASS_ID).then(setAuditLogs);
       },
       (payload) => {
+        if (LocalKasRepository.getActiveClassId() !== DEFAULT_CLASS_ID) return;
         if (payload.eventType === 'UPDATE') sfx.playNotification();
-        LocalKasRepository.fetchMembersFromSupabase().then(setMembers);
-        LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
+        LocalKasRepository.fetchMembersFromSupabase(DEFAULT_CLASS_ID).then(setMembers);
+        LocalKasRepository.fetchAuditLogsFromSupabase(DEFAULT_CLASS_ID).then(setAuditLogs);
       },
       (_payload) => {
-        LocalKasRepository.fetchAuditLogsFromSupabase().then(setAuditLogs);
+        if (LocalKasRepository.getActiveClassId() !== DEFAULT_CLASS_ID) return;
+        LocalKasRepository.fetchAuditLogsFromSupabase(DEFAULT_CLASS_ID).then(setAuditLogs);
       },
       (_payload) => {
-        LocalKasRepository.fetchSettingsFromSupabase().then(setSettings);
+        if (LocalKasRepository.getActiveClassId() !== DEFAULT_CLASS_ID) return;
+        LocalKasRepository.fetchSettingsFromSupabase(DEFAULT_CLASS_ID).then(setSettings);
       }
     );
 
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [isLoggedIn, classAccessStatus]);
 
   // Autoplay BGM automatically on first user gesture
   useEffect(() => {
@@ -806,9 +900,45 @@ const AppContent: React.FC = () => {
     setCourseSchedules(LocalKasRepository.getCourseSchedules());
   };
 
+  const activeClassObj: ClassDefinition = availableClasses.find(c => c.id === activeClassId) || {
+    ...DEFAULT_CLASS_DEF,
+    id: activeClassId,
+    code: settings.classCode || settings.className || DEFAULT_CLASS_DEF.code,
+    name: settings.className || DEFAULT_CLASS_DEF.name
+  };
+
   // If user is not logged in or hasn't selected a role, show the doodle welcome screen
   if (!isLoggedIn) {
     return <WelcomeScreen />;
+  }
+
+  // Enforce Super Admin Class Approval Gate for non-SuperAdmin accounts
+  if (!isRealSuperAdmin && classAccessStatus === 'loading') {
+    return (
+      <div className="min-h-screen bg-paper-grid flex items-center justify-center p-4">
+        <div className="card-doodle bg-white rounded-xl p-6 max-w-sm w-full text-center space-y-2">
+          <p className="font-black text-base text-slate-900">Memeriksa Keanggotaan Kelas...</p>
+          <p className="text-xs text-slate-600">Menghubungkan akun dengan registry kelas di cloud.</p>
+        </div>
+        <DoodleDialogContainer />
+      </div>
+    );
+  }
+
+  if (!isRealSuperAdmin && (classAccessStatus === 'pending' || classAccessStatus === 'unassigned') && user) {
+    return (
+      <>
+        <ClassSelectionGate
+          user={user}
+          accessStatus={classAccessStatus}
+          pendingRequest={pendingClassRequest}
+          availableClasses={availableClasses}
+          onRefreshAccess={refreshClassAccessAndSync}
+          onLogout={logout}
+        />
+        <DoodleDialogContainer />
+      </>
+    );
   }
 
   return (
@@ -829,6 +959,11 @@ const AppContent: React.FC = () => {
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
           onOpenAdminSettings={() => handleSelectDomain('admin', 'admin_settings')}
+          activeClass={activeClassObj}
+          availableClasses={availableClasses}
+          onSwitchClass={handleSwitchClass}
+          onSyncComplete={() => hydrateAllStatesFromRepo(activeClassId)}
+          pendingJoinCount={pendingJoinCount}
         />
       )}
 
@@ -837,6 +972,7 @@ const AppContent: React.FC = () => {
         {/* 1. PORTAL HUB BERANDA UTAMA (Pilihan Dua Ranah Besar) */}
         {activeDomain === 'hub' && (
           <MainPortalHub
+            key={activeClassId}
             settings={settings}
             members={members}
             transactions={transactions}
@@ -852,6 +988,7 @@ const AppContent: React.FC = () => {
         {/* 2. RANAH SEKRETARIS */}
         {activeDomain === 'sekretaris' && (
           <SecretaryHub
+            key={activeClassId}
             initialSubTab={
               currentTab === 'presensi' ? 'presensi' : currentTab === 'notulensi' ? 'notulensi' : 'keaktifan'
             }
@@ -883,6 +1020,7 @@ const AppContent: React.FC = () => {
         {/* 3. RANAH BENDAHARA (Administrasi Kas & Keuangan) */}
         {activeDomain === 'bendahara' && (
           <BendaharaHub
+            key={activeClassId}
             initialSubTab={
               ['ringkasan', 'bukukas', 'checklist', 'kolektif', 'rekap', 'pengaturan', 'auditlog'].includes(currentTab)
                 ? (currentTab as any)
@@ -927,10 +1065,17 @@ const AppContent: React.FC = () => {
         {/* 4. RANAH MASTER ADMIN (Pengaturan System) */}
         {activeDomain === 'admin' && (
           <AdminSettingsView
+            key={activeClassId}
             members={members}
             settings={settings}
             onUpdateMembers={(ms) => setMembers(ms)}
             onReturnToHub={() => handleSelectDomain('hub', 'beranda')}
+            onSaveSettings={handleSaveSettings}
+            activeClass={activeClassObj}
+            availableClasses={availableClasses}
+            onSwitchClass={handleSwitchClass}
+            onCreateClass={handleCreateClass}
+            onSyncNow={() => syncAndHydrateClass(activeClassId, true)}
           />
         )}
       </main>

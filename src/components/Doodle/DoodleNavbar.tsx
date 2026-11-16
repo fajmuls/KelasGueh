@@ -23,10 +23,13 @@ import {
   Coins,
   FileText,
   Eye,
-  Coffee
+  Coffee,
+  GraduationCap
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWA/PWAInstallButton.tsx';
-import { subscribeCloudSync, getCloudSyncStatus, CloudSyncStatus, LocalKasRepository } from '../../services/supabaseClient.ts';
+import { LocalKasRepository, DEFAULT_CLASS_DEF } from '../../services/supabaseClient.ts';
+import { ClassDefinition } from '../../types/kas.ts';
+import { LiveSyncPanel } from './LiveSyncPanel.tsx';
 import { getRegisteredUsers } from '../../utils/userManagement.ts';
 import { toTitleCase } from '../../utils/textFormatting.ts';
 import { CURRENT_APP_VERSION } from '../../version.ts';
@@ -57,6 +60,11 @@ interface DoodleNavbarProps {
   onOpenShareModal?: () => void;
   onOpenWalkthrough?: () => void;
   onOpenAdminSettings?: () => void;
+  activeClass?: ClassDefinition;
+  availableClasses?: ClassDefinition[];
+  onSwitchClass?: (classId: string) => void;
+  onSyncComplete?: () => void;
+  pendingJoinCount?: number;
 }
 
 export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
@@ -67,35 +75,33 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
   classNameTitle,
   onOpenShareModal,
   onOpenWalkthrough,
-  onOpenAdminSettings
+  onOpenAdminSettings,
+  activeClass,
+  availableClasses = [],
+  onSwitchClass,
+  onSyncComplete,
+  pendingJoinCount = 0
 }) => {
-  const { user, role, isSuperAdmin, isRealSuperAdmin, isBendahara, isSekretaris, canEditKas, canEditSecretary, logout, switchRole, loginWithGooglePrompt } = useAuth();
+  const { user, role, isSuperAdmin, isRealSuperAdmin, isBendahara, isSekretaris, canEditKas, canEditSecretary, logout, switchRole } = useAuth();
   const { theme, setTheme } = useTheme();
   const [bgmPlaying, setBgmPlaying] = useState(() => sfx.getIsBgmPlaying());
   const [sfxEnabled, setSfxEnabled] = useState(() => sfx.isEnabled());
   const [bgmVol, setBgmVol] = useState(() => sfx.getBgmVolume());
   const [sfxVol, setSfxVol] = useState(() => sfx.getSfxVolume());
-  const [syncStatus, setSyncStatus] = useState<CloudSyncStatus>(() => getCloudSyncStatus());
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPatchNotesModal, setShowPatchNotesModal] = useState(false);
 
-
-
-
+  const resolvedActiveClass: ClassDefinition = activeClass || {
+    ...DEFAULT_CLASS_DEF,
+    code: classNameTitle || DEFAULT_CLASS_DEF.code,
+    name: classNameTitle || DEFAULT_CLASS_DEF.name
+  };
 
   // Synchronize BGM state with global SoundEngine
   useEffect(() => {
     const unsub = sfx.subscribeBgm((playing) => {
       setBgmPlaying(playing);
-    });
-    return unsub;
-  }, []);
-
-  // Listen to cloud sync state
-  useEffect(() => {
-    const unsub = subscribeCloudSync((status) => {
-      setSyncStatus(status);
     });
     return unsub;
   }, []);
@@ -190,34 +196,38 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
           </div>
           <div className="min-w-0">
             <h1 className="text-xs sm:text-base font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5 truncate">
-              <span className="truncate">{classNameTitle || 'Kelas Gue'}</span>
-              <span className="hidden lg:inline-block text-[9px] bg-emerald-200 border border-slate-900 px-1 py-0.2 rounded-xs font-bold text-slate-900 shrink-0">
-                {activeDomain === 'sekretaris' ? 'Sekretariat' : 'Bendahara'}
+              <span className="truncate">{resolvedActiveClass.code || classNameTitle || '01 SAKP 014'}</span>
+              {availableClasses.length > 1 && onSwitchClass && (
+                <select
+                  aria-label="Pilih kelas aktif"
+                  value={resolvedActiveClass.id}
+                  onChange={(e) => {
+                    sfx.playOptionSelect();
+                    onSwitchClass(e.target.value);
+                  }}
+                  className="hidden xl:inline-block text-[10px] font-black bg-amber-100 border border-slate-900 rounded px-1.5 py-0.5 cursor-pointer text-slate-900"
+                >
+                  {availableClasses.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.code}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <span className="hidden lg:inline-block text-[9px] bg-emerald-200 border border-slate-900 px-1.5 py-0.5 rounded-xs font-bold text-slate-900 shrink-0">
+                {activeDomain === 'sekretaris' ? 'Sekretariat' : activeDomain === 'admin' ? 'Master Admin' : 'Bendahara'}
               </span>
             </h1>
-            <div className="flex items-center gap-1.5 mt-0.5 leading-none">
+            <div className="flex items-center gap-1.5 mt-1 leading-none">
               <p className="text-[9px] sm:text-[10px] text-slate-600 font-semibold truncate shrink-0 theme-text-muted">
-                {activeDomain === 'sekretaris' ? 'Sekretariat & Presensi' : 'Buku Kas Kelas'}
+                {activeDomain === 'sekretaris' ? 'Sekretariat' : activeDomain === 'admin' ? 'Admin' : 'Buku Kas'}
               </p>
-              <span className="text-slate-300 text-[8px]">·</span>
-              {syncStatus === 'synced' && (
-                <span className="inline-flex items-center gap-1 text-[8px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-1 py-0.5 rounded" title="Cloud Terhubung">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Sinkron</span>
-                </span>
-              )}
-              {syncStatus === 'syncing' && (
-                <span className="inline-flex items-center gap-1 text-[8px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1 py-0.5 rounded" title="Menyimpan...">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-                  <span>Menyimpan...</span>
-                </span>
-              )}
-              {syncStatus === 'offline' && (
-                <span className="inline-flex items-center gap-1 text-[8px] font-bold text-slate-600 bg-slate-100 border border-slate-300 px-1 py-0.5 rounded" title="Offline">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                  <span>Lokal</span>
-                </span>
-              )}
+              <span className="text-slate-400 text-[10px]">·</span>
+              <LiveSyncPanel
+                activeClass={resolvedActiveClass}
+                canPublish={canEditKas || canEditSecretary}
+                onSyncComplete={onSyncComplete}
+              />
             </div>
           </div>
 
@@ -524,12 +534,37 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                           : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'
                       }`}
                     >
-                      <t.icon className={`w-5 h-5 ${theme === t.id ? 'animate-pulse' : ''}`} />
+                      <t.icon className="w-5 h-5" />
                       <span className="text-[10px] font-bold">{t.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
+
+              {/* Multi-Class Switcher inside Drawer (when > 1 class or Super Admin) */}
+              {availableClasses.length > 0 && onSwitchClass && (
+                <div className="space-y-1.5 p-3 bg-white rounded-xl border-2 border-slate-900">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Kelas Aktif Saat Ini</span>
+                  </p>
+                  <select
+                    value={resolvedActiveClass.id}
+                    onChange={(e) => {
+                      sfx.playOptionSelect();
+                      onSwitchClass(e.target.value);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-lg text-xs font-black bg-amber-50"
+                  >
+                    {availableClasses.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.code} — {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Modul & Ranah Switcher Section */}
               <div className="space-y-2">
@@ -668,6 +703,11 @@ export const DoodleNavbar: React.FC<DoodleNavbarProps> = ({
                   <span className="flex items-center gap-2.5">
                     <ShieldCheck className="w-4 h-4 text-slate-900" />
                     <span>Pengaturan Master Admin</span>
+                    {pendingJoinCount > 0 && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full bg-rose-600 text-white tabular-nums">
+                        {pendingJoinCount}
+                      </span>
+                    )}
                   </span>
                   <span className="text-[10px] font-black px-2 py-0.5 rounded border border-slate-900 bg-slate-900 text-amber-300">
                     SUPER ADMIN

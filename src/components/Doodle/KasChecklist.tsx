@@ -26,6 +26,7 @@ import {
 import * as XLSX from 'xlsx';
 import { showToast, showConfirm } from '../UI/DoodleDialog.tsx';
 import { toTitleCase } from '../../utils/textFormatting.ts';
+import { buildWhatsAppUrl, copyTextSilently, openWhatsAppSafe } from '../../utils/whatsapp.ts';
 
 interface KasChecklistProps {
   members: KasMember[];
@@ -388,14 +389,14 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
       `_— Pengurus Kas ${settings.className}_`;
   };
 
-  const handleSendWhatsApp = (member: KasMember) => {
+  const handleSendWhatsApp = async (member: KasMember) => {
     if (!canEditKas) return;
     sfx.playMoneyIncome();
     const msg = getWhatsAppReminderMessage(member);
-    const encoded = encodeURIComponent(msg);
-    const phone = member.phone ? formatPhone(member.phone) : '';
-    const url = phone ? `https://api.whatsapp.com/send?phone=${phone}&text=${encoded}` : `https://api.whatsapp.com/send?text=${encoded}`;
-    window.open(url, '_blank');
+    await openWhatsAppSafe(msg, {
+      phone: member.phone,
+      title: `Tagihan Iuran ${toTitleCase(member.name)}`
+    });
   };
 
   return (
@@ -890,9 +891,38 @@ export const KasChecklist: React.FC<KasChecklistProps> = ({
                 <input type="text" value={reminderMember.phone || ''} onChange={e => setReminderMember({ ...reminderMember, phone: e.target.value })} className="w-full px-2 py-1.5 text-[11px] font-mono border-2 border-slate-900 rounded focus:outline-none" />
               </div>
               <textarea readOnly rows={6} value={getWhatsAppReminderMessage(reminderMember)} className="w-full p-2 font-mono text-[10px] bg-slate-50 border-2 border-slate-900 rounded text-slate-800 resize-none" />
-              <div className="flex justify-between gap-2 pt-2 border-t border-slate-200">
-                <button onClick={() => { sfx.playClick(); navigator.clipboard.writeText(getWhatsAppReminderMessage(reminderMember)); setCopiedKey(reminderMember.id); setTimeout(() => setCopiedKey(null), 2000); }} className="btn-doodle px-3 py-1.5 bg-white text-[10px] font-bold rounded flex items-center gap-1">{copiedKey === reminderMember.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}<span>Salin</span></button>
-                <button onClick={() => handleSendWhatsApp(reminderMember)} className="btn-doodle px-4 py-1.5 bg-emerald-400 text-[10px] font-black rounded flex items-center gap-1"><Send className="w-3.5 h-3.5" /><span>Kirim Sekarang</span></button>
+              <div className="flex flex-wrap justify-between gap-2 pt-2 border-t border-slate-200">
+                <button
+                  onClick={async () => {
+                    sfx.playClick();
+                    await copyTextSilently(getWhatsAppReminderMessage(reminderMember));
+                    setCopiedKey(reminderMember.id);
+                    showToast('Pesan pengingat berhasil disalin!', 'success');
+                    setTimeout(() => setCopiedKey(null), 2000);
+                  }}
+                  className="btn-doodle px-3 py-1.5 bg-white text-[10px] font-bold rounded flex items-center gap-1"
+                >
+                  {copiedKey === reminderMember.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedKey === reminderMember.id ? 'Tersalin!' : 'Salin'}</span>
+                </button>
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <a
+                    href={buildWhatsAppUrl(getWhatsAppReminderMessage(reminderMember), reminderMember.phone)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => copyTextSilently(getWhatsAppReminderMessage(reminderMember))}
+                    className="btn-doodle px-3 py-1.5 bg-white text-emerald-800 text-[10px] font-bold rounded flex items-center gap-1"
+                  >
+                    <span>Link wa.me</span>
+                  </a>
+                  <button
+                    onClick={() => handleSendWhatsApp(reminderMember)}
+                    className="btn-doodle px-4 py-1.5 bg-emerald-400 text-[10px] font-black rounded flex items-center gap-1"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Kirim Sekarang</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -271,9 +271,10 @@ export const KasBook: React.FC<KasBookProps> = ({
     onAddTransaction(txPayload);
     sfx.playCoinChime();
 
+    const threshold = Number(settings.transactionPinThreshold ?? 500000);
     // Log to Audit Trail
     LocalKasRepository.addAuditLog({
-      action: txPayload.amount >= 500000 ? 'CATAT_TRANSAKSI_BESAR' : 'CATAT_TRANSAKSI',
+      action: txPayload.amount >= threshold ? 'CATAT_TRANSAKSI_BESAR' : 'CATAT_TRANSAKSI',
       details: `Dicatat ${txPayload.type === 'income' ? 'Debit' : 'Kredit'} "${txPayload.title}" senilai Rp ${txPayload.amount.toLocaleString('id-ID')} (${txPayload.category})`,
       performedBy: user?.name || 'Bendahara',
       userRole: role
@@ -307,7 +308,10 @@ export const KasBook: React.FC<KasBookProps> = ({
       receiptUrl: txReceipt || undefined
     };
 
-    if (Number(txAmount) >= 500000) {
+    const pinRequired = settings.requireTransactionPin !== false;
+    const pinThreshold = Number(settings.transactionPinThreshold ?? 500000);
+
+    if (pinRequired && Number(txAmount) >= pinThreshold) {
       setPendingTxData(payload);
       setIsPinModalOpen(true);
     } else {
@@ -1535,7 +1539,7 @@ export const KasBook: React.FC<KasBookProps> = ({
           </div>
         </div>
       )}
-      {/* PIN Verification Modal for Large Transactions >= 500k */}
+      {/* PIN Verification Modal for Large Transactions */}
       <PinVerificationModal
         isOpen={isPinModalOpen}
         onClose={() => {
@@ -1548,6 +1552,8 @@ export const KasBook: React.FC<KasBookProps> = ({
           }
         }}
         requiredAmount={pendingTxData?.amount}
+        pinHash={settings.pinHash}
+        description={`Transaksi di atas ${formatRupiah(settings.transactionPinThreshold ?? 500000)} memerlukan verifikasi PIN 6-digit sesuai pengaturan keamanan Super Admin.`}
       />
 
       {/* Export Preview Modal */}

@@ -5,6 +5,7 @@ import { autoDetectGenderByName } from '../../../utils/userManagement.ts';
 import { sfx } from '../../../utils/soundEffects.ts';
 import { toTitleCase } from '../../../utils/textFormatting.ts';
 import { showToast, showConfirm } from '../../UI/DoodleDialog.tsx';
+import { openWhatsAppSafe } from '../../../utils/whatsapp.ts';
 import {
   Users,
   Shuffle,
@@ -110,14 +111,9 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     }
   });
 
-  // Saved group collections archive & search/collapse states
+  // Saved group collections archive & search/collapse states (class-scoped + cloud snapshot synced)
   const [savedCollections, setSavedCollections] = useState<SavedGroupCollection[]>(() => {
-    try {
-      const saved = localStorage.getItem('kelasgue_saved_group_collections');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    return LocalKasRepository.getSavedGroups();
   });
 
   const [groupSearchQuery, setGroupSearchQuery] = useState('');
@@ -327,7 +323,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
 
     const updatedCollections = [newCollection, ...savedCollections];
     setSavedCollections(updatedCollections);
-    localStorage.setItem('kelasgue_saved_group_collections', JSON.stringify(updatedCollections));
+    LocalKasRepository.saveSavedGroups(updatedCollections);
 
     sfx.playLevelUp();
     showToast(`✓ Kelompok Mata Kuliah "${currentCourseName}" berhasil disimpan ke Arsip Kelompok!`, 'success');
@@ -346,7 +342,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     sfx.playDeleteConfirm();
     const updated = savedCollections.filter(c => c.id !== collectionId);
     setSavedCollections(updated);
-    localStorage.setItem('kelasgue_saved_group_collections', JSON.stringify(updated));
+    LocalKasRepository.saveSavedGroups(updated);
     showToast(`Kelompok ${courseName} dihapus dari simpanan.`, 'info');
   };
 
@@ -367,7 +363,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
       return c;
     });
     setSavedCollections(updated);
-    localStorage.setItem('kelasgue_saved_group_collections', JSON.stringify(updated));
+    LocalKasRepository.saveSavedGroups(updated);
   };
 
   const handleUpdateGroupSubmissionUrl = (collectionId: string, groupId: number, url: string) => {
@@ -386,7 +382,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
       return c;
     });
     setSavedCollections(updated);
-    localStorage.setItem('kelasgue_saved_group_collections', JSON.stringify(updated));
+    LocalKasRepository.saveSavedGroups(updated);
   };
 
   const handleSyncUnifiedTaskToSchedule = () => {
@@ -426,7 +422,7 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
     showToast(`✓ Tugas proyek "${task.title.trim()}" mata kuliah ${currentCourseName} berhasil disimpan ke Jadwal & Tugas!`, 'success');
   };
 
-  const handleSendWhatsApp = () => {
+  const handleSendWhatsApp = async () => {
     if (!isLocked || groups.length === 0) {
       showToast('Generate dan kunci kelompok terlebih dahulu sebelum mengirim ke WA!', 'error');
       return;
@@ -453,8 +449,10 @@ export const KelompokTab: React.FC<KelompokTabProps> = ({
 
     text += `_Dibuat otomatis via Aplikasi Kelas Gue_ ✨`;
 
-    const encoded = encodeURIComponent(text);
-    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+    await openWhatsAppSafe(text, {
+      title: `Pembagian Kelompok ${currentCourseName}`,
+      preferNativeShare: true
+    });
   };
 
   return (

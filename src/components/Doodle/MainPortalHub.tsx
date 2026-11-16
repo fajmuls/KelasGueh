@@ -88,16 +88,17 @@ export const MainPortalHub: React.FC<MainPortalHubProps> = ({
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-black uppercase tracking-wider px-2 py-0.5 bg-amber-200 text-slate-900 border border-slate-900 rounded">
-                Portal Manajemen Kelas
+                {settings.classCode || settings.className || '01 SAKP 014'}
               </span>
-              <span className="text-xs font-semibold text-slate-500">
+              <span className="text-slate-400 text-xs">·</span>
+              <span className="text-xs font-semibold text-slate-600">
                 {settings.academicYear || 'Tahun Ajaran Aktif'}
               </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              {settings.className || 'Kelas Gue'}
+              {settings.className || '01 SAKP 014'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 max-w-xl">
               Pilih ranah kerja kepengurusan kelas Anda di bawah ini: kelola perputaran uang kas di ranah Bendahara, atau catat presensi, poin keaktifan, dan notulensi di ranah Sekretaris.
@@ -157,7 +158,7 @@ export const MainPortalHub: React.FC<MainPortalHubProps> = ({
                   <Coins className="w-3 h-3 text-emerald-600" />
                   Saldo Kas
                 </p>
-                <p className="text-sm sm:text-base font-black text-emerald-700 font-mono truncate mt-0.5">
+                <p className="text-sm sm:text-base font-black text-emerald-700 font-mono tabular-nums truncate mt-0.5">
                   {formatRupiah(currentBalance)}
                 </p>
               </div>
@@ -167,7 +168,7 @@ export const MainPortalHub: React.FC<MainPortalHubProps> = ({
                   <Receipt className="w-3 h-3 text-amber-600" />
                   Tagihan Kolektif
                 </p>
-                <p className="text-sm sm:text-base font-black text-slate-900 font-mono mt-0.5">
+                <p className="text-sm sm:text-base font-black text-slate-900 font-mono tabular-nums mt-0.5">
                   {activeKolektifCount} Acara
                 </p>
               </div>

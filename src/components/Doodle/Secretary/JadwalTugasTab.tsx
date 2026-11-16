@@ -3,6 +3,7 @@ import { CourseSchedule, CourseAssignment, ClassSettings } from '../../../types/
 import { sfx } from '../../../utils/soundEffects.ts';
 import { ScotchTape } from '../DoodleDecorations.tsx';
 import { showToast, showConfirm } from '../../UI/DoodleDialog.tsx';
+import { openWhatsAppSafe } from '../../../utils/whatsapp.ts';
 import {
   CalendarDays,
   Plus,
@@ -187,7 +188,7 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
   };
 
   // WhatsApp Recap
-  const handleCopyWhatsAppSchedule = () => {
+  const handleCopyWhatsAppSchedule = async () => {
     sfx.playClick();
     const rows = courseSchedules.map((c, idx) => {
       const pendingCount = (c.assignments || []).filter(a => a.status === 'pending').length;
@@ -200,7 +201,10 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
       (rows || '- Belum ada jadwal kuliah tercatat -') +
       `\n\n_— Dicatat via Sekretariat Kelas Gue_`;
 
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+    await openWhatsAppSafe(message, {
+      title: `Jadwal Kuliah ${settings.className}`,
+      preferNativeShare: true
+    });
   };
 
   const filteredCourses = courseSchedules.filter(c => {
@@ -493,7 +497,7 @@ export const JadwalTugasTab: React.FC<JadwalTugasTabProps> = ({
                                     e.stopPropagation();
                                     sfx.playClick();
                                     const msg = `📌 *TUGAS: ${asg.title}*\n📚 Mata Kuliah: ${course.courseName}\n📅 Deadline: ${asg.deadline}\n📝 Catatan/Link: ${asg.notes || '-'}\n\n_— Dicatat via Aplikasi Kelas Gue_ ✨`;
-                                    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+                                    openWhatsAppSafe(msg, { title: asg.title, preferNativeShare: true });
                                   }}
                                   className="p-1 hover:bg-emerald-200 text-emerald-800 rounded border border-emerald-400 text-xs"
                                   title="Bagikan Informasi Tugas ke WhatsApp"

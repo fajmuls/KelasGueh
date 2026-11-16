@@ -7,6 +7,7 @@ export interface UserProfile {
   role: UserRole;
   avatar?: string;
   isGoogleAuth?: boolean;
+  nim?: string;
 }
 
 export type TransactionType = 'income' | 'expense';
@@ -29,6 +30,7 @@ export interface KasMember {
   name: string;
   studentId: string; // NIM / No. Absen
   phone?: string;
+  email?: string;
   gender?: 'L' | 'P'; // Student gender
   isActive?: boolean; // Active status (default true)
   weeklyStatus: {
@@ -38,6 +40,7 @@ export interface KasMember {
 
 export interface ClassSettings {
   className: string;
+  classCode?: string;
   weeklyDuesAmount: number;
   kasTargetAmount: number;
   currencyPrefix: string;
@@ -46,6 +49,9 @@ export interface ClassSettings {
   supabaseAnonKey: string;
   siteUrl?: string;
   monthlyDuesOverrides?: Record<string, number>; // key: "YYYY_M", e.g. "2026_1": 5000, "2026_2": 10000
+  requireTransactionPin?: boolean; // Super Admin toggle for large-transaction PIN check
+  transactionPinThreshold?: number; // Nominal threshold (default 500000)
+  pinHash?: string; // Synced bcrypt hash for unified multi-device PIN
   inventoryList?: ClassInventoryItem[];
   courseSchedules?: CourseSchedule[];
 }
@@ -62,31 +68,31 @@ export interface KolektifBill {
   paidMemberIds: string[]; // member IDs that have paid
   createdAt: string;
   syncedToKas?: boolean;
-  billType?: 'acara' | 'patungan'; // New: distinguish event bills from group purchases
+  billType?: 'acara' | 'patungan';
 }
 
 export interface StudentPointLog {
   id: string;
   memberId: string;
-  points: number; // positive or negative
+  points: number;
   category: 'tanya' | 'presentasi' | 'menjawab' | 'inisiatif' | 'tugas' | 'terlambat' | 'lainnya';
   reason: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   recordedBy: string;
   createdAt: string;
-  courseId?: string; // New: associated course/subject
+  courseId?: string;
 }
 
 export interface AttendanceRecord {
   id: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   title: string;
   type: 'kuliah' | 'rapat' | 'kegiatan';
-  statuses: Record<string, 'hadir' | 'sakit' | 'izin' | 'alpa'>; // memberId -> status
+  statuses: Record<string, 'hadir' | 'sakit' | 'izin' | 'alpa'>;
   notes?: string;
   recordedBy: string;
   createdAt: string;
-  courseId?: string; // New: associated course/subject
+  courseId?: string;
 }
 
 export interface MeetingMinute {
@@ -117,7 +123,7 @@ export interface ClassInventoryItem {
 export interface CourseAssignment {
   id: string;
   title: string;
-  deadline: string; // YYYY-MM-DD
+  deadline: string;
   status: 'pending' | 'selesai';
   notes?: string;
 }
@@ -127,11 +133,76 @@ export interface CourseSchedule {
   courseName: string;
   lecturerName: string;
   sks: number;
-  day: string; // Senin, Selasa, etc.
-  time: string; // e.g. "08:00 - 09:40"
+  day: string;
+  time: string;
   room?: string;
   assignments: CourseAssignment[];
   createdAt: string;
+}
+
+export interface ClassDefinition {
+  id: string; // e.g. '01_SAKP_014'
+  code: string; // e.g. '01 SAKP 014'
+  name: string; // e.g. '01 SAKP 014'
+  academicYear: string;
+  createdAt: string;
+  createdBy: string;
+  isDefault?: boolean;
+}
+
+export interface ClassMembershipRequest {
+  id: string;
+  email: string;
+  fullName: string;
+  nim?: string;
+  classId: string;
+  className: string;
+  status: 'pending' | 'approved' | 'rejected';
+  assignedRole: UserRole;
+  linkedMemberId?: string;
+  linkedMemberName?: string;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+}
+
+export interface ClassSnapshotMeta {
+  classId: string;
+  version: string;
+  updatedAt: string;
+  updatedBy: string;
+  sizeBytes: number;
+  txCount: number;
+  memberCount: number;
+}
+
+export interface ClassSnapshotManifest {
+  classId: string;
+  version: string;
+  updatedAt: string;
+  updatedBy: string;
+  settings: ClassSettings;
+  members: KasMember[];
+  transactions: KasTransaction[];
+  kolektifBills: KolektifBill[];
+  pointLogs: StudentPointLog[];
+  attendanceRecords: AttendanceRecord[];
+  meetingMinutes: MeetingMinute[];
+  inventoryItems: ClassInventoryItem[];
+  courseSchedules: CourseSchedule[];
+  savedGroupCollections: any[];
+  auditLogs: any[];
+  whitelist?: any[];
+}
+
+export interface SyncTelemetry {
+  status: 'synced' | 'syncing' | 'offline';
+  classId: string;
+  lastSyncedAt: string | null;
+  snapshotBytes: number;
+  lastSource: 'cache' | 'snapshot' | 'sql' | 'upload' | 'local';
+  isPendingUpload: boolean;
+  errorMessage?: string;
 }
 
 export interface ClassBackupData {
@@ -139,6 +210,7 @@ export interface ClassBackupData {
   exportedAt: string;
   exportedBy: string;
   role: string;
+  classId?: string;
   settings: ClassSettings;
   members: KasMember[];
   transactions: KasTransaction[];
@@ -150,4 +222,3 @@ export interface ClassBackupData {
   studentPoints?: StudentPointLog[];
   minutes?: MeetingMinute[];
 }
-

@@ -4,6 +4,7 @@ import { sfx } from '../../../utils/soundEffects.ts';
 import { ScotchTape, DoodleCrown } from '../DoodleDecorations.tsx';
 import { showToast, showConfirm } from '../../UI/DoodleDialog.tsx';
 import { toTitleCase } from '../../../utils/textFormatting.ts';
+import { openWhatsAppSafe } from '../../../utils/whatsapp.ts';
 import {
   Award,
   Plus,
@@ -133,7 +134,7 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
     }
   };
 
-  const handleCopyWhatsAppLeaderboard = () => {
+  const handleCopyWhatsAppLeaderboard = async () => {
     sfx.playClick();
     const topList = memberScores
       .filter(ms => ms.totalPoints > 0)
@@ -152,7 +153,10 @@ export const KeaktifanTab: React.FC<KeaktifanTabProps> = ({
       `\n\nTetap semangat aktif bertanya, presentasi, dan berdiskusi! ✨\n` +
       `_— Dicatat via Sekretariat Kelas Gue_`;
 
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+    await openWhatsAppSafe(message, {
+      title: `Klasemen Poin ${settings.className}`,
+      preferNativeShare: true
+    });
   };
 
   const filteredScores = memberScores.filter(ms => {

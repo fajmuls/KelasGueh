@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { KasTransaction, ClassSettings } from '../../types/kas.ts';
+import { KasTransaction, KasMember, ClassSettings } from '../../types/kas.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { sfx } from '../../utils/soundEffects.ts';
-import { ScotchTape, DoodleReceipt } from './DoodleDecorations.tsx';
-import { X, Send, Copy, Check, ShieldAlert } from 'lucide-react';
+import { ScotchTape } from './DoodleDecorations.tsx';
+import { showToast } from '../UI/DoodleDialog.tsx';
+import { buildWhatsAppUrl, copyTextSilently, openWhatsAppSafe } from '../../utils/whatsapp.ts';
+import { X, Send, Copy, Check, ExternalLink } from 'lucide-react';
 
 interface WhatsAppShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   transactions: KasTransaction[];
+  members?: KasMember[];
   settings: ClassSettings;
 }
 
@@ -24,11 +27,8 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Filter transactions by period
   const now = new Date();
   const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  
-  // Calculate 7 days ago for "minggu_ini"
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(now.getDate() - 7);
   const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
@@ -40,7 +40,7 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     if (selectedPeriod === 'bulan_ini') {
       return t.date.startsWith(currentMonthPrefix);
     }
-    return true; // keseluruhan
+    return true;
   });
 
   const periodLabel = selectedPeriod === 'minggu_ini'
@@ -59,7 +59,6 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 
   const balance = totalIncome - totalExpense;
 
-  // All-time balance
   const allTimeBalance = transactions
     .filter(t => t.type === 'income')
     .reduce((acc, curr) => acc + curr.amount, 0) -
@@ -77,14 +76,12 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     year: 'numeric'
   });
 
-  // Recent 5 expenses in selected period
   const recentExpenses = filteredTransactions
     .filter(t => t.type === 'expense')
     .slice(0, 5)
     .map(t => `- ${t.date} | ${t.title}: ${formatRupiah(t.amount)}`)
     .join('\n');
 
-  // WhatsApp formatted message text
   const messageText = `*LAPORAN PERTANGGUNGJAWABAN KAS - ${settings.className.toUpperCase()}*
 Periode: *${periodLabel.toUpperCase()}*
 Tanggal Rilis: ${currentDate}
@@ -104,29 +101,33 @@ ${recentExpenses || '- Belum ada pengeluaran tercatat pada periode ini.'}
 Laporan resmi kas kelas diverifikasi transparan melalui sistem Kelas Gue.
 Foto kuitansi belanja & status checklist siswa dapat dicek langsung di aplikasi.`;
 
-  const handleCopy = () => {
+  const waDirectUrl = buildWhatsAppUrl(messageText);
+
+  const handleCopy = async () => {
     sfx.playClick();
-    navigator.clipboard.writeText(messageText);
+    await copyTextSilently(messageText);
     setCopied(true);
+    showToast('Teks rekap WhatsApp berhasil disalin ke clipboard!', 'success');
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleOpenWhatsApp = () => {
+  const handleOpenWhatsApp = async () => {
     if (!canEditKas) {
-      alert('Hanya Bendahara atau Super Admin yang berhak membagikan laporan resmi ke WhatsApp.');
+      showToast('Hanya Bendahara atau Super Admin yang berhak membagikan laporan resmi ke WhatsApp.', 'error');
       return;
     }
     sfx.playMoneyIncome();
-    const encoded = encodeURIComponent(messageText);
-    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+    await openWhatsAppSafe(messageText, {
+      title: `Rekap Kas ${settings.className}`,
+      preferNativeShare: true
+    });
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="card-doodle bg-white max-w-xl w-full rounded-xl p-6 relative">
         <ScotchTape className="absolute -top-3 left-10 rotate-[-1deg]" />
 
-        {/* Modal Header */}
         <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-full bg-emerald-100 border-2 border-slate-900 flex items-center justify-center">
@@ -134,10 +135,10 @@ Foto kuitansi belanja & status checklist siswa dapat dicek langsung di aplikasi.
             </div>
             <div>
               <h3 className="text-xl font-black text-slate-900">
-                Bagikan Rekap ke WhatsApp Kelas (1-Klik)
+                Bagikan Rekap ke WhatsApp Kelas
               </h3>
               <p className="text-xs text-slate-500">
-                Format pesan rapi beserta tautan bukti nota kas.
+                Format pesan rapi & langsung membuka aplikasi WhatsApp atau Share Sheet.
               </p>
             </div>
           </div>
@@ -152,16 +153,15 @@ Foto kuitansi belanja & status checklist siswa dapat dicek langsung di aplikasi.
           </button>
         </div>
 
-        {/* Period Selector Tabs: Minggu Ini, Bulan Ini, Keseluruhan */}
         <div className="mb-4 space-y-1.5">
           <label className="block text-xs font-black uppercase text-slate-800">
             Pilih Rentang Periode Laporan Rekap:
           </label>
           <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 border-2 border-slate-900 rounded-xl">
             {[
-              { id: 'minggu_ini', label: '📅 Minggu Ini' },
-              { id: 'bulan_ini', label: '🗓️ Bulan Ini' },
-              { id: 'keseluruhan', label: '📊 Keseluruhan' }
+              { id: 'minggu_ini', label: 'Minggu Ini' },
+              { id: 'bulan_ini', label: 'Bulan Ini' },
+              { id: 'keseluruhan', label: 'Keseluruhan' }
             ].map(p => {
               const isActive = selectedPeriod === p.id;
               return (
@@ -185,7 +185,6 @@ Foto kuitansi belanja & status checklist siswa dapat dicek langsung di aplikasi.
           </div>
         </div>
 
-        {/* Message preview */}
         <div className="mb-4">
           <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
             Pratinjau Pesan WhatsApp ({periodLabel}):
@@ -198,25 +197,43 @@ Foto kuitansi belanja & status checklist siswa dapat dicek langsung di aplikasi.
           />
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between gap-3 pt-2 border-t-2 border-dashed border-slate-200">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t-2 border-dashed border-slate-200">
           <button
             type="button"
             onClick={handleCopy}
-            className="btn-doodle px-4 py-2 bg-white hover:bg-slate-50 text-slate-900 text-xs sm:text-sm font-bold rounded-md flex items-center gap-1.5"
+            className="btn-doodle px-3.5 py-2 min-h-[40px] bg-white hover:bg-slate-50 text-slate-900 text-xs font-bold rounded-md flex items-center gap-1.5"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
             <span>{copied ? 'Pesan Tersalin!' : 'Salin Teks'}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleOpenWhatsApp}
-            className="btn-doodle px-5 py-2 bg-emerald-400 hover:bg-emerald-500 text-slate-900 text-xs sm:text-sm font-black rounded-md flex items-center gap-1.5"
-          >
-            <Send className="w-4 h-4" />
-            <span>Kirim ke WhatsApp →</span>
-          </button>
+          <div className="flex items-center gap-2 ml-auto">
+            {canEditKas && (
+              <a
+                href={waDirectUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  sfx.playClick();
+                  copyTextSilently(messageText);
+                }}
+                className="btn-doodle px-3 py-2 min-h-[40px] bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-bold rounded-md flex items-center gap-1"
+                title="Tautan Langsung wa.me"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Link wa.me</span>
+              </a>
+            )}
+
+            <button
+              type="button"
+              onClick={handleOpenWhatsApp}
+              className="btn-doodle px-4 py-2 min-h-[40px] bg-emerald-400 hover:bg-emerald-500 text-slate-900 text-xs sm:text-sm font-black rounded-md flex items-center gap-1.5"
+            >
+              <Send className="w-4 h-4" />
+              <span>Kirim ke WhatsApp →</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

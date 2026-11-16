@@ -1,14 +1,24 @@
 import { showToast, showConfirm } from "../UI/DoodleDialog.tsx";
 import React, { useState, useEffect } from 'react';
-import { KasMember, ClassSettings } from '../../types/kas.ts';
-import { AuditLogEntry, LocalKasRepository, generateUUID } from '../../services/supabaseClient.ts';
 import {
-  getBendaharaWhitelist,
-  getSekretarisWhitelist,
-  updateUserRole,
+  KasMember,
+  ClassSettings,
+  ClassDefinition,
+  ClassMembershipRequest,
+  UserRole
+} from '../../types/kas.ts';
+import {
+  AuditLogEntry,
+  LocalKasRepository,
+  generateUUID,
+  DEFAULT_CLASS_DEF
+} from '../../services/supabaseClient.ts';
+import {
   updateUserLinkedMember,
   autoDetectGenderByName
 } from '../../utils/userManagement.ts';
+import { saveNewPin } from '../../utils/security.ts';
+import { DoodleCurrencyInput } from '../UI/DoodleCurrencyInput.tsx';
 import { CURRENT_APP_VERSION } from '../../version.ts';
 import { sfx } from '../../utils/soundEffects.ts';
 import { toTitleCase } from '../../utils/textFormatting.ts';
@@ -24,9 +34,7 @@ import {
   Users,
   ArrowLeft,
   UserPlus,
-  FileText,
   Upload,
-  User,
   Edit2,
   Check,
   X,
@@ -34,7 +42,14 @@ import {
   RotateCcw,
   Database,
   Download,
-  UploadCloud
+  UploadCloud,
+  GraduationCap,
+  PlusCircle,
+  ArrowRightLeft,
+  Clock,
+  RefreshCw,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 
 interface AdminSettingsViewProps {
@@ -42,15 +57,44 @@ interface AdminSettingsViewProps {
   settings: ClassSettings;
   onUpdateMembers: (members: KasMember[]) => void;
   onReturnToHub: () => void;
+  onSaveSettings?: (settings: ClassSettings) => Promise<void> | void;
+  activeClass?: ClassDefinition;
+  availableClasses?: ClassDefinition[];
+  onSwitchClass?: (classId: string) => Promise<void> | void;
+  onCreateClass?: (input: { code: string; name: string; academicYear: string }) => Promise<void>;
+  onSyncNow?: () => Promise<void>;
 }
 
 export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   members,
   settings,
   onUpdateMembers,
-  onReturnToHub
+  onReturnToHub,
+  onSaveSettings,
+  activeClass,
+  availableClasses,
+  onSwitchClass,
+  onCreateClass,
+  onSyncNow
 }) => {
-  const [activeTab, setActiveTab] = useState<'whitelist' | 'students' | 'audit' | 'backup' | 'pin' | 'cache' | 'version'>('whitelist');
+  const [activeTab, setActiveTab] = useState<
+    'classes' | 'whitelist' | 'students' | 'audit' | 'backup' | 'pin' | 'cache' | 'version'
+  >('classes');
+
+  // Multi-class & Pending Join Requests state
+  const [registryClasses, setRegistryClasses] = useState<ClassDefinition[]>(() =>
+    availableClasses && availableClasses.length > 0 ? availableClasses : [DEFAULT_CLASS_DEF]
+  );
+  const [classMemberships, setClassMemberships] = useState<ClassMembershipRequest[]>([]);
+  const [pendingRoleSelections, setPendingRoleSelections] = useState<Record<string, UserRole>>({});
+  const [pendingMemberLinks, setPendingMemberLinks] = useState<Record<string, string>>({});
+  const [newClassCode, setNewClassCode] = useState('');
+  const [newClassName, setNewClassName] = useState('');
+  const [newClassAcademicYear, setNewClassAcademicYear] = useState(
+    settings.academicYear || 'Semester Ganjil 2026/2027'
+  );
+  const [isCreatingClass, setIsCreatingClass] = useState(false);
+  const [isRefreshingRegistry, setIsRefreshingRegistry] = useState(false);
 
   // Whitelist state
   const [users, setUsers] = useState<any[]>([]);
@@ -88,28 +132,124 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
   // Student list state
   const [memberList, setMemberList] = useState<KasMember[]>(members);
 
-  // Security PIN state
-  const [pin, setPin] = useState(() => localStorage.getItem('kelasgue_security_pin') || '123456');
+  // Security PIN & Threshold state
+  const [requireTransactionPin, setRequireTransactionPin] = useState<boolean>(
+    settings.requireTransactionPin !== false
+  );
+  const [transactionPinThreshold, setTransactionPinThreshold] = useState<number>(
+    settings.transactionPinThreshold ?? 500000
+  );
   const [newPin, setNewPin] = useState('');
   const [pinSuccessMsg, setPinSuccessMsg] = useState('');
+  const [isSavingPinPolicy, setIsSavingPinPolicy] = useState(false);
 
   // Cache reset state
   const [cacheMsg, setCacheMsg] = useState('');
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeClass?.id]);
 
   useEffect(() => {
     setMemberList(members);
   }, [members]);
 
-  const loadData = async () => {
-    const list = await LocalKasRepository.getWhitelist();
-    setUsers(list);
+  useEffect(() => {
+    setRequireTransactionPin(settings.requireTransactionPin !== false);
+    setTransactionPinThreshold(settings.transactionPinThreshold ?? 500000);
+  }, [settings.requireTransactionPin, settings.transactionPinThreshold]);
 
-    const logs = await LocalKasRepository.fetchAuditLogsFromSupabase();
-    setAuditLogs(logs);
+  useEffect(() => {
+    if (availableClasses && availableClasses.length > 0) {
+      setRegistryClasses(availableClasses);
+    }
+  }, [availableClasses]);
+
+  const loadData = async () => {
+    setIsRefreshingRegistry(true);
+    try {
+      const [list, logs, reg] = await Promise.all([
+        LocalKasRepository.getWhitelist(),
+        LocalKasRepository.fetchAuditLogsFromSupabase(),
+        LocalKasRepository.fetchClassRegistry()
+      ]);
+      setUsers(list);
+      setAuditLogs(logs);
+      setRegistryClasses(reg.classes);
+      setClassMemberships(reg.memberships);
+    } finally {
+      setIsRefreshingRegistry(false);
+    }
+  };
+
+  const pendingMemberships = classMemberships.filter(m => m.status === 'pending');
+  const processedMemberships = classMemberships.filter(m => m.status !== 'pending');
+  const currentActiveClassId = activeClass?.id || LocalKasRepository.getActiveClassId();
+
+  const handleApproveJoinRequest = async (req: ClassMembershipRequest) => {
+    const chosenRole = pendingRoleSelections[req.id] || 'anggota';
+    const linkedMemberId = pendingMemberLinks[req.id] || '';
+    const linkedMember = memberList.find(m => m.id === linkedMemberId);
+
+    sfx.playPaymentConfirmed();
+    await LocalKasRepository.approveClassJoinRequest(
+      req.id,
+      chosenRole,
+      'Super Admin',
+      linkedMember?.id,
+      linkedMember?.name
+    );
+    showToast(
+      `Pengajuan "${req.fullName}" disetujui masuk ke kelas ${req.className} sebagai ${chosenRole.toUpperCase()}!`,
+      'success'
+    );
+    await loadData();
+  };
+
+  const handleRejectJoinRequest = async (req: ClassMembershipRequest) => {
+    const ok = await showConfirm({
+      title: 'Tolak Pengajuan Kelas',
+      message: `Tolak permintaan "${req.fullName}" (${req.email}) untuk masuk kelas ${req.className}?`,
+      confirmLabel: 'Ya, Tolak',
+      cancelLabel: 'Batal',
+      isDanger: true
+    });
+    if (!ok) return;
+    sfx.playDeleteConfirm();
+    await LocalKasRepository.rejectClassJoinRequest(req.id, 'Super Admin');
+    showToast(`Pengajuan "${req.fullName}" telah ditolak.`, 'info');
+    await loadData();
+  };
+
+  const handleCreateNewClassSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClassCode.trim()) {
+      showToast('Masukkan kode kelas terlebih dahulu (contoh: 01 SAKP 015).', 'error');
+      return;
+    }
+
+    setIsCreatingClass(true);
+    try {
+      const payload = {
+        code: newClassCode.trim().toUpperCase(),
+        name: newClassName.trim() || newClassCode.trim().toUpperCase(),
+        academicYear: newClassAcademicYear.trim() || 'Semester Ganjil 2026/2027'
+      };
+      if (onCreateClass) {
+        await onCreateClass(payload);
+      } else {
+        await LocalKasRepository.createNewClass({ ...payload, createdBy: 'Super Admin' });
+      }
+      sfx.playCoinChime();
+      showToast(`Kelas baru "${payload.code}" berhasil dibuat dengan database terisolasi!`, 'success');
+      setNewClassCode('');
+      setNewClassName('');
+      await loadData();
+    } catch (err: any) {
+      showToast(err?.message || 'Gagal membuat kelas baru.', 'error');
+    } finally {
+      setIsCreatingClass(false);
+    }
   };
 
   // Auto-complete suggestions for Whitelist search
@@ -512,29 +652,78 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
     showToast("Auto-detect jenis kelamin berhasil diperbarui untuk semua siswa!", "success");
   };
 
-  // Security PIN
-  const handleSavePin = () => {
-    if (newPin.length < 4) {
-      alert('PIN minimal 4 angka');
+  // Security PIN & Threshold
+  const persistPinSettings = async (updates: Partial<ClassSettings>, successText: string) => {
+    setIsSavingPinPolicy(true);
+    try {
+      const nextSettings: ClassSettings = {
+        ...settings,
+        requireTransactionPin,
+        transactionPinThreshold,
+        ...updates
+      };
+      if (onSaveSettings) {
+        await onSaveSettings(nextSettings);
+      } else {
+        await LocalKasRepository.saveSettings(nextSettings);
+      }
+      setPinSuccessMsg(successText);
+      showToast(successText, 'success');
+      setTimeout(() => setPinSuccessMsg(''), 3500);
+    } finally {
+      setIsSavingPinPolicy(false);
+    }
+  };
+
+  const handleSavePinPolicyOnly = async () => {
+    sfx.playPaymentConfirmed();
+    await persistPinSettings(
+      {
+        requireTransactionPin,
+        transactionPinThreshold: Math.max(0, Number(transactionPinThreshold) || 0)
+      },
+      requireTransactionPin
+        ? `Verifikasi PIN transaksi besar AKTIF (batas nominal Rp ${(transactionPinThreshold || 0).toLocaleString('id-ID')}).`
+        : 'Verifikasi PIN transaksi besar DINONAKTIFKAN untuk kelas ini.'
+    );
+  };
+
+  const handleSavePin = async () => {
+    if (!/^\d{6}$/.test(newPin)) {
+      sfx.playWarning();
+      showToast('PIN transaksi wajib tepat 6 digit angka!', 'error');
       return;
     }
     sfx.playPaymentConfirmed();
-    localStorage.setItem('kelasgue_security_pin', newPin);
-    setPin(newPin);
+    const pinHash = saveNewPin(newPin);
     setNewPin('');
-    setPinSuccessMsg('✅ PIN Keamanan berhasil diperbarui!');
-    setTimeout(() => setPinSuccessMsg(''), 3000);
+    await persistPinSettings(
+      {
+        requireTransactionPin,
+        transactionPinThreshold,
+        pinHash
+      },
+      'PIN Keamanan 6-digit berhasil diperbarui & disinkronkan ke cloud!'
+    );
   };
 
   // Cache Clear Action
-  const handleClearLocalCache = () => {
-    if (confirm('Apakah Anda yakin ingin membersihkan cache & penyimpanan lokal di perangkat ini? (Data Supabase tetap aman & tidak akan terhapus)')) {
-      sfx.playDeleteConfirm();
-      localStorage.removeItem('kelasgue_transactions_v3');
-      localStorage.removeItem('kelasgue_members_v3');
-      localStorage.removeItem('kelasgue_kolektif_bills_v1');
-      setCacheMsg('✅ Cache lokal berhasil dibersihkan! Silakan muat ulang halaman.');
-    }
+  const handleClearLocalCache = async () => {
+    const ok = await showConfirm({
+      title: 'Bersihkan Cache Perangkat',
+      message: 'Apakah Anda yakin ingin membersihkan cache & penyimpanan lokal di perangkat ini? Data utama di Supabase tetap aman dan dapat diunduh ulang.',
+      confirmLabel: 'Ya, Bersihkan Cache',
+      cancelLabel: 'Batal',
+      isDanger: true
+    });
+    if (!ok) return;
+
+    sfx.playDeleteConfirm();
+    localStorage.removeItem('kelasgue_transactions_v3');
+    localStorage.removeItem('kelasgue_members_v3');
+    localStorage.removeItem('kelasgue_kolektif_bills_v1');
+    setCacheMsg('Cache lokal berhasil dibersihkan! Silakan sinkron ulang atau muat ulang halaman.');
+    showToast('Cache perangkat berhasil dibersihkan.', 'info');
   };
 
   // Filtered Audit Logs
@@ -584,6 +773,9 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="px-3 py-1 bg-white text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] font-mono">
+            {activeClass?.code || settings.classCode || settings.className}
+          </div>
           <div className="px-3 py-1 bg-amber-300 text-slate-900 font-extrabold text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000]">
             SUPER ADMIN
           </div>
@@ -593,13 +785,14 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
       {/* Sub-Navigation Bar */}
       <div className="flex items-center gap-1.5 p-2 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_#000] overflow-x-auto no-scrollbar">
         {[
-          { id: 'whitelist', label: 'Whitelist Roll', icon: UserCheck },
-          { id: 'students', label: 'Manajemen Siswa', icon: UserPlus },
-          { id: 'audit', label: 'Laporan Audit Log', icon: FileSpreadsheet },
-          { id: 'backup', label: 'Cadangan Data JSON', icon: Database },
-          { id: 'pin', label: 'PIN Keamanan', icon: Lock },
-          { id: 'cache', label: 'Reset Cache Lokal', icon: Trash2 },
-          { id: 'version', label: 'Versi & Catatan', icon: Sparkles }
+          { id: 'classes', label: 'Kelas & Konfirmasi', icon: GraduationCap, badge: pendingMemberships.length },
+          { id: 'whitelist', label: 'Whitelist Roll', icon: UserCheck, badge: 0 },
+          { id: 'students', label: 'Manajemen Siswa', icon: UserPlus, badge: 0 },
+          { id: 'audit', label: 'Laporan Audit Log', icon: FileSpreadsheet, badge: 0 },
+          { id: 'backup', label: 'Cadangan Data JSON', icon: Database, badge: 0 },
+          { id: 'pin', label: 'PIN Keamanan', icon: Lock, badge: 0 },
+          { id: 'cache', label: 'Reset Cache Lokal', icon: Trash2, badge: 0 },
+          { id: 'version', label: 'Versi & Catatan', icon: Sparkles, badge: 0 }
         ].map(t => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;
@@ -618,6 +811,11 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
             >
               <Icon className="w-4 h-4" />
               <span>{t.label}</span>
+              {t.badge > 0 && (
+                <span className="px-1.5 py-0.2 text-[10px] font-black rounded-full bg-rose-500 text-white border border-slate-900 tabular-nums">
+                  {t.badge}
+                </span>
+              )}
             </button>
           );
         })}
@@ -625,6 +823,248 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
 
       {/* Main Tab Content Card */}
       <div className="bg-white border-3 border-slate-900 rounded-xl p-4 sm:p-6 shadow-[4px_4px_0px_#000] space-y-6">
+        {/* SUB-TAB 0: KELAS & KONFIRMASI ANGGOTA BARU */}
+        {activeTab === 'classes' && (
+          <div className="space-y-6">
+            <div className="bg-amber-50 p-4 rounded-xl border-2 border-slate-900 text-xs text-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <strong className="font-black text-amber-900 flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4 text-amber-600" /> Pusat Multi-Kelas & Persetujuan Anggota Baru
+                </strong>
+                <p>
+                  Kelas default <strong>01 SAKP 014</strong> menyimpan seluruh data SQL Anda. Tambah kelas baru, berpindah kelas, atau setujui permintaan pengguna baru untuk masuk ke kelas tertentu.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={loadData}
+                disabled={isRefreshingRegistry}
+                className="btn-doodle px-3 py-2 bg-white text-slate-900 font-black text-xs rounded-lg flex items-center gap-1.5 shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingRegistry ? 'animate-spin' : ''}`} />
+                <span>Segarkan Daftar</span>
+              </button>
+            </div>
+
+            {/* Queue Permintaan Masuk Kelas */}
+            <div className="space-y-3">
+              <h4 className="font-black text-xs uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span>Permintaan Masuk Kelas Menunggu Konfirmasi ({pendingMemberships.length})</span>
+              </h4>
+
+              {pendingMemberships.length === 0 ? (
+                <div className="p-4 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl text-xs text-slate-500 text-center">
+                  Tidak ada permintaan masuk kelas yang sedang menunggu konfirmasi.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {pendingMemberships.map((req) => (
+                    <div
+                      key={req.id}
+                      className="p-4 bg-amber-50/70 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#000] flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-black text-sm text-slate-900">{req.fullName}</span>
+                          <span className="px-2 py-0.5 text-[10px] font-black bg-amber-300 text-slate-950 rounded border border-slate-900">
+                            Tujuan: {req.className}
+                          </span>
+                        </div>
+                        <p className="text-[11px] font-mono text-slate-600">
+                          Email: {req.email} · NIM/Absen: {req.nim || '-'}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          value={pendingRoleSelections[req.id] || 'anggota'}
+                          onChange={(e) =>
+                            setPendingRoleSelections(prev => ({ ...prev, [req.id]: e.target.value as UserRole }))
+                          }
+                          className="px-2.5 py-1.5 border-2 border-slate-900 rounded-lg bg-white text-xs font-bold"
+                        >
+                          <option value="anggota">Role: Anggota</option>
+                          <option value="bendahara">Role: Bendahara</option>
+                          <option value="sekretaris">Role: Sekretaris</option>
+                        </select>
+
+                        {req.classId === currentActiveClassId && memberList.length > 0 && (
+                          <select
+                            value={pendingMemberLinks[req.id] || ''}
+                            onChange={(e) =>
+                              setPendingMemberLinks(prev => ({ ...prev, [req.id]: e.target.value }))
+                            }
+                            className="px-2.5 py-1.5 border-2 border-slate-900 rounded-lg bg-white text-xs font-bold max-w-[180px]"
+                          >
+                            <option value="">-- Tautkan Siswa (Opsional) --</option>
+                            {memberList.map((m, idx) => (
+                              <option key={m.id} value={m.id}>
+                                {idx + 1}. {toTitleCase(m.name)}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleApproveJoinRequest(req)}
+                          className="btn-doodle px-3 py-1.5 bg-emerald-400 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-lg flex items-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Setujui</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRejectJoinRequest(req)}
+                          className="btn-doodle px-3 py-1.5 bg-rose-200 hover:bg-rose-300 text-rose-950 font-bold text-xs rounded-lg flex items-center gap-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Tolak</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Daftar Kelas & Pindah Kelas + Tambah Kelas Baru */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-2 border-t-2 border-slate-200">
+              {/* Daftar Kelas */}
+              <div className="space-y-3">
+                <h4 className="font-black text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                  <ArrowRightLeft className="w-4 h-4 text-sky-600" />
+                  <span>Daftar Kelas Terdaftar ({registryClasses.length})</span>
+                </h4>
+                <div className="space-y-2.5">
+                  {registryClasses.map((cls) => {
+                    const isCurrent = cls.id === currentActiveClassId;
+                    return (
+                      <div
+                        key={cls.id}
+                        className={`p-3.5 rounded-xl border-2 border-slate-900 flex items-center justify-between gap-3 ${
+                          isCurrent ? 'bg-amber-100 shadow-[3px_3px_0px_#000]' : 'bg-white shadow-[2px_2px_0px_#000]'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-sm text-slate-900">{cls.code}</span>
+                            {cls.isDefault && (
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-sky-200 border border-slate-900 rounded text-slate-950">
+                                Default SQL
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-600 truncate">
+                            {cls.name} · {cls.academicYear}
+                          </p>
+                        </div>
+
+                        {isCurrent ? (
+                          <span className="px-3 py-1 bg-emerald-300 text-slate-950 font-black text-[11px] rounded-lg border-2 border-slate-900 shrink-0">
+                            Sedang Aktif
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onSwitchClass?.(cls.id)}
+                            className="btn-doodle px-3 py-1.5 bg-amber-300 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-lg shrink-0"
+                          >
+                            Pindah ke Kelas Ini
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Form Tambah Kelas Baru */}
+              <form
+                onSubmit={handleCreateNewClassSubmit}
+                className="p-4 bg-slate-50 border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_#000] space-y-3 h-fit"
+              >
+                <h4 className="font-black text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                  <PlusCircle className="w-4 h-4 text-emerald-600" />
+                  <span>Buat Kelas Baru (Database Terpisah)</span>
+                </h4>
+                <p className="text-[11px] text-slate-600 leading-snug">
+                  Setiap kelas baru memiliki penyimpanan snapshot sendiri di Supabase Storage tanpa mengubah struktur tabel SQL utama.
+                </p>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Kode Kelas *</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="Contoh: 01 SAKP 015"
+                    value={newClassCode}
+                    onChange={(e) => setNewClassCode(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl text-xs font-bold bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Nama Tampilan Kelas</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Kelas 01 SAKP 015 - Pagi"
+                    value={newClassName}
+                    onChange={(e) => setNewClassName(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl text-xs font-medium bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Tahun Akademik / Semester</label>
+                  <input
+                    type="text"
+                    value={newClassAcademicYear}
+                    onChange={(e) => setNewClassAcademicYear(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-slate-900 rounded-xl text-xs font-medium bg-white"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isCreatingClass}
+                  className="w-full btn-doodle py-2.5 bg-emerald-400 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>{isCreatingClass ? 'Membuat Kelas...' : '+ Tambah Kelas Baru'}</span>
+                </button>
+              </form>
+            </div>
+
+            {processedMemberships.length > 0 && (
+              <div className="pt-2 border-t-2 border-slate-200 space-y-2">
+                <h4 className="font-black text-xs uppercase tracking-wider text-slate-600">
+                  Riwayat Anggota Terkonfirmasi ({processedMemberships.length})
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {processedMemberships.slice(0, 12).map((m) => (
+                    <div key={m.id} className="p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-[11px] flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-900 truncate">{m.fullName}</p>
+                        <p className="text-[10px] text-slate-500 font-mono truncate">{m.className} · {m.assignedRole}</p>
+                      </div>
+                      <span
+                        className={`px-1.5 py-0.5 text-[9px] font-black uppercase rounded border ${
+                          m.status === 'approved'
+                            ? 'bg-emerald-200 text-emerald-950 border-emerald-600'
+                            : 'bg-rose-200 text-rose-950 border-rose-600'
+                        }`}
+                      >
+                        {m.status === 'approved' ? 'Disetujui' : 'Ditolak'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {/* SUB-TAB 1: WHITELIST ROLL */}
         {activeTab === 'whitelist' && (
           <div className="space-y-5">
@@ -1379,40 +1819,120 @@ export const AdminSettingsView: React.FC<AdminSettingsViewProps> = ({
           </div>
         )}
 
-        {/* SUB-TAB 5: PIN KEAMANAN */}
+        {/* SUB-TAB 5: PIN KEAMANAN & BATAS TRANSAKSI */}
         {activeTab === 'pin' && (
-          <div className="max-w-md mx-auto space-y-4 py-4">
-            <div className="bg-slate-50 p-5 rounded-xl border-3 border-slate-900 space-y-3 shadow-[3px_3px_0px_#000]">
-              <h4 className="font-black text-sm text-slate-900 flex items-center gap-2">
-                <Lock className="w-5 h-5 text-amber-500" /> Atur PIN Keamanan Kelas
-              </h4>
-              <p className="text-xs text-slate-600">
-                PIN digunakan untuk memverifikasi tindakan administratif sensitif. PIN default: <strong>123456</strong>.
-              </p>
+          <div className="max-w-xl mx-auto space-y-5 py-2">
+            <div className="bg-amber-50/70 p-5 rounded-xl border-3 border-slate-900 space-y-4 shadow-[3px_3px_0px_#000]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h4 className="font-black text-sm sm:text-base text-slate-900 flex items-center gap-2">
+                    <Lock className="w-5 h-5 text-amber-600" /> Kebijakan PIN Transaksi Besar
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-1">
+                    Aktifkan atau nonaktifkan verifikasi PIN 6-digit ketika Bendahara mencatat transaksi dengan nominal besar.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.playToggle();
+                    setRequireTransactionPin(prev => !prev);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl border-2 border-slate-900 font-black text-xs flex items-center gap-1.5 shrink-0 transition shadow-[2px_2px_0px_#000] ${
+                    requireTransactionPin
+                      ? 'bg-emerald-300 text-slate-950'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {requireTransactionPin ? (
+                    <>
+                      <ToggleRight className="w-4 h-4 text-emerald-900" />
+                      <span>AKTIF</span>
+                    </>
+                  ) : (
+                    <>
+                      <ToggleLeft className="w-4 h-4 text-slate-600" />
+                      <span>NONAKTIF</span>
+                    </>
+                  )}
+                </button>
+              </div>
 
               {pinSuccessMsg && (
-                <div className="p-2.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-300">
+                <div className="p-2.5 bg-emerald-100 text-emerald-900 text-xs font-bold rounded-lg border-2 border-emerald-500">
                   {pinSuccessMsg}
                 </div>
               )}
 
+              <div className={`space-y-3 pt-2 border-t border-slate-300 transition-opacity ${requireTransactionPin ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                <label className="block text-xs font-black uppercase text-slate-800">
+                  Batas Nominal Minimal Wajib PIN:
+                </label>
+                <DoodleCurrencyInput
+                  value={transactionPinThreshold}
+                  onChange={(val) => setTransactionPinThreshold(Number(val) || 0)}
+                  placeholder="500000"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {[100000, 250000, 500000, 1000000].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => {
+                        sfx.playOptionSelect();
+                        setTransactionPinThreshold(preset);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border-2 border-slate-900 transition ${
+                        transactionPinThreshold === preset
+                          ? 'bg-amber-300 text-slate-950 shadow-[1px_1px_0px_#000]'
+                          : 'bg-white text-slate-700 hover:bg-amber-100'
+                      }`}
+                    >
+                      Rp {preset.toLocaleString('id-ID')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={isSavingPinPolicy}
+                onClick={handleSavePinPolicyOnly}
+                className="w-full btn-doodle py-2.5 bg-emerald-400 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-xl disabled:opacity-50"
+              >
+                {isSavingPinPolicy ? 'Menyimpan Pengaturan...' : 'Simpan Pengaturan Saklar & Batas PIN'}
+              </button>
+            </div>
+
+            <div className="bg-white p-5 rounded-xl border-3 border-slate-900 space-y-3 shadow-[3px_3px_0px_#000]">
+              <h4 className="font-black text-sm text-slate-900 flex items-center gap-2">
+                <Lock className="w-4 h-4 text-amber-600" /> Ubah PIN Otorisasi (6 Digit)
+              </h4>
+              <p className="text-xs text-slate-600">
+                PIN ini digunakan bersama oleh pengelola kas kelas dan disinkronkan ke snapshot cloud. PIN default awal: <strong className="font-mono text-slate-900">123456</strong>.
+              </p>
+
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700">PIN Baru (Min 4 Angka)</label>
+                <label className="block text-xs font-bold text-slate-700">PIN Baru (Tepat 6 Angka)</label>
                 <input
                   type="password"
-                  maxLength={8}
-                  placeholder="Masukkan PIN baru"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Masukkan 6 digit angka"
                   value={newPin}
-                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-3.5 py-2 border-2 border-slate-900 rounded-xl text-sm font-mono focus:outline-none bg-white"
+                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="w-full px-3.5 py-2 border-2 border-slate-900 rounded-xl text-sm font-mono font-bold focus:outline-none bg-white"
                 />
               </div>
 
               <button
+                type="button"
+                disabled={isSavingPinPolicy}
                 onClick={handleSavePin}
-                className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black text-xs rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#000] active:translate-y-0.5 transition"
+                className="w-full btn-doodle py-2.5 bg-amber-300 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl disabled:opacity-50"
               >
-                Simpan PIN Keamanan
+                Perbarui PIN 6-Digit & Sinkronkan
               </button>
             </div>
           </div>

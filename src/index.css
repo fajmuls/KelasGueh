@@ -236,8 +236,32 @@ body {
 .theme-chocolate .bg-amber-50,
 .theme-chocolate .bg-amber-50\/50,
 .theme-chocolate .bg-amber-50\/60,
-.theme-chocolate .bg-amber-50\/70 {
+.theme-chocolate .bg-amber-50\/70,
+.theme-chocolate .bg-amber-50\/80,
+.theme-chocolate .bg-amber-50\/90,
+.theme-chocolate .bg-\[\#FFFDF9\],
+.theme-chocolate .bg-\[\#FFFBEB\] {
   background-color: #23160F !important;
+}
+
+.theme-chocolate .bg-\[\#F0F9FF\] {
+  background-color: #16242E !important;
+}
+
+.theme-chocolate .bg-sky-50 {
+  background-color: #1A2E3D !important;
+}
+
+.theme-chocolate .bg-emerald-50 {
+  background-color: #163024 !important;
+}
+
+.theme-chocolate .bg-rose-50 {
+  background-color: #361920 !important;
+}
+
+.theme-chocolate .bg-purple-50 {
+  background-color: #2B1C38 !important;
 }
 
 .theme-chocolate .bg-amber-100,
@@ -260,6 +284,20 @@ body {
 .theme-chocolate .text-amber-900,
 .theme-chocolate .text-amber-950 {
   color: #FDE68A !important;
+}
+
+.theme-chocolate .text-sky-900 {
+  color: #BAE6FD !important;
+}
+
+.theme-chocolate .text-emerald-900,
+.theme-chocolate .text-emerald-800 {
+  color: #A7F3D0 !important;
+}
+
+.theme-chocolate .text-rose-900,
+.theme-chocolate .text-rose-800 {
+  color: #FECDD3 !important;
 }
 
 .theme-chocolate .border-slate-900 {

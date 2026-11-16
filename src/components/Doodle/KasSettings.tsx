@@ -235,9 +235,12 @@ export const KasSettings: React.FC<KasSettingsProps> = ({
       return;
     }
     try {
-      saveNewPin(newPin);
+      const hash = saveNewPin(newPin);
+      const updated = { ...form, pinHash: hash };
+      setForm(updated);
+      onSaveSettings(updated);
       sfx.playSuccess();
-      setPinMessage('✓ PIN 6-digit keamanan transaksi besar berhasil diperbarui!');
+      setPinMessage('✓ PIN 6-digit keamanan transaksi besar berhasil diperbarui & disinkronkan!');
       setNewPin('');
       setTimeout(() => setPinMessage(null), 3500);
     } catch (err: any) {
